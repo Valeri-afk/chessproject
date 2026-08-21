@@ -7,6 +7,7 @@
 #include "modalmanager.hpp"
 #include "layoutmanager.hpp"
 #include "ui_framework/src/detail/scroll_system.hpp"
+#include "ui_framework/src/detail/layout_system.hpp"
 #include "ui_framework/ui_manager.hpp"
 
 namespace ui
@@ -30,7 +31,7 @@ namespace ui
         : nodeTree_(std::make_unique<NodeTree>()),
           inputManager_(std::make_unique<InputManager>()),
           modalManager_(std::make_unique<ModalManager>()),
-          layoutManager_(std::make_unique<LayoutManager>()),
+          layoutSystem_(std::make_unique<LayoutSystem>()),
           scrollSystem_(std::make_unique<ScrollSystem>())
     {
     }
@@ -42,7 +43,7 @@ namespace ui
         if (!nodeTree_)
             return;
 
-        if (layoutManager_ && layoutManager_->syncViewportFromRenderer(renderer))
+        if (layoutSystem_ && layoutSystem_->syncViewportFromRenderer(renderer))
             nodeTree_->requestFullLayout();
 
         syncState();
@@ -142,8 +143,8 @@ namespace ui
 
         nodeTree_->update(dt);
 
-        if (layoutManager_)
-            layoutManager_->processLayoutQueue(*nodeTree_);
+        if (layoutSystem_)
+            layoutSystem_->processLayoutQueue(*nodeTree_);
 
         syncState();
     }
@@ -277,8 +278,8 @@ namespace ui
         if (!nodeTree_)
             return;
         applyMutationQueue();
-        if (layoutManager_)
-            layoutManager_->processLayoutQueue(*nodeTree_);
+        if (layoutSystem_)
+            layoutSystem_->processLayoutQueue(*nodeTree_);
         syncState();
     }
 
@@ -321,8 +322,8 @@ namespace ui
 
         if (modalManager_)
         {
-            if (layoutManager_)
-                modalManager_->setViewportSize(layoutManager_->getViewportSize());
+            if (layoutSystem_)
+                modalManager_->setViewportSize(layoutSystem_->getViewportSize());
             modalManager_->sync(*nodeTree_, *inputManager_);
         }
 
