@@ -1,4 +1,4 @@
-#include "ui_framework/core/text_primitive.hpp"
+#include "ui_framework/src/detail/text_primitive.hpp"
 
 #include <algorithm>
 #include <utility>
