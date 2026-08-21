@@ -1,5 +1,6 @@
 #include <array>
 #include <memory>
+#include <string>
 
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
@@ -13,6 +14,18 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+
+namespace
+{
+    std::string getResourcePath(const char *relativePath)
+    {
+        const char *basePath = SDL_GetBasePath();
+        if (!basePath)
+            return relativePath;
+
+        return std::string(basePath) + relativePath;
+    }
+}
 
 int main()
 {
@@ -54,9 +67,14 @@ int main()
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
     ui::UIManager uiManager;
-    TTF_Font *font = TTF_OpenFont("fonts/Roboto-Medium.ttf", 8.0f);
+    const std::string fontPath = getResourcePath("fonts/Roboto-Medium.ttf");
+    TTF_Font *font = TTF_OpenFont(fontPath.c_str(), 8.0f);
     if (!font)
     {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+                     "Failed to load font: %s (%s)",
+                     fontPath.c_str(),
+                     SDL_GetError());
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         TTF_Quit();
