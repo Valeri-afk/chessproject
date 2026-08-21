@@ -1,4 +1,4 @@
-#include "ui_framework/core/panelnode.hpp"
+#include "ui_framework/panel_node.hpp"
 
 #include "nodetree.hpp"
 
@@ -10,9 +10,6 @@
 namespace
 {
     float finiteOrZero(float value) noexcept { return std::isfinite(value) ? value : 0.0f; }
-
-    ui::LayoutSize sanitizeSize(ui::LayoutSize size) noexcept { return {finiteOrZero(size.width), finiteOrZero(size.height)}; }
-
     int clampToInt(float value) noexcept
     {
         if (!std::isfinite(value)) return 0;
@@ -20,71 +17,12 @@ namespace
         if (value >= static_cast<float>(std::numeric_limits<int>::max())) return std::numeric_limits<int>::max();
         return static_cast<int>(value);
     }
-
-    SDL_Rect toSDLRect(const ui::Node &node)
-    {
-        const ui::LayoutPosition position = node.getActualPosition();
-        const ui::LayoutSize size = node.getActualSize();
-        const float safeX = finiteOrZero(position.x);
-        const float safeY = finiteOrZero(position.y);
-        const float safeWidth = std::max(0.0f, finiteOrZero(size.width));
-        const float safeHeight = std::max(0.0f, finiteOrZero(size.height));
-        const int x = clampToInt(std::floor(safeX));
-        const int y = clampToInt(std::floor(safeY));
-        const int right = clampToInt(std::ceil(safeX + safeWidth));
-        const int bottom = clampToInt(std::ceil(safeY + safeHeight));
-        return {x, y, std::max(0, right - x), std::max(0, bottom - y)};
-    }
-
-    bool getRenderClipRect(SDL_Renderer *renderer, SDL_Rect *rect) { return SDL_GetRenderClipRect(renderer, rect) == 0; }
-
-    SDL_Rect intersectRects(const SDL_Rect &a, const SDL_Rect &b)
-    {
-        const int left = std::max(a.x, b.x);
-        const int top = std::max(a.y, b.y);
-        const int right = std::min(a.x + a.w, b.x + b.w);
-        const int bottom = std::min(a.y + a.h, b.y + b.h);
-        return {left, top, std::max(0, right - left), std::max(0, bottom - top)};
-    }
-
-    std::optional<std::size_t> findChildIndexById(
-        const std::vector<std::unique_ptr<ui::Node>> &children,
-        ui::Node::Id id)
+    std::optional<std::size_t> findChildIndexById(const std::vector<std::unique_ptr<ui::Node>> &children, ui::Node::Id id)
     {
         for (std::size_t i = 0; i < children.size(); ++i)
             if (children[i] && children[i]->getId() == id) return i;
         return std::nullopt;
     }
-
-    class RendererStateScope
-    {
-    public:
-        explicit RendererStateScope(SDL_Renderer *renderer) noexcept : renderer_(renderer)
-        {
-            if (!renderer_) return;
-            hadPreviousClip_ = getRenderClipRect(renderer_, &previousClip_);
-            SDL_GetRenderDrawBlendMode(renderer_, &previousBlendMode_);
-            SDL_GetRenderDrawColor(renderer_, &previousR_, &previousG_, &previousB_, &previousA_);
-        }
-        ~RendererStateScope()
-        {
-            if (!renderer_) return;
-            SDL_SetRenderDrawBlendMode(renderer_, previousBlendMode_);
-            SDL_SetRenderDrawColor(renderer_, previousR_, previousG_, previousB_, previousA_);
-            SDL_SetRenderClipRect(renderer_, hadPreviousClip_ ? &previousClip_ : nullptr);
-        }
-        RendererStateScope(const RendererStateScope &) = delete;
-        RendererStateScope &operator=(const RendererStateScope &) = delete;
-    private:
-        SDL_Renderer *renderer_ = nullptr;
-        bool hadPreviousClip_ = false;
-        SDL_Rect previousClip_{};
-        SDL_BlendMode previousBlendMode_ = SDL_BLENDMODE_BLEND;
-        Uint8 previousR_ = 255;
-        Uint8 previousG_ = 255;
-        Uint8 previousB_ = 255;
-        Uint8 previousA_ = 255;
-    };
 }
 
 namespace ui
@@ -111,7 +49,6 @@ namespace ui
 
     size_t PanelNode::getChildCount() const noexcept { return children_.size(); }
     bool PanelNode::hasChildren() const noexcept { return !children_.empty(); }
-
     Node *PanelNode::getChild(size_t index) noexcept { return index < children_.size() ? children_[index].get() : nullptr; }
     const Node *PanelNode::getChild(size_t index) const noexcept { return index < children_.size() ? children_[index].get() : nullptr; }
 
