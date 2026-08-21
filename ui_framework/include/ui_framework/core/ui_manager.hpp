@@ -6,8 +6,8 @@
 #include <SDL3/SDL.h>
 
 #include "ui_framework/panel_node.hpp"
-#include "ui_framework/core/scrollmanager.hpp"
 #include "ui_framework/types.hpp"
+#include "ui_framework/src/detail/scroll_system.hpp"
 
 namespace ui
 {
@@ -15,7 +15,6 @@ namespace ui
     class InputManager;
     class ModalManager;
     class LayoutManager;
-    class ScrollManager;
 
     enum class BackdropClickBehavior;
 
@@ -33,14 +32,12 @@ namespace ui
 
         Node *addRoot(std::unique_ptr<Node> node);
         Node *addOverlay(std::unique_ptr<Node> node);
-
         void removeRoot(Node *node);
         void removeOverlay(Node *node);
 
         bool enableScrolling(Node &node);
         bool disableScrolling(Node &node);
         bool isScrollingEnabled(const Node &node) const noexcept;
-
         bool setScrollOffset(Node &node, const ScrollOffset &offset);
         ScrollOffset getScrollOffset(const Node &node) const noexcept;
         ScrollOffset getMaximumScrollOffset(const Node &node) const noexcept;
@@ -53,18 +50,15 @@ namespace ui
 
         void setBackdropColor(const Color &color) noexcept;
         Color getBackdropColor() const noexcept;
-
         void setBackdropFadeDuration(float seconds) noexcept;
         float getBackdropFadeDuration() const noexcept;
 
     private:
         void update(float dt);
         void draw(SDL_Renderer *renderer);
-
         void prepareForTreeOperation();
         void syncModalInputState();
         void drawNodesForFrame(SDL_Renderer *renderer);
-
         void applyMutationQueue();
         void syncState();
 
@@ -72,6 +66,6 @@ namespace ui
         std::unique_ptr<InputManager> inputManager_;
         std::unique_ptr<ModalManager> modalManager_;
         std::unique_ptr<LayoutManager> layoutManager_;
-        std::unique_ptr<ScrollManager> scrollManager_;
+        std::unique_ptr<ScrollSystem> scrollSystem_;
     };
 }
