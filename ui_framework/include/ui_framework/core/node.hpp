@@ -24,7 +24,7 @@ namespace ui
     {
     public:
         using Id = std::uint64_t;
-        using HandlerToken = EventHandlerStorage::HandlerToken;
+        using EventHandlerId = std::uint64_t;
         using CoordinateTransform = std::function<LayoutPosition(const Node &, const LayoutPosition &)>;
 
         class ScopedCoordinateTransform
@@ -117,24 +117,42 @@ namespace ui
         virtual Node *getVisibleChild(size_t visibleIndex) const noexcept;
 
         template <typename Event>
-        HandlerToken addHandler(std::function<void(Event &, Node &)> handler)
+        EventHandlerId on(std::function<void(Event &, Node &)> handler)
         {
             return eventHandlers_.add<Event>(std::move(handler));
         }
 
         template <typename Event>
-        void removeHandler(HandlerToken token)
+        void removeEventHandler(EventHandlerId handlerId)
         {
-            eventHandlers_.remove<Event>(token);
+            eventHandlers_.remove<Event>(handlerId);
         }
 
         template <typename Event>
-        void clearHandlers()
+        void clearEventHandlers()
         {
             eventHandlers_.clear<Event>();
         }
 
     protected:
+        template <typename Event>
+        EventHandlerId addHandler(std::function<void(Event &, Node &)> handler)
+        {
+            return on<Event>(std::move(handler));
+        }
+
+        template <typename Event>
+        void removeHandler(EventHandlerId handlerId)
+        {
+            removeEventHandler<Event>(handlerId);
+        }
+
+        template <typename Event>
+        void clearHandlers()
+        {
+            clearEventHandlers<Event>();
+        }
+
         virtual void update(float dt) {}
         virtual void draw(SDL_Renderer *renderer) {}
 
