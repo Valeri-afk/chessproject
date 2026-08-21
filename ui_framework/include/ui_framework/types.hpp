@@ -11,51 +11,16 @@
 
 namespace ui
 {
-
-    //==========================================================================
-    // Layout
-    //==========================================================================
-
-    enum class Overflow
-    {
-        VISIBLE,
-        HIDDEN
-    };
-
-    enum class MainAxisAlignment
-    {
-        START,
-        CENTER,
-        END,
-        SPACE_BETWEEN
-    };
-
-    enum class CrossAxisAlignment
-    {
-        START,
-        CENTER,
-        END,
-        STRETCH
-    };
-
-    enum class TextAlignment
-    {
-        START,
-        CENTER,
-        END
-    };
-
-    enum class PositionMode
-    {
-        Layout,
-        Absolute
-    };
+    enum class Overflow { VISIBLE, HIDDEN };
+    enum class MainAxisAlignment { START, CENTER, END, SPACE_BETWEEN };
+    enum class CrossAxisAlignment { START, CENTER, END, STRETCH };
+    enum class TextAlignment { START, CENTER, END };
+    enum class PositionMode { Layout, Absolute };
 
     struct LayoutPosition
     {
         float x = 0.0f;
         float y = 0.0f;
-
         bool operator==(const LayoutPosition &) const = default;
         LayoutPosition operator+(const LayoutPosition &rhs) const { return {x + rhs.x, y + rhs.y}; }
         LayoutPosition operator-(const LayoutPosition &rhs) const { return {x - rhs.x, y - rhs.y}; }
@@ -63,12 +28,7 @@ namespace ui
         LayoutPosition &operator-=(const LayoutPosition &rhs) { x -= rhs.x; y -= rhs.y; return *this; }
     };
 
-    enum class LayoutValueType
-    {
-        Auto,
-        Value
-    };
-
+    enum class LayoutValueType { Auto, Value };
     struct LayoutValue
     {
         LayoutValueType type = LayoutValueType::Auto;
@@ -105,23 +65,8 @@ namespace ui
         LayoutSize &operator-=(const LayoutSize &rhs) { width -= rhs.width; height -= rhs.height; return *this; }
     };
 
-    struct Padding
-    {
-        float left = 0.0f;
-        float right = 0.0f;
-        float top = 0.0f;
-        float bottom = 0.0f;
-        bool operator==(const Padding &) const = default;
-    };
-
-    struct Border
-    {
-        float left = 0.0f;
-        float right = 0.0f;
-        float top = 0.0f;
-        float bottom = 0.0f;
-        bool operator==(const Border &) const = default;
-    };
+    struct Padding { float left = 0.0f; float right = 0.0f; float top = 0.0f; float bottom = 0.0f; bool operator==(const Padding &) const = default; };
+    struct Border { float left = 0.0f; float right = 0.0f; float top = 0.0f; float bottom = 0.0f; bool operator==(const Border &) const = default; };
 
     struct LayoutConstraints
     {
@@ -129,22 +74,29 @@ namespace ui
         float maxWidth = std::numeric_limits<float>::max();
         float minHeight = 0.0f;
         float maxHeight = std::numeric_limits<float>::max();
-        LayoutSize clamp(LayoutSize size) const noexcept
-        {
-            return {std::clamp(size.width, minWidth, maxWidth), std::clamp(size.height, minHeight, maxHeight)};
-        }
+        LayoutSize clamp(LayoutSize size) const noexcept { return {std::clamp(size.width, minWidth, maxWidth), std::clamp(size.height, minHeight, maxHeight)}; }
     };
 
-    //==========================================================================
-    // Colors
-    //==========================================================================
+    struct ScrollOffset
+    {
+        float x = 0.0f;
+        float y = 0.0f;
+        ScrollOffset operator+(const ScrollOffset &other) const noexcept { return {x + other.x, y + other.y}; }
+        bool operator==(const ScrollOffset &) const = default;
+    };
+
+    struct ScrollState
+    {
+        LayoutSize viewport{};
+        LayoutSize content{};
+        ScrollOffset offset{};
+        ScrollOffset maxOffset() const noexcept { return {std::max(0.0f, content.width - viewport.width), std::max(0.0f, content.height - viewport.height)}; }
+        void clampOffset() noexcept { const auto max = maxOffset(); offset.x = std::clamp(offset.x, 0.0f, max.x); offset.y = std::clamp(offset.y, 0.0f, max.y); }
+    };
 
     struct Color
     {
-        uint8_t r = 255;
-        uint8_t g = 255;
-        uint8_t b = 255;
-        uint8_t a = 255;
+        uint8_t r = 255; uint8_t g = 255; uint8_t b = 255; uint8_t a = 255;
         bool operator==(const Color &) const = default;
     };
 
@@ -169,5 +121,4 @@ namespace ui
         float borderWidth = 0.0f;
         float borderRadius = 0.0f;
     };
-
 }
