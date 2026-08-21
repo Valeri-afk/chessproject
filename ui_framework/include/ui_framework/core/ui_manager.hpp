@@ -5,7 +5,7 @@
 
 #include <SDL3/SDL.h>
 
-#include "ui_framework/core/panelnode.hpp"
+#include "ui_framework/panel_node.hpp"
 #include "ui_framework/core/scrollmanager.hpp"
 #include "ui_framework/types.hpp"
 
@@ -15,6 +15,7 @@ namespace ui
     class InputManager;
     class ModalManager;
     class LayoutManager;
+    class ScrollManager;
 
     enum class BackdropClickBehavior;
 
@@ -28,33 +29,27 @@ namespace ui
         UIManager &operator=(const UIManager &) = delete;
 
         void runFrame(float dt, SDL_Renderer *renderer);
-        void processEvent(
-            const SDL_Event &sdlEvent,
-            SDL_Renderer *renderer);
+        void processEvent(const SDL_Event &event, SDL_Renderer *renderer);
 
-        Node *attachRoot(size_t index, std::unique_ptr<Node> node);
-        Node *attachOverlay(size_t index, std::unique_ptr<Node> node);
+        Node *addRoot(std::unique_ptr<Node> node);
+        Node *addOverlay(std::unique_ptr<Node> node);
 
         void removeRoot(Node *node);
         void removeOverlay(Node *node);
 
-        bool registerScrollNode(Node &node);
-        bool unregisterScrollNode(Node::Id nodeId);
-        bool isScrollNodeRegistered(Node::Id nodeId) const noexcept;
+        bool enableScrolling(Node &node);
+        bool disableScrolling(Node &node);
+        bool isScrollingEnabled(const Node &node) const noexcept;
 
-        bool setScrollOffset(
-            Node::Id nodeId,
-            const ScrollOffset &offset);
-
-        ScrollOffset getScrollOffset(Node::Id nodeId) const noexcept;
-        ScrollOffset getScrollMaxOffset(Node::Id nodeId) const noexcept;
+        bool setScrollOffset(Node &node, const ScrollOffset &offset);
+        ScrollOffset getScrollOffset(const Node &node) const noexcept;
+        ScrollOffset getMaximumScrollOffset(const Node &node) const noexcept;
 
         bool showModal(Node &node);
         bool showModal(Node &node, BackdropClickBehavior behavior);
         bool closeModal();
-
-        bool isModal(const Node *node) const noexcept;
-        Node *topModalNode() const noexcept;
+        bool isModal(const Node &node) const noexcept;
+        Node *getActiveModal() const noexcept;
 
         void setBackdropColor(const Color &color) noexcept;
         Color getBackdropColor() const noexcept;
@@ -73,12 +68,10 @@ namespace ui
         void applyMutationQueue();
         void syncState();
 
-    private:
         std::unique_ptr<NodeTree> nodeTree_;
         std::unique_ptr<InputManager> inputManager_;
         std::unique_ptr<ModalManager> modalManager_;
         std::unique_ptr<LayoutManager> layoutManager_;
         std::unique_ptr<ScrollManager> scrollManager_;
     };
-
 }
