@@ -1,4 +1,4 @@
-#include "ui_framework/core/stackpanelnode.hpp"
+#include "ui_framework/stack_panel_node.hpp"
 
 #include <cmath>
 
