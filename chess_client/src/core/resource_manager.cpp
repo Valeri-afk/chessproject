@@ -1,48 +1,61 @@
 #include "resource_manager.hpp"
 
-#include <fstream>
 #include <iostream>
+#include <system_error>
 
 #include "texture.hpp"
 
-ResourceManager::ResourceManager(SDL_Renderer *renderer) : renderer(renderer) {}
+ResourceManager::ResourceManager(SDL_Renderer *renderer)
+    : renderer_(renderer)
+{
+    const char *basePath = SDL_GetBasePath();
+    if (basePath)
+        executableDirectory_ = std::filesystem::path(basePath);
+}
 
-ResourceManager::~ResourceManager() {}
+ResourceManager::~ResourceManager() = default;
+
+std::string ResourceManager::getResourcePath(const std::string &relativePath) const
+{
+    if (executableDirectory_.empty())
+        return relativePath;
+
+    return (executableDirectory_ / std::filesystem::path(relativePath)).string();
+}
+
+std::string ResourceManager::getAssetPath(const std::string &relativePath) const
+{
+    return getResourcePath((std::filesystem::path("assets") / relativePath).string());
+}
 
 Texture *ResourceManager::getTexture(const std::string &path)
 {
-    auto it = textures.find(path);
-    if (it != textures.end())
+    auto it = textures_.find(path);
+    if (it != textures_.end())
         return it->second.get();
 
-    if (loadTexture(getAssetPath(path)))
-    {
-        return textures[path].get();
-    }
-    return nullptr;
-}
+    if (loadTexture(path))
+        return textures_[path].get();
 
-std::string ResourceManager::getAssetPath(
-    const std::string &relativePath) const
-{
-    return std::string(SDL_GetBasePath()) +
-           "assets/" +
-           relativePath;
+    return nullptr;
 }
 
 bool ResourceManager::loadTexture(const std::string &path)
 {
-    SDL_Texture *sdlTex = IMG_LoadTexture(renderer, getAssetPath(path).c_str());
+    const std::string fullPath = getAssetPath(path);
+    SDL_Texture *sdlTex = IMG_LoadTexture(renderer_, fullPath.c_str());
     if (!sdlTex)
     {
-        std::cerr << "Failed to load texture: " << path << " - " << SDL_GetError() << std::endl;
+        std::cerr << "Failed to load texture: " << fullPath
+                  << " - " << SDL_GetError() << std::endl;
         return false;
     }
-    textures[path] = std::make_unique<Texture>(renderer, sdlTex);
+
+    textures_[path] = std::make_unique<Texture>(renderer_, sdlTex);
     return true;
 }
 
 void ResourceManager::clear()
 {
-    textures.clear();
+    textures_.clear();
 }
