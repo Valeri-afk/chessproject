@@ -18,7 +18,7 @@ namespace ui
             if (!target)
                 return false;
     
-            const Node::Id targetId = target->id();
+            const Node::Id targetId = target->getId();
     
             if (nodeTree.findNode(targetId) != target)
                 return false;
@@ -66,7 +66,7 @@ namespace ui
 
         if (newNode)
         {
-            id = newNode->id();
+            id = newNode->getId();
         }
         else
         {
@@ -459,7 +459,7 @@ namespace ui
     
         if (oldHovered)
         {
-            const Node::Id oldHoveredId = oldHovered->id();
+            const Node::Id oldHoveredId = oldHovered->getId();
     
             MouseLeaveEvent leaveEvent;
             leaveEvent.position = position;
@@ -484,7 +484,7 @@ namespace ui
     
         if (newHovered)
         {
-            const Node::Id newHoveredId = newHovered->id();
+            const Node::Id newHoveredId = newHovered->getId();
     
             MouseEnterEvent enterEvent;
             enterEvent.position = position;
@@ -527,13 +527,13 @@ namespace ui
             return false;
         }
     
-        if (nodeTree.findNode(node.id()) != &node)
+        if (nodeTree.findNode(node.getId()) != &node)
         {
             syncState(nodeTree);
             return false;
         }
     
-        const Node::Id requestedId = node.id();
+        const Node::Id requestedId = node.getId();
     
         if (focusTransitionInProgress_)
         {
@@ -561,7 +561,7 @@ namespace ui
     
         if (oldFocused)
         {
-            const Node::Id oldFocusedId = oldFocused->id();
+            const Node::Id oldFocusedId = oldFocused->getId();
     
             FocusLostEvent event;
     
@@ -692,7 +692,7 @@ namespace ui
     
         focusTransitionInProgress_ = true;
     
-        const Node::Id oldFocusedId = oldFocused->id();
+        const Node::Id oldFocusedId = oldFocused->getId();
     
         FocusLostEvent event;
     
@@ -777,7 +777,7 @@ namespace ui
             return false;
         }
 
-        if (nodeTree.findNode(target->id()) != target)
+        if (nodeTree.findNode(target->getId()) != target)
         {
             syncState(nodeTree);
             return false;
@@ -786,18 +786,18 @@ namespace ui
         if (input_.capturedNode)
         {
             const Node::Id previousCaptureId =
-                input_.capturedNode->id();
+                input_.capturedNode->getId();
         
             cancelPointerInteraction(nodeTree);
         
             if (input_.capturedNode &&
-                input_.capturedNode->id() != previousCaptureId)
+                input_.capturedNode->getId() != previousCaptureId)
             {
                 syncState(nodeTree);
                 return true;
             }
         
-            target = nodeTree.findNode(target->id());
+            target = nodeTree.findNode(target->getId());
         
             if (!target)
                 return false;
@@ -828,7 +828,7 @@ namespace ui
         if (!captured)
             return;
         
-        const Node::Id capturedId = captured->id();
+        const Node::Id capturedId = captured->getId();
         
         if (!dispatchDragEndIfNeeded(
                 nodeTree,
@@ -841,7 +841,7 @@ namespace ui
         // DragEndEvent may have changed pointer capture.
         // Never overwrite a callback-established state.
         if (input_.capturedNode &&
-            input_.capturedNode->id() != capturedId)
+            input_.capturedNode->getId() != capturedId)
         {
             syncState(nodeTree);
             return;
@@ -872,7 +872,7 @@ namespace ui
 
         const std::optional<Node::Id> capturedId =
             captured
-                ? std::optional<Node::Id>(captured->id())
+                ? std::optional<Node::Id>(captured->getId())
                 : std::nullopt;
 
         if (captured &&
@@ -886,7 +886,7 @@ namespace ui
 
         if (capturedId &&
             input_.capturedNode &&
-            input_.capturedNode->id() != *capturedId)
+            input_.capturedNode->getId() != *capturedId)
         {
             syncState(nodeTree);
             return;
@@ -939,7 +939,7 @@ namespace ui
         const Node *modalRoot) noexcept
     {
         modalRootId_ =
-            modalRoot ? std::optional<Node::Id>{modalRoot->id()} : std::nullopt;
+            modalRoot ? std::optional<Node::Id>{modalRoot->getId()} : std::nullopt;
     }
 
     bool InputManager::dispatchDragEndIfNeeded(
@@ -950,7 +950,7 @@ namespace ui
         if (!node || !input_.isDragging)
             return true;
 
-        const Node::Id nodeId = node->id();
+        const Node::Id nodeId = node->getId();
 
         MousePosition pos = position.value_or(MousePosition{});
 
@@ -998,7 +998,7 @@ namespace ui
         if (!node)
             return true;
 
-        const Node::Id nodeId = node->id();
+        const Node::Id nodeId = node->getId();
 
         MouseLeaveEvent leaveEvent;
         leaveEvent.position = position.value_or(MousePosition{});
@@ -1070,7 +1070,7 @@ namespace ui
         if (!modalRoot)
             return false;
 
-        if (nodeTree.findNode(node->id()) != node)
+        if (nodeTree.findNode(node->getId()) != node)
             return false;
 
         return nodeTree.isDescendant(
@@ -1094,7 +1094,7 @@ namespace ui
                 if (input.hoveredNode)
                 {
                     Node *oldHovered = input.hoveredNode;
-                    const Node::Id oldHoveredId = oldHovered->id();
+                    const Node::Id oldHoveredId = oldHovered->getId();
 
                     MouseLeaveEvent leaveEvent;
                     leaveEvent.position = event.position;
@@ -1119,7 +1119,7 @@ namespace ui
 
                 if (node)
                 {
-                    const Node::Id enterId = node->id();
+                    const Node::Id enterId = node->getId();
 
                     MouseEnterEvent enterEvent;
                     enterEvent.position = event.position;
@@ -1185,7 +1185,7 @@ namespace ui
                 beginEvent.delta = {dx, dy};
 
                 Node *captured = input.capturedNode;
-                const Node::Id capturedId = captured->id();
+                const Node::Id capturedId = captured->getId();
 
                 if (!dispatchEvent(
                         nodeTree,
@@ -1212,7 +1212,7 @@ namespace ui
                     dragEvent.delta = {dx, dy};
 
                     Node *capturedNow = input.capturedNode;
-                    const Node::Id capturedNowId = capturedNow->id();
+                    const Node::Id capturedNowId = capturedNow->getId();
 
                     if (!dispatchEvent(
                             nodeTree,
@@ -1240,7 +1240,7 @@ namespace ui
         if (!currentTarget)
             return;
 
-        const Node::Id dispatchId = currentTarget->id();
+        const Node::Id dispatchId = currentTarget->getId();
 
         if (!dispatchEvent(
                 nodeTree,
@@ -1289,7 +1289,7 @@ namespace ui
         const bool hadCaptureBefore = input.capturedNode != nullptr;
         const bool hadFocusBefore = input.focusedNode != nullptr;
 
-        const Node::Id nodeId = node->id();
+        const Node::Id nodeId = node->getId();
 
         if (!dispatchEvent(
                 nodeTree,
@@ -1339,19 +1339,19 @@ namespace ui
 
         const std::optional<Node::Id> initialCaptureId =
         input.capturedNode
-            ? std::optional<Node::Id>(input.capturedNode->id())
+            ? std::optional<Node::Id>(input.capturedNode->getId())
             : std::nullopt;
 
         const std::optional<Node::Id> initialPressedId =
             input.pressedNode
-                ? std::optional<Node::Id>(input.pressedNode->id())
+                ? std::optional<Node::Id>(input.pressedNode->getId())
                 : std::nullopt;
 
         Node *releaseNode =
             input.capturedNode ? input.capturedNode : node;
 
         const Node::Id underNodeId =
-            node ? node->id() : 0;
+            node ? node->getId() : 0;
 
         if (!releaseNode)
         {
@@ -1365,7 +1365,7 @@ namespace ui
             return;
         }
 
-        const Node::Id releaseId = releaseNode->id();
+        const Node::Id releaseId = releaseNode->getId();
 
         if (!dispatchEvent(
                 nodeTree,
@@ -1388,7 +1388,7 @@ namespace ui
 
         const std::optional<Node::Id> captureAfterMouseUp =
             input.capturedNode
-                ? std::optional<Node::Id>(input.capturedNode->id())
+                ? std::optional<Node::Id>(input.capturedNode->getId())
                 : std::nullopt;
         
         if (captureAfterMouseUp != initialCaptureId)
@@ -1402,7 +1402,7 @@ namespace ui
         if (initialPressedId)
         {
             if (!pressedNode ||
-                pressedNode->id() != *initialPressedId)
+                pressedNode->getId() != *initialPressedId)
             {
                 syncState(nodeTree);
                 return;
@@ -1411,7 +1411,7 @@ namespace ui
 
         if (pressedNode)
         {
-            const Node::Id pressedId = pressedNode->id();
+            const Node::Id pressedId = pressedNode->getId();
 
             Node *livePressedNode = nodeTree.findNode(pressedId);
 
@@ -1425,7 +1425,7 @@ namespace ui
 
             const std::optional<Node::Id> captureBeforeClick =
                 input.capturedNode
-                    ? std::optional<Node::Id>(input.capturedNode->id())
+                    ? std::optional<Node::Id>(input.capturedNode->getId())
                     : std::nullopt;
             
             if (!input.isDragging &&
@@ -1450,7 +1450,7 @@ namespace ui
             
                 const std::optional<Node::Id> captureAfterClick =
                     input.capturedNode
-                        ? std::optional<Node::Id>(input.capturedNode->id())
+                        ? std::optional<Node::Id>(input.capturedNode->getId())
                         : std::nullopt;
                 
                 if (captureAfterClick != captureBeforeClick)
@@ -1481,7 +1481,7 @@ namespace ui
         if (!node)
             return;
 
-        const Node::Id nodeId = node->id();
+        const Node::Id nodeId = node->getId();
 
         if (!dispatchEvent(
                 nodeTree,
@@ -1509,7 +1509,7 @@ namespace ui
         if (!target)
             return;
 
-        const Node::Id targetId = target->id();
+        const Node::Id targetId = target->getId();
 
         if (!dispatchEvent(
                 nodeTree,
@@ -1537,7 +1537,7 @@ namespace ui
         if (!target)
             return;
 
-        const Node::Id targetId = target->id();
+        const Node::Id targetId = target->getId();
 
         if (!dispatchEvent(
                 nodeTree,
@@ -1713,4 +1713,4 @@ namespace ui
         }
     }
 
-} 
+}
