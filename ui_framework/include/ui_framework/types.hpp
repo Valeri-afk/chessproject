@@ -1,13 +1,7 @@
 #pragma once
 
 #include <algorithm>
-#include <cmath>
-#include <cstddef>
 #include <cstdint>
-#include <functional>
-#include <limits>
-#include <optional>
-#include <vector>
 
 namespace ui
 {
@@ -68,30 +62,12 @@ namespace ui
     struct Padding { float left = 0.0f; float right = 0.0f; float top = 0.0f; float bottom = 0.0f; bool operator==(const Padding &) const = default; };
     struct Border { float left = 0.0f; float right = 0.0f; float top = 0.0f; float bottom = 0.0f; bool operator==(const Border &) const = default; };
 
-    struct LayoutConstraints
-    {
-        float minWidth = 0.0f;
-        float maxWidth = std::numeric_limits<float>::max();
-        float minHeight = 0.0f;
-        float maxHeight = std::numeric_limits<float>::max();
-        LayoutSize clamp(LayoutSize size) const noexcept { return {std::clamp(size.width, minWidth, maxWidth), std::clamp(size.height, minHeight, maxHeight)}; }
-    };
-
     struct ScrollOffset
     {
         float x = 0.0f;
         float y = 0.0f;
         ScrollOffset operator+(const ScrollOffset &other) const noexcept { return {x + other.x, y + other.y}; }
         bool operator==(const ScrollOffset &) const = default;
-    };
-
-    struct ScrollState
-    {
-        LayoutSize viewport{};
-        LayoutSize content{};
-        ScrollOffset offset{};
-        ScrollOffset maxOffset() const noexcept { return {std::max(0.0f, content.width - viewport.width), std::max(0.0f, content.height - viewport.height)}; }
-        void clampOffset() noexcept { const auto max = maxOffset(); offset.x = std::clamp(offset.x, 0.0f, max.x); offset.y = std::clamp(offset.y, 0.0f, max.y); }
     };
 
     struct Color
