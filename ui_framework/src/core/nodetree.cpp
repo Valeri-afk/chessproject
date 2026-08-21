@@ -12,7 +12,7 @@ namespace
     {
         for (size_t i = 0; i < children.size(); ++i)
         {
-            if (children[i] && children[i]->id() == id)
+            if (children[i] && children[i]->getId() == id)
                 return i;
         }
 
@@ -108,7 +108,7 @@ namespace ui
     void NodeTree::assertSubtreeLive(const Node &node) const
     {
 #ifndef NDEBUG
-        SDL_assert(findNode(node.id()) == &node);
+        SDL_assert(findNode(node.getId()) == &node);
 
         if (const PanelNode *panel = dynamic_cast<const PanelNode *>(&node))
         {
@@ -148,7 +148,7 @@ namespace ui
             container.end(),
             [id](const std::unique_ptr<Node> &node)
             {
-                return node && node->id() == id;
+                return node && node->getId() == id;
             });
     }
 
@@ -176,23 +176,23 @@ namespace ui
 
     PanelNode *NodeTree::resolveLivePanelParent(Node &parent)
     {
-        return resolveLivePanelNode(parent.id());
+        return resolveLivePanelNode(parent.getId());
     }
 
     void NodeTree::registerNode(Node &node)
     {
 #ifndef NDEBUG
-        auto it = liveNodes_.find(node.id());
+        auto it = liveNodes_.find(node.getId());
         SDL_assert(it == liveNodes_.end() || it->second == &node);
 #endif
 
-        liveNodes_[node.id()] = &node;
+        liveNodes_[node.getId()] = &node;
     }
 
     void NodeTree::unregisterNode(Node &node)
     {
 #ifndef NDEBUG
-        auto it = liveNodes_.find(node.id());
+        auto it = liveNodes_.find(node.getId());
         SDL_assert(it != liveNodes_.end());
 
         if (it != liveNodes_.end())
@@ -201,7 +201,7 @@ namespace ui
         }
 #endif
 
-        liveNodes_.erase(node.id());
+        liveNodes_.erase(node.getId());
     }
 
     void NodeTree::registerSubtree(Node &root)
@@ -302,7 +302,7 @@ namespace ui
         if (!node)
             return false;
 
-        return containsNodeInContainer(roots_, node->id());
+        return containsNodeInContainer(roots_, node->getId());
     }
 
     bool NodeTree::isOverlay(const Node *node) const noexcept
@@ -310,7 +310,7 @@ namespace ui
         if (!node)
             return false;
 
-        return containsNodeInContainer(overlays_, node->id());
+        return containsNodeInContainer(overlays_, node->getId());
     }
 
     void NodeTree::requestFullLayout()
@@ -345,7 +345,7 @@ namespace ui
         if (!node)
             return;
 
-        removeFromContainer(node->id(), roots_);
+        removeFromContainer(node->getId(), roots_);
     }
 
     void NodeTree::removeOverlay(Node *node)
@@ -353,7 +353,7 @@ namespace ui
         if (!node)
             return;
 
-        removeFromContainer(node->id(), overlays_);
+        removeFromContainer(node->getId(), overlays_);
     }
 
     Node *NodeTree::attachChild(
@@ -363,7 +363,7 @@ namespace ui
     {
         if (isMutationScopeActive())
         {
-            const NodeId parentId = parent.id();
+            const NodeId parentId = parent.getId();
 
             if (!findNode(parentId))
                 return nullptr;
@@ -400,8 +400,8 @@ namespace ui
     {
         if (isMutationScopeActive())
         {
-            const NodeId parentId = parent.id();
-            const NodeId childId = child.id();
+            const NodeId parentId = parent.getId();
+            const NodeId childId = child.getId();
 
             if (!findNode(parentId) || !findNode(childId))
                 return;
@@ -485,11 +485,11 @@ namespace ui
             return nullptr;
 
 #ifndef NDEBUG
-        SDL_assert(node->parent() == nullptr);
+        SDL_assert(node->getParent() == nullptr);
         SDL_assert(node->owner_ == nullptr);
 #endif
 
-        if (node->parent() || node->owner_)
+        if (node->getParent() || node->owner_)
         {
             SDL_LogError(
                 SDL_LOG_CATEGORY_APPLICATION,
@@ -503,7 +503,7 @@ namespace ui
             index = container.size();
 
         Node *raw = node.get();
-        const NodeId nodeId = raw->id();
+        const NodeId nodeId = raw->getId();
 
         container.insert(
             container.begin() + static_cast<std::ptrdiff_t>(index),
@@ -527,7 +527,7 @@ namespace ui
             container.end(),
             [id](const std::unique_ptr<Node> &node)
             {
-                return node && node->id() == id;
+                return node && node->getId() == id;
             });
 
         if (it == container.end())
@@ -552,7 +552,7 @@ namespace ui
         if (!child)
             return nullptr;
 
-        const NodeId parentId = parent.id();
+        const NodeId parentId = parent.getId();
 
         if (parent.owner_ != this)
         {
@@ -564,7 +564,7 @@ namespace ui
             return nullptr;
         }
 
-        if (child->parent() || child->owner_)
+        if (child->getParent() || child->owner_)
         {
             SDL_LogError(
                 SDL_LOG_CATEGORY_APPLICATION,
@@ -575,7 +575,7 @@ namespace ui
         }
 
         Node *raw = child.get();
-        const NodeId childId = raw->id();
+        const NodeId childId = raw->getId();
 
         Node *attached =
             parent.attachLocal(std::move(child), index);
@@ -604,8 +604,8 @@ namespace ui
         PanelNode &parent,
         Node &child)
     {
-        const NodeId parentId = parent.id();
-        const NodeId childId = child.id();
+        const NodeId parentId = parent.getId();
+        const NodeId childId = child.getId();
 
         if (parent.owner_ != this)
         {
@@ -627,7 +627,7 @@ namespace ui
             return;
         }
 
-        if (child.parent() != &parent)
+        if (child.getParent() != &parent)
         {
             SDL_LogError(
                 SDL_LOG_CATEGORY_APPLICATION,
@@ -645,7 +645,7 @@ namespace ui
 
 #ifndef NDEBUG
         SDL_assert(removed->owner_ == this);
-        SDL_assert(removed->parent() == nullptr);
+        SDL_assert(removed->getParent() == nullptr);
         assertSubtreeLive(*removed);
 #endif
 
@@ -692,7 +692,7 @@ namespace ui
                  ++it)
             {
                 if (*it)
-                    snapshot.push_back((*it)->id());
+                    snapshot.push_back((*it)->getId());
             }
         }
         else
@@ -700,7 +700,7 @@ namespace ui
             for (const auto &child : panel->children_)
             {
                 if (child)
-                    snapshot.push_back(child->id());
+                    snapshot.push_back(child->getId());
             }
         }
 
@@ -718,7 +718,7 @@ namespace ui
                 panel->children_[*index].get();
 
             if (!child ||
-                child->id() != childId ||
+                child->getId() != childId ||
                 child->parent_ != panel)
             {
                 continue;
@@ -757,7 +757,7 @@ namespace ui
                 for (const auto &child : panel->children_)
                 {
                     if (child)
-                        snapshot.push_back(child->id());
+                        snapshot.push_back(child->getId());
                 }
             }
             else
@@ -767,7 +767,7 @@ namespace ui
                      ++it)
                 {
                     if (*it)
-                        snapshot.push_back((*it)->id());
+                        snapshot.push_back((*it)->getId());
                 }
             }
 
@@ -785,7 +785,7 @@ namespace ui
                     panel->children_[*index].get();
 
                 if (!child ||
-                    child->id() != childId ||
+                    child->getId() != childId ||
                     child->parent_ != panel)
                 {
                     continue;
@@ -843,17 +843,17 @@ namespace ui
 
     void NodeTree::insertLayoutQueue(Node *node)
     {
-        if (!node || findNode(node->id()) != node)
+        if (!node || findNode(node->getId()) != node)
             return;
 
         Node *root = node;
 
-        while (root->parent())
+        while (root->getParent())
         {
-            root = root->parent();
+            root = root->getParent();
         }
 
-        insertLayoutQueueById(root->id());
+        insertLayoutQueueById(root->getId());
     }
 
     void NodeTree::insertLayoutQueueById(NodeId id)
@@ -865,17 +865,17 @@ namespace ui
     
         Node *layoutRoot = node;
     
-        while (layoutRoot->parent())
+        while (layoutRoot->getParent())
         {
-            layoutRoot = layoutRoot->parent();
+            layoutRoot = layoutRoot->getParent();
         }
     
         if (!isRoot(layoutRoot) && !isOverlay(layoutRoot))
             return;
     
-        if (layoutQueueSet_.insert(layoutRoot->id()).second)
+        if (layoutQueueSet_.insert(layoutRoot->getId()).second)
         {
-            layoutQueue_.push_back(layoutRoot->id());
+            layoutQueue_.push_back(layoutRoot->getId());
         }
     }
 
@@ -995,7 +995,7 @@ namespace ui
         for (const auto &child : panel->children_)
         {
             if (child)
-                snapshot.push_back(child->id());
+                snapshot.push_back(child->getId());
         }
 
         for (NodeId childId : snapshot)
@@ -1012,7 +1012,7 @@ namespace ui
                 panel->children_[*index].get();
 
             if (!child ||
-                child->id() != childId ||
+                child->getId() != childId ||
                 child->parent_ != panel)
             {
                 continue;
@@ -1043,7 +1043,7 @@ namespace ui
                 [this, renderer, topModalId](Node &overlay)
                 {
                     if (topModalId &&
-                        overlay.id() == *topModalId)
+                        overlay.getId() == *topModalId)
                     {
                         return false;
                     }
@@ -1135,7 +1135,7 @@ namespace ui
         if (modalRoot)
         {
             Node *liveModal =
-                findNode(modalRoot->id());
+                findNode(modalRoot->getId());
 
             if (liveModal != modalRoot)
                 return nullptr;
@@ -1192,8 +1192,8 @@ namespace ui
         if (!node || !ancestor)
             return false;
 
-        if (findNode(node->id()) != node ||
-            findNode(ancestor->id()) != ancestor)
+        if (findNode(node->getId()) != node ||
+            findNode(ancestor->getId()) != ancestor)
         {
             return false;
         }
