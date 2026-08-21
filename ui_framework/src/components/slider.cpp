@@ -1,6 +1,6 @@
 #include "ui_framework/components/slider.hpp"
 
-#include "ui_framework/core/primitives.hpp"
+#include "ui_framework/primitives.hpp"
 #include "ui_framework/event_types.hpp"
 
 #include <algorithm>
