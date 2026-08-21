@@ -73,8 +73,8 @@ namespace ui
 
     Node::Node() = default;
     Node::~Node() = default;
-    Node::Id Node::id() const noexcept { return id_; }
-    Node *Node::parent() const noexcept { return parent_; }
+    Node::Id Node::getId() const noexcept { return id_; }
+    Node *Node::getParent() const noexcept { return parent_; }
 
     void Node::setVisible(bool visible)
     {
