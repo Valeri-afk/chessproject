@@ -4,8 +4,7 @@
 
 #include "nodetree.hpp"
 #include "inputmanager.hpp"
-#include "modalmanager.hpp"
-#include "layoutmanager.hpp"
+#include "ui_framework/src/detail/modal_system.hpp"
 #include "ui_framework/src/detail/scroll_system.hpp"
 #include "ui_framework/src/detail/layout_system.hpp"
 #include "ui_framework/ui_manager.hpp"
@@ -24,13 +23,12 @@ namespace ui
                 const ScrollOffset offset = scrollSystem->getAccumulatedOffset(node);
                 return LayoutPosition{position.x - offset.x, position.y - offset.y};
             };
-        }
     }
 
     UIManager::UIManager()
         : nodeTree_(std::make_unique<NodeTree>()),
           inputManager_(std::make_unique<InputManager>()),
-          modalManager_(std::make_unique<ModalManager>()),
+          modalSystem_(std::make_unique<ModalSystem>()),
           layoutSystem_(std::make_unique<LayoutSystem>()),
           scrollSystem_(std::make_unique<ScrollSystem>())
     {
@@ -58,33 +56,30 @@ namespace ui
             return;
 
         SDL_Event event = sdlEvent;
-
         if (renderer && !SDL_ConvertEventToRenderCoordinates(renderer, &event))
             return;
 
         prepareForTreeOperation();
 
-        if (inputManager_ && modalManager_ && event.type == SDL_EVENT_KEY_DOWN &&
+        if (inputManager_ && modalSystem_ && event.type == SDL_EVENT_KEY_DOWN &&
             convertSDLKeyCodeToKeyCode(event.key.key) == KeyCode::ESCAPE)
         {
-            if (modalManager_->handleKeyDown(*nodeTree_, *inputManager_, KeyCode::ESCAPE))
+            if (modalSystem_->handleKeyDown(*nodeTree_, *inputManager_, KeyCode::ESCAPE))
             {
                 prepareForTreeOperation();
                 return;
             }
         }
 
-        if (inputManager_ && modalManager_ && event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && getActiveModal())
+        if (inputManager_ && modalSystem_ && event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && getActiveModal())
         {
             const MousePosition position{event.button.x, event.button.y};
             const MouseButton button = static_cast<MouseButton>(event.button.button);
             bool modalHandled = false;
-
             {
                 Node::ScopedCoordinateTransform scrollTransform(makeScrollTransform(scrollSystem_.get()));
-                modalHandled = modalManager_->handlePointerDown(*nodeTree_, *inputManager_, position, button);
+                modalHandled = modalSystem_->handlePointerDown(*nodeTree_, *inputManager_, position, button);
             }
-
             if (modalHandled)
             {
                 prepareForTreeOperation();
@@ -99,21 +94,15 @@ namespace ui
             const float deltaX = -event.wheel.x;
             const float deltaY = -event.wheel.y;
             bool wheelHandled = false;
-
             {
                 Node::ScopedCoordinateTransform scrollTransform(makeScrollTransform(scrollSystem_.get()));
                 wheelHandled = scrollSystem_->handleWheel(*nodeTree_, mouseX, mouseY, deltaX, deltaY, getActiveModal());
             }
-
             if (wheelHandled)
             {
                 prepareForTreeOperation();
-
-                {
-                    Node::ScopedCoordinateTransform scrollTransform(makeScrollTransform(scrollSystem_.get()));
-                    inputManager_->refreshHover(*nodeTree_, mouseX, mouseY, getActiveModal());
-                }
-
+                Node::ScopedCoordinateTransform scrollTransform(makeScrollTransform(scrollSystem_.get()));
+                inputManager_->refreshHover(*nodeTree_, mouseX, mouseY, getActiveModal());
                 return;
             }
         }
@@ -121,12 +110,8 @@ namespace ui
         if (inputManager_)
         {
             inputManager_->setModalRoot(getActiveModal());
-
-            {
-                Node::ScopedCoordinateTransform scrollTransform(makeScrollTransform(scrollSystem_.get()));
-                inputManager_->processEvent(event, *nodeTree_, getActiveModal());
-            }
-
+            Node::ScopedCoordinateTransform scrollTransform(makeScrollTransform(scrollSystem_.get()));
+            inputManager_->processEvent(event, *nodeTree_, getActiveModal());
             inputManager_->setModalRoot(getActiveModal());
         }
 
@@ -138,8 +123,8 @@ namespace ui
         if (!nodeTree_)
             return;
 
-        if (modalManager_)
-            modalManager_->update(*nodeTree_, dt);
+        if (modalSystem_)
+            modalSystem_->update(*nodeTree_, dt);
 
         nodeTree_->update(dt);
 
@@ -221,10 +206,10 @@ namespace ui
 
     bool UIManager::showModal(Node &node, BackdropClickBehavior behavior)
     {
-        if (!nodeTree_ || !modalManager_ || !inputManager_)
+        if (!nodeTree_ || !modalSystem_ || !inputManager_)
             return false;
         prepareForTreeOperation();
-        const bool shown = modalManager_->showModal(*nodeTree_, *inputManager_, node, behavior);
+        const bool shown = modalSystem_->showModal(*nodeTree_, *inputManager_, node, behavior);
         if (shown)
             prepareForTreeOperation();
         return shown;
@@ -232,10 +217,10 @@ namespace ui
 
     bool UIManager::closeModal()
     {
-        if (!nodeTree_ || !modalManager_ || !inputManager_)
+        if (!nodeTree_ || !modalSystem_ || !inputManager_)
             return false;
         prepareForTreeOperation();
-        const bool closed = modalManager_->closeModal(*nodeTree_, *inputManager_);
+        const bool closed = modalSystem_->closeModal(*nodeTree_, *inputManager_);
         if (closed)
             prepareForTreeOperation();
         return closed;
@@ -243,34 +228,34 @@ namespace ui
 
     bool UIManager::isModal(const Node &node) const noexcept
     {
-        return nodeTree_ && modalManager_ && modalManager_->isModal(&node);
+        return nodeTree_ && modalSystem_ && modalSystem_->isModal(&node);
     }
 
     Node *UIManager::getActiveModal() const noexcept
     {
-        return nodeTree_ && modalManager_ ? modalManager_->topModalNode(*nodeTree_) : nullptr;
+        return nodeTree_ && modalSystem_ ? modalSystem_->topModalNode(*nodeTree_) : nullptr;
     }
 
     void UIManager::setBackdropColor(const Color &color) noexcept
     {
-        if (modalManager_)
-            modalManager_->setBackdropColor(color);
+        if (modalSystem_)
+            modalSystem_->setBackdropColor(color);
     }
 
     Color UIManager::getBackdropColor() const noexcept
     {
-        return modalManager_ ? modalManager_->getBackdropColor() : Color{};
+        return modalSystem_ ? modalSystem_->getBackdropColor() : Color{};
     }
 
     void UIManager::setBackdropFadeDuration(float seconds) noexcept
     {
-        if (modalManager_)
-            modalManager_->setBackdropFadeDuration(seconds);
+        if (modalSystem_)
+            modalSystem_->setBackdropFadeDuration(seconds);
     }
 
     float UIManager::getBackdropFadeDuration() const noexcept
     {
-        return modalManager_ ? modalManager_->getBackdropFadeDuration() : 0.0f;
+        return modalSystem_ ? modalSystem_->getBackdropFadeDuration() : 0.0f;
     }
 
     void UIManager::prepareForTreeOperation()
@@ -295,9 +280,9 @@ namespace ui
             return;
 
         std::optional<Node::Id> topModalId;
-        if (modalManager_)
+        if (modalSystem_)
         {
-            if (Node *topModal = modalManager_->topModalNode(*nodeTree_))
+            if (Node *topModal = modalSystem_->topModalNode(*nodeTree_))
                 topModalId = topModal->getId();
         }
 
@@ -320,11 +305,11 @@ namespace ui
         if (!nodeTree_ || !inputManager_)
             return;
 
-        if (modalManager_)
+        if (modalSystem_)
         {
             if (layoutSystem_)
-                modalManager_->setViewportSize(layoutSystem_->getViewportSize());
-            modalManager_->sync(*nodeTree_, *inputManager_);
+                modalSystem_->setViewportSize(layoutSystem_->getViewportSize());
+            modalSystem_->sync(*nodeTree_, *inputManager_);
         }
 
         if (scrollSystem_)
