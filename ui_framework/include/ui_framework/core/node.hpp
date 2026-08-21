@@ -54,8 +54,8 @@ namespace ui
         Node(const Node &) = delete;
         Node &operator=(const Node &) = delete;
 
-        Id id() const noexcept;
-        Node *parent() const noexcept;
+        Id getId() const noexcept;
+        Node *getParent() const noexcept;
 
         void setVisible(bool visible);
         bool isVisible() const noexcept;
