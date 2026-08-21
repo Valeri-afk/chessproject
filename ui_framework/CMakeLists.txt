@@ -36,6 +36,8 @@ add_library(ui_framework STATIC
     src/core/modalmanager.cpp
     src/core/inputmanager.cpp
     src/core/primitives.cpp
+    src/core/linear_layout.cpp
+    src/core/text_primitive.cpp
     src/detail/scroll_system.cpp
 )
 
