@@ -10,11 +10,11 @@
 #include "../../src/detail/scroll_system.hpp"
 #include "../../src/detail/layout_system.hpp"
 #include "../../src/detail/modal_system.hpp"
+#include "../../src/detail/input_system.hpp"
 
 namespace ui
 {
     class NodeTree;
-    class InputManager;
 
     enum class BackdropClickBehavior;
 
@@ -63,7 +63,7 @@ namespace ui
         void syncState();
 
         std::unique_ptr<NodeTree> nodeTree_;
-        std::unique_ptr<InputManager> inputManager_;
+        std::unique_ptr<InputSystem> inputSystem_;
         std::unique_ptr<ModalSystem> modalSystem_;
         std::unique_ptr<LayoutSystem> layoutSystem_;
         std::unique_ptr<ScrollSystem> scrollSystem_;
