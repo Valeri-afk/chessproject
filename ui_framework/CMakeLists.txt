@@ -22,7 +22,6 @@ find_package(SDL3 REQUIRED)
 find_package(SDL3_image REQUIRED)
 find_package(SDL3_ttf REQUIRED)
 
-
 # ==========================
 # UI Framework library
 # ==========================
@@ -37,8 +36,8 @@ add_library(ui_framework STATIC
     src/core/modalmanager.cpp
     src/core/inputmanager.cpp
     src/core/primitives.cpp
+    src/detail/scroll_system.cpp
 )
-
 
 # ==========================
 # Include directories
@@ -47,6 +46,8 @@ add_library(ui_framework STATIC
 target_include_directories(ui_framework
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_compile_features(ui_framework PUBLIC cxx_std_20)
