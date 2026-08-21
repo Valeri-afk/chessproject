@@ -7,14 +7,14 @@
 
 #include "ui_framework/panel_node.hpp"
 #include "ui_framework/types.hpp"
-#include "ui_framework/src/detail/scroll_system.hpp"
+#include "../../src/detail/scroll_system.hpp"
+#include "../../src/detail/layout_system.hpp"
 
 namespace ui
 {
     class NodeTree;
     class InputManager;
     class ModalManager;
-    class LayoutManager;
 
     enum class BackdropClickBehavior;
 
@@ -65,7 +65,7 @@ namespace ui
         std::unique_ptr<NodeTree> nodeTree_;
         std::unique_ptr<InputManager> inputManager_;
         std::unique_ptr<ModalManager> modalManager_;
-        std::unique_ptr<LayoutManager> layoutManager_;
+        std::unique_ptr<LayoutSystem> layoutSystem_;
         std::unique_ptr<ScrollSystem> scrollSystem_;
     };
 }
