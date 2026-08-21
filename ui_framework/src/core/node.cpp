@@ -1,5 +1,6 @@
-#include "ui_framework/core/node.hpp"
+#include "ui_framework/node.hpp"
 
+#include "../detail/layout_constraints.hpp"
 #include "nodetree.hpp"
 
 #include <algorithm>
