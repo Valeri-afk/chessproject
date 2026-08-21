@@ -1,182 +1,83 @@
 #include "controller.hpp"
 
-ChessController::ChessController(ChessEngine &chessEngine) : chessEngine(chessEngine) {}
-
-void ChessController::selectPiece(Position pos)
+ChessController::ChessController(ChessEngine &chessEngine)
+    : chessEngine(chessEngine)
 {
-    activePiece = pos;
-
-    activeMoves = chessEngine.getLegalMovesFor(pos);
-
-    uiChessBoardComponent.setActiveSquare(pos);
-
-    std::vector<Position> moveSquares;
-    moveSquares.reserve(activeMoves.size());
-
-    for (const Move &move : activeMoves)
-        moveSquares.push_back(move.to);
-
-    uiChessBoardComponent.setMoveSquares(moveSquares);
 }
 
-void ChessController::resetSelect()
+void ChessController::selectSquare(Position position)
 {
-    activePiece.reset();
-    activeMoves.clear();
-    promotionMoves.clear();
-
-    uiChessBoardComponent.clearActiveSquare();
-    uiChessBoardComponent.clearMoveSquares();
-}
-
-void ChessController::handlePieceSelect(Position pos)
-{
-    auto piece = chessEngine.getPieceAt(pos);
-    Side movingSide = chessEngine.getSideToMove();
-
-    //----------------------------------------------------------
-    // Если уже выбрана фигура — пробуем сделать ход
-    //----------------------------------------------------------
-
-    if (activePiece.has_value())
+    const auto piece = chessEngine.getPieceAt(position);
+    if (!piece || piece->side != chessEngine.getSideToMove())
     {
-        for (const Move &move : activeMoves)
-        {
-            if (move.to != pos)
-                continue;
-
-            //--------------------------------------------------
-            // Promotion
-            //--------------------------------------------------
-
-            if (move.promotion != PromotionType::NONE)
-            {
-                promotionMoves.clear();
-
-                for (const Move &promotionMove : activeMoves)
-                {
-                    if (promotionMove.to == pos &&
-                        promotionMove.promotion != PromotionType::NONE)
-                    {
-                        promotionMoves.push_back(promotionMove);
-                    }
-                }
-
-                return;
-            }
-            //--------------------------------------------------
-            // Обычный ход
-            //--------------------------------------------------
-
-            lastMoveOutcome = chessEngine.makeMove(move);
-
-            resetSelect();
-
-            updateBoardPieces();
-
-            if (lastMoveOutcome &&
-                lastMoveOutcome->positionStatus.check)
-            {
-                uiChessBoardComponent.setCheckedSquare(
-                    chessEngine.getKingPosition(
-                        chessEngine.getSideToMove()));
-            }
-            else
-            {
-                uiChessBoardComponent.clearCheckedSquare();
-            }
-
-            return;
-        }
-    }
-
-    //----------------------------------------------------------
-    // Выбираем новую фигуру
-    //----------------------------------------------------------
-
-    if (piece &&
-        piece->side == movingSide)
-    {
-        selectPiece(pos);
-    }
-    else
-    {
-        resetSelect();
-    }
-}
-
-void ChessController::handlePromotion(float x, float y)
-{
-    auto promotion = uiPromotionComponent.getButton({x, y});
-
-    if (!promotion)
+        resetSelection();
         return;
+    }
 
-    for (const Move &move : promotionMoves)
+    selectedPosition_ = position;
+    legalMoves_ = chessEngine.getLegalMovesFor(position);
+    promotionMoves_.clear();
+}
+
+bool ChessController::selectPromotion(PromotionType promotion)
+{
+    for (const Move &move : promotionMoves_)
     {
-        if (move.promotion != *promotion)
+        if (move.promotion != promotion)
             continue;
 
-        lastMoveOutcome = chessEngine.makeMove(move);
-        break;
+        lastMoveOutcome_ = chessEngine.makeMove(move);
+        clearSelectionState();
+        return true;
     }
 
-    promotionMoves.clear();
+    return false;
+}
 
-    uiPromotionComponent.removeButtons();
-    uiPromotionComponent.close();
+void ChessController::resetSelection()
+{
+    clearSelectionState();
+}
 
-    resetSelect();
+bool ChessController::hasSelection() const noexcept
+{
+    return selectedPosition_.has_value();
+}
 
-    updateBoardPieces();
+const std::optional<Position> &ChessController::selectedPosition() const noexcept
+{
+    return selectedPosition_;
+}
 
-    if (lastMoveOutcome &&
-        lastMoveOutcome->positionStatus.check)
+const std::vector<Move> &ChessController::legalMoves() const noexcept
+{
+    return legalMoves_;
+}
+
+const std::vector<Move> &ChessController::promotionMoves() const noexcept
+{
+    return promotionMoves_;
+}
+
+const std::optional<MoveOutcome> &ChessController::lastMoveOutcome() const noexcept
+{
+    return lastMoveOutcome_;
+}
+
+void ChessController::preparePromotionMoves(const Position &target)
+{
+    promotionMoves_.clear();
+
+    for (const Move &move : legalMoves_)
     {
-        uiChessBoardComponent.setCheckedSquare(
-            chessEngine.getKingPosition(
-                chessEngine.getSideToMove()));
-    }
-    else
-    {
-        uiChessBoardComponent.clearCheckedSquare();
+        if (move.to == target && move.promotion != PromotionType::NONE)
+            promotionMoves_.push_back(move);
     }
 }
 
-void ChessController::handleClick()
+void ChessController::clearSelectionState()
 {
-    auto click = input.getMouseClick();
-
-    //---------------------------------------------------------
-    // Promotion menu
-    //---------------------------------------------------------
-
-    if (!promotionMoves.empty())
-    {
-        if (click.button == MouseButtonType::LEFT)
-            handlePromotion(click.x, click.y);
-
-        return;
-    }
-
-    //---------------------------------------------------------
-    // Chess board
-    //---------------------------------------------------------
-
-    auto square =
-        uiChessBoardComponent.getSquare(
-            {click.x,
-             click.y});
-
-    if (!square)
-        return;
-
-    if (click.button == MouseButtonType::LEFT)
-    {
-        handlePieceSelect(*square);
-    }
-    else
-    {
-        resetSelect();
-    }
+    selectedPosition_.reset();
+    legalMoves_.clear();
+    promotionMoves_.clear();
 }

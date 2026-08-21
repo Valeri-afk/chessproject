@@ -4,7 +4,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "core/input_manager.hpp"
 #include "core/resource_manager.hpp"
 #include "core/sdl_wrapper.hpp"
 #include "core/texture.hpp"
@@ -22,10 +21,8 @@ class GameScene
 private:
     SDLWrapper &sdl;
     ResourceManager &rsm;
-    InputManager &input;
 
     ChessEngine chessEngine;
-
     ChessController chessController;
 
     UIChessBoardComponent uiChessBoardComponent;
@@ -36,14 +33,12 @@ private:
 
 private:
     void updateBoardPieces();
-
     Texture *getPieceImage(Side side, PieceType type) const;
 
 public:
     GameScene(
         SDLWrapper &sdl,
-        ResourceManager &rsm,
-        InputManager &input);
+        ResourceManager &rsm);
 
     void update();
     void draw();
@@ -55,16 +50,12 @@ inline PieceType promotionToPieceType(PromotionType p)
     {
     case PromotionType::QUEEN:
         return PieceType::QUEEN;
-
     case PromotionType::ROOK:
         return PieceType::ROOK;
-
     case PromotionType::KNIGHT:
         return PieceType::KNIGHT;
-
     case PromotionType::BISHOP:
         return PieceType::BISHOP;
-
     default:
         throw std::runtime_error("Invalid promotion");
     }

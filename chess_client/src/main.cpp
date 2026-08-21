@@ -1,334 +1,147 @@
-#include <windows.h>
+#include <array>
+#include <memory>
 
-#include "game/game.hpp"
+#include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
+
+#include <ui_framework/colors.hpp>
+#include <ui_framework/ui_manager.hpp>
+#include <ui_framework/components/button.hpp>
+#include <ui_framework/components/dropdown.hpp>
+#include <ui_framework/components/menu_item.hpp>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 int main()
 {
+#ifdef _WIN32
     SetConsoleOutputCP(65001);
     SetConsoleCP(65001);
+#endif
 
-    SDLWrapper sdl("My Game", 320, 180, true);
+    constexpr int logicalWidth = 320;
+    constexpr int logicalHeight = 180;
+    constexpr float headerHeight = 24.0f;
 
-    SDL_Renderer *sdlRenderer = sdl.getRenderer();
-    if (!sdlRenderer)
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO))
+        return -1;
+    if (!TTF_Init())
     {
+        SDL_Quit();
         return -1;
     }
 
-    SDL_SetRenderDrawBlendMode(sdlRenderer, SDL_BLENDMODE_BLEND);
-
-    InputManager input(sdlRenderer);
-    ResourceManager rsm(sdlRenderer);
-
-    GameScene game(sdl, rsm, input);
-
-    bool run = true;
-
-    while (run)
+    SDL_Window *window = SDL_CreateWindow("ChessClient", logicalWidth * 3, logicalHeight * 3,
+                                          SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    if (!window)
     {
-        input.update();
+        TTF_Quit();
+        SDL_Quit();
+        return -1;
+    }
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, nullptr);
+    if (!renderer)
+    {
+        SDL_DestroyWindow(window);
+        TTF_Quit();
+        SDL_Quit();
+        return -1;
+    }
 
-        if (input.shouldQuit() || input.isKeyJustPressed(SDLK_ESCAPE))
-            run = false;
+    SDL_SetRenderLogicalPresentation(renderer, logicalWidth, logicalHeight, SDL_LOGICAL_PRESENTATION_INTEGER_SCALE);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
-        game.update();
+    ui::UIManager uiManager;
+    TTF_Font *font = TTF_OpenFont("fonts/Roboto-Medium.ttf", 8.0f);
+    if (!font)
+    {
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        TTF_Quit();
+        SDL_Quit();
+        return -1;
+    }
 
-        sdl.clear(0, 0, 0, 255);
-        game.draw();
-        sdl.present();
+    // Header buttons.
+    constexpr std::array<const char *, 4> buttonLabels{"Play", "Openings", "Academy", "Statistics"};
+    constexpr float buttonWidth = 52.0f;
+    constexpr float buttonGap = 3.0f;
+    float x = 8.0f;
 
-        sdl.updateFPS();
+    for (const char *label : buttonLabels)
+    {
+        auto button = std::make_unique<ui::Button>();
+        button->setText(label);
+        button->setFont(font);
+        button->setTextColor(ui::Colors::white);
+        button->setBackgroundColor(ui::Colors::transparent);
+        button->setBorderColor(ui::Colors::transparent);
+        button->setVariant(ui::Button::Variant::TEXT);
+        button->setPosition({x, 2.0f});
+        button->setSize(ui::LayoutSizeValue::fixed(buttonWidth, 20.0f));
+        uiManager.addRoot(std::move(button));
+        x += buttonWidth + buttonGap;
+    }
+
+    // One dropdown in the header.
+    auto dropdown = std::make_unique<ui::Dropdown>();
+    dropdown->setPosition({239.0f, 2.0f});
+    dropdown->setSize(ui::LayoutSizeValue::fixed(73.0f, 20.0f));
+    dropdown->getTrigger().setFont(font);
+    dropdown->getTrigger().setTextColor(ui::Colors::white);
+    dropdown->getTrigger().setBackgroundColor(ui::Colors::gray);
+    dropdown->getTrigger().setBorderColor(ui::Colors::gray);
+    dropdown->getTrigger().setVariant(ui::Button::Variant::FILLED);
+    dropdown->setPlaceholder("More");
+
+    constexpr std::array<const char *, 3> dropdownItems{"Settings", "About", "Quit"};
+    for (const char *label : dropdownItems)
+    {
+        auto item = std::make_unique<ui::MenuItem>();
+        item->setText(label);
+        item->setFont(font);
+        item->setTextColor(ui::Colors::white);
+        item->setBackgroundColor(ui::Colors::gray);
+        dropdown->addItem(std::move(item));
+    }
+
+    dropdown->setOnSelectionChanged(
+        [](ui::Dropdown &, ui::MenuItem &item)
+        {
+            SDL_Log("Selected menu item: %s", item.getText().c_str());
+        });
+
+    uiManager.addRoot(std::move(dropdown));
+
+    bool running = true;
+    while (running)
+    {
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
+        {
+            if (event.type == SDL_EVENT_QUIT)
+                running = false;
+            uiManager.processEvent(event, renderer);
+        }
+
+        SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
+        SDL_RenderClear(renderer);
+
+        SDL_FRect header{0.0f, 0.0f, static_cast<float>(logicalWidth), headerHeight};
+        SDL_SetRenderDrawColor(renderer, 24, 24, 24, 255);
+        SDL_RenderFillRect(renderer, &header);
+
+        uiManager.runFrame(1.0f / 60.0f, renderer);
+        SDL_RenderPresent(renderer);
         SDL_Delay(16);
     }
 
-    return 0;
-}
-
-/*
-#include <windows.h>
-#include <iostream>
-#include <array>
-#include <vector>
-
-#include "core/sdl_wrapper.hpp"
-#include "core/input_manager.hpp"
-#include "core/resource_manager.hpp"
-#include "core/texture.hpp"
-#include "ui/components/button.hpp"
-#include "ui/components/menu.hpp"
-#include "ui/components/panel.hpp"
-#include "ui/components/modal.hpp"
-#include "ui/base/ui_manager.hpp"
-
-// ============================================================
-// Обработчик исключений для Windows
-// ============================================================
-
-inline std::vector<std::unique_ptr<ui::Button>> createButton(SDL_Renderer *renderer, TTF_Font *font)
-{
-    std::array<std::string, 5> texts = {"PLAY", "OPENINGS", "ACADEMY", "STATISTICS", "SETTINGS"};
-    std::vector<std::unique_ptr<ui::Button>> btns;
-    btns.reserve(5);
-
-    float btnWidth = 120.0f;
-    float btnHeight = 48.0f;
-    float startX = 50.0f;
-    float menuHeight = 70.0f;
-
-    for (int i = 0; i < texts.size(); ++i)
-    {
-        float xPos = startX + i * (btnWidth + 20.0f);
-        float yPos = (menuHeight - btnHeight) * 0.5f;
-
-        auto textButton = std::make_unique<ui::Button>();
-        textButton->setPosition({xPos, yPos});
-        textButton->setSize({btnWidth, btnHeight});
-        textButton->setBorderRadius(4.0f);
-
-        textButton->setText(texts[i]);
-        textButton->setTextColor(ui::Colors::white);
-        textButton->setFont(font);
-        textButton->setType(ui::Button::Type::OUTLINED);
-        textButton->setBackgroundColor(ui::Colors::transparent);
-        textButton->setBorderColor(ui::Colors::white);
-        textButton->setTextAlignment(ui::TextAlignment::CENTER);
-        textButton->disableResizeEffect(true);
-
-        btns.push_back(std::move(textButton));
-    }
-
-    return btns;
-}
-
-inline std::vector<std::unique_ptr<ui::Menu>> createMenu(SDL_Renderer *renderer, TTF_Font *font, const std::vector<std::unique_ptr<ui::Button>> &anchorButtons)
-{
-    std::array<std::string, 3> playMenu = {"PLAY", "CONTINUE", "LOAD"};
-    std::array<std::string, 3> openingsMenu = {"ITALIAN GAME", "SICILIAN DEFENSE", "FRENCH DEFENSE"};
-    std::array<std::string, 3> academyMenu = {"PIECES", "RULES", "SPECIAL MOVES"};
-    std::array<std::string, 3> statisticsMenu = {"WINS", "LOOSES", "DRAWS"};
-    std::array<std::string, 3> settingsMenu = {"GRAPHICS", "AUDIO", "THEME"};
-    std::array<std::array<std::string, 3>, 5> menusData = {playMenu, openingsMenu, academyMenu, statisticsMenu, settingsMenu};
-
-    std::vector<std::unique_ptr<ui::Menu>> menus;
-    menus.reserve(5);
-
-    for (int i = 0; i < menusData.size(); ++i)
-    {
-        ui::LayoutPosition anchorPos = anchorButtons[i]->getPosition();
-        ui::LayoutSize anchorSize = anchorButtons[i]->getSize();
-
-        auto testMenu = std::make_unique<ui::Menu>();
-        testMenu->setPosition({anchorPos.x, anchorPos.y + anchorSize.height});
-        testMenu->setSize({anchorSize.width, 200.0f});
-        testMenu->setBackgroundColor(ui::Colors::gray);
-        testMenu->setPadding({5, 5});
-
-        for (int j = 0; j < menusData[i].size(); ++j)
-        {
-            ui::Button menuBtn;
-            menuBtn.setType(ui::Button::Type::FILLED);
-            menuBtn.setTextColor({0, 0, 0, 255});
-            menuBtn.setFont(font);
-            menuBtn.setFontSize(14.0f);
-            menuBtn.setText(menusData[i][j]);
-            menuBtn.setTextAlignment(ui::TextAlignment::CENTER);
-            menuBtn.setBackgroundColor(ui::Colors::transparent);
-            menuBtn.setBorderColor(ui::Colors::transparent);
-            testMenu->addMenuButton(std::move(menuBtn));
-        }
-
-        menus.push_back(std::move(testMenu));
-    }
-
-    return menus;
-}
-
-// ============================================================
-// main()
-// ============================================================
-int main()
-{
-    SetConsoleOutputCP(65001);
-    SetConsoleCP(65001);
-
-    SDLWrapper sdl("UI Container Test - Alignment Demo", 1280, 720, true);
-
-    SDL_Renderer *sdlRenderer = sdl.getRenderer();
-    if (!sdlRenderer)
-    {
-        return -1;
-    }
-
-    SDL_SetRenderDrawBlendMode(sdlRenderer, SDL_BLENDMODE_BLEND);
-
-    InputManager input(sdlRenderer);
-    ResourceManager rsm(sdlRenderer);
-
-    bool run = true;
-
-    rsm.loadTexture("chess_background.jpg");
-    Texture *bg = rsm.getTexture("chess_background.jpg");
-
-    TTF_Font *font = TTF_OpenFont("fonts/Roboto-Medium.ttf", 16);
-    if (!font)
-    {
-        std::cerr << "Failed to load font!" << std::endl;
-        return -1;
-    }
-
-    if (!bg)
-    {
-        std::cerr << "Failed to load background texture!" << std::endl;
-        return -1;
-    }
-
-    static constexpr float MAX_DELTA_TIME = 0.1f;
-    static constexpr float MIN_DELTA_TIME = 0.001f;
-    float lastTickTime = 0.0f;
-
-    // ============================================================
-    // Главное меню
-    // ============================================================
-    std::vector<std::unique_ptr<ui::Button>> btns = createButton(sdlRenderer, font);
-    std::vector<std::unique_ptr<ui::Menu>> menus = createMenu(sdlRenderer, font, btns);
-
-    std::vector<ui::Menu *> ptr_menus;
-    std::vector<ui::Button *> ptr_btns;
-
-    for (const auto &btn : btns)
-        ptr_btns.push_back(btn.get());
-
-    for (const auto &menu : menus)
-        ptr_menus.push_back(menu.get());
-
-    auto modal = std::make_unique<ui::Modal>();
-    auto closeButton = std::make_unique<ui::Button>();
-
-    closeButton->setPosition({sdl.getWidth() - closeButton->getWidth() - 50.0f, 11.0f});
-    closeButton->setType(ui::Button::Type::OUTLINED);
-    closeButton->setTextColor(ui::Colors::white);
-    closeButton->setFont(font);
-    closeButton->setText("CLOSE");
-    closeButton->setTextAlignment(ui::TextAlignment::CENTER);
-    closeButton->setBorderColor(ui::Colors::white);
-    closeButton->disableResizeEffect(true);
-    closeButton->setBorderRadius(4.0f);
-
-    closeButton->setOnClick([&run](ui::Button &closeBtn)
-                            { run = false; });
-
-    float xCenter = (sdl.getWidth() - modal->getWidth()) * 0.5f;
-    float yCenter = (sdl.getHeight() - modal->getHeight()) * 0.5f;
-
-    modal->setPosition({xCenter, yCenter});
-
-    modal->setOnClose([](ui::Modal &mod)
-                      { mod.setOpen(false); });
-
-    size_t count = menus[0]->getButtonCount();
-
-    auto cb = [&modal](ui::Button &button)
-    {
-        if (!modal->isOpen())
-            modal->setOpen(true);
-    };
-
-    for (size_t i = 0; i < count; ++i)
-    {
-        auto btn = menus[0]->getMenuButton(i);
-
-        btn->setOnClick(cb);
-    };
-
-    ui::UIManager uiManager;
-
-    uiManager.addOverlayWidget(std::move(modal));
-    uiManager.addNormalWidget(std::move(closeButton));
-
-    for (auto &btn : btns)
-    {
-        uiManager.addNormalWidget(std::move(btn));
-    }
-
-    for (auto &menu : menus)
-    {
-        uiManager.addNormalWidget(std::move(menu));
-    }
-
-    // ============================================================
-    // Главный цикл
-    // ============================================================
-
-    while (run)
-    {
-        input.update();
-
-        auto [mouseX, mouseY] = input.getMousePosition();
-        ui::MouseData mouseData;
-        mouseData.mouseX = mouseX;
-        mouseData.mouseY = mouseY;
-        mouseData.leftPressed = input.isMouseButtonHeld(MouseButtonType::LEFT);
-        mouseData.leftJustPressed = input.isMouseButtonJustPressed(MouseButtonType::LEFT);
-        mouseData.leftJustReleased = input.isMouseButtonJustReleased(MouseButtonType::LEFT);
-
-        Uint32 currentTime = SDL_GetTicks();
-        if (lastTickTime == 0.0f)
-        {
-            lastTickTime = static_cast<float>(currentTime);
-            continue;
-        }
-
-        float deltaTime = (currentTime - lastTickTime) / 1000.0f;
-        lastTickTime = static_cast<float>(currentTime);
-
-        if (deltaTime > MAX_DELTA_TIME)
-            deltaTime = MAX_DELTA_TIME;
-        if (deltaTime < MIN_DELTA_TIME)
-            continue;
-
-        uiManager.updateInputState(mouseData);
-        uiManager.handleEvents(mouseData);
-        uiManager.update(deltaTime);
-
-        // ---- Логика меню ----
-        for (int i = 0; i < ptr_menus.size(); ++i)
-        {
-            bool mouseOnAnchor = ptr_btns[i]->isHovered();
-            bool mouseOnMenu = ptr_menus[i]->isHovered();
-
-            if (ptr_menus[i]->isOpen())
-            {
-                if (!mouseOnMenu && !mouseOnAnchor)
-                    ptr_menus[i]->setOpen(false);
-            }
-            else
-            {
-                if (mouseOnAnchor)
-                    ptr_menus[i]->setOpen(true);
-            }
-        }
-
-        // ---- Отрисовка ----
-        sdl.clear(0, 0, 0, 255);
-        bg->render(0, 0, nullptr, 1.74f);
-
-        uiManager.draw(sdlRenderer);
-
-        sdl.present();
-        sdl.updateFPS();
-        SDL_Delay(8);
-    }
-
     TTF_CloseFont(font);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
     TTF_Quit();
-
+    SDL_Quit();
     return 0;
 }
-
-
-        menuButton.disableResizeEffect(true);
-        menuButton.setBorderRadius(0.0f);
-        menuButton.setBackgroundColor(Colors::transparent);
-
-
-*/

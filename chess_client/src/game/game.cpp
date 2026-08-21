@@ -4,11 +4,9 @@
 
 GameScene::GameScene(
     SDLWrapper &sdl,
-    ResourceManager &rsm,
-    InputManager &input)
+    ResourceManager &rsm)
     : sdl(sdl),
       rsm(rsm),
-      input(input),
       chessController(chessEngine),
       uiChessBoardComponent(sdl),
       uiPromotionComponent(sdl)
@@ -21,16 +19,12 @@ GameScene::GameScene(
             map[type] = rsm.getTexture(path);
     };
 
-    //---------------- White ----------------
-
     loadPiece(whitePieces, PieceType::PAWN, "pieces_images/white_pawn.png");
     loadPiece(whitePieces, PieceType::KNIGHT, "pieces_images/white_knight.png");
     loadPiece(whitePieces, PieceType::BISHOP, "pieces_images/white_bishop.png");
     loadPiece(whitePieces, PieceType::ROOK, "pieces_images/white_rook.png");
     loadPiece(whitePieces, PieceType::QUEEN, "pieces_images/white_queen.png");
     loadPiece(whitePieces, PieceType::KING, "pieces_images/white_king.png");
-
-    //---------------- Black ----------------
 
     loadPiece(blackPieces, PieceType::PAWN, "pieces_images/black_pawn.png");
     loadPiece(blackPieces, PieceType::KNIGHT, "pieces_images/black_knight.png");
@@ -41,16 +35,12 @@ GameScene::GameScene(
 
     chessEngine.newGame();
 
-    //---------------- ChessBoard UI ----------------
-
     uiChessBoardComponent.squareSize = {16, 16};
-
     uiChessBoardComponent.boardPos =
         {
             (sdl.getWidth() -
              uiChessBoardComponent.squareSize.width * ChessConstants::BOARD_SIZE) *
                 0.5f,
-
             (sdl.getHeight() -
              uiChessBoardComponent.squareSize.height * ChessConstants::BOARD_SIZE) *
                 0.5f};
@@ -58,26 +48,11 @@ GameScene::GameScene(
     updateBoardPieces();
 }
 
-Texture *GameScene::getPieceImage(
-    Side side,
-    PieceType type) const
+Texture *GameScene::getPieceImage(Side side, PieceType type) const
 {
-    if (side == Side::WHITE)
-    {
-        auto it = whitePieces.find(type);
-
-        if (it != whitePieces.end())
-            return it->second;
-    }
-    else
-    {
-        auto it = blackPieces.find(type);
-
-        if (it != blackPieces.end())
-            return it->second;
-    }
-
-    return nullptr;
+    const auto &pieces = side == Side::WHITE ? whitePieces : blackPieces;
+    const auto it = pieces.find(type);
+    return it != pieces.end() ? it->second : nullptr;
 }
 
 void GameScene::updateBoardPieces()
@@ -88,17 +63,13 @@ void GameScene::updateBoardPieces()
     {
         for (int col = 0; col < ChessConstants::BOARD_SIZE; ++col)
         {
-            auto piece = chessEngine.getPieceAt({row, col});
-
+            const auto piece = chessEngine.getPieceAt({row, col});
             if (!piece)
                 continue;
 
             uiChessBoardComponent.addPiece(
-                {row,
-                 col},
-                getPieceImage(
-                    piece->side,
-                    piece->type));
+                {row, col},
+                getPieceImage(piece->side, piece->type));
         }
     }
 }
@@ -107,40 +78,24 @@ void GameScene::update()
 {
     handleClick();
 
-    //----------------------------------------------------------
-    // Конец партии
-    //----------------------------------------------------------
-
     if (lastMoveOutcome)
     {
         const auto &status = lastMoveOutcome->positionStatus;
-
         if (status.checkmate || status.stalemate)
         {
             chessEngine.newGame();
-
             lastMoveOutcome.reset();
-
             promotionMoves.clear();
-
             uiPromotionComponent.removeButtons();
             uiPromotionComponent.close();
-
             uiChessBoardComponent.clearCheckedSquare();
-
             resetSelect();
-
             updateBoardPieces();
-
             return;
         }
     }
 
-    //----------------------------------------------------------
-    // Promotion menu
-    //----------------------------------------------------------
-    if (!promotionMoves.empty() &&
-        !uiPromotionComponent.isOpen())
+    if (!promotionMoves.empty() && !uiPromotionComponent.isOpen())
     {
         uiPromotionComponent.removeButtons();
 
@@ -154,20 +109,11 @@ void GameScene::update()
         }
 
         uiPromotionComponent.buttonSize = {16, 16};
-
-        const int count =
-            static_cast<int>(promotionMoves.size());
-
+        const int count = static_cast<int>(promotionMoves.size());
         uiPromotionComponent.position =
             {
-                (sdl.getWidth() -
-                 count * uiPromotionComponent.buttonSize.width) *
-                    0.5f,
-
-                (sdl.getHeight() -
-                 uiPromotionComponent.buttonSize.height) *
-                    0.5f};
-
+                (sdl.getWidth() - count * uiPromotionComponent.buttonSize.width) * 0.5f,
+                (sdl.getHeight() - uiPromotionComponent.buttonSize.height) * 0.5f};
         uiPromotionComponent.open();
     }
 }
@@ -175,15 +121,8 @@ void GameScene::update()
 void GameScene::draw()
 {
     sdl.drawRect(
-        0,
-        0,
-        sdl.getWidth(),
-        sdl.getHeight(),
-        255,
-        255,
-        0,
-        255,
-        true);
+        0, 0, sdl.getWidth(), sdl.getHeight(),
+        255, 255, 0, 255, true);
 
     uiChessBoardComponent.draw();
 

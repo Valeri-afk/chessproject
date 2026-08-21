@@ -2,47 +2,43 @@ cmake_minimum_required(VERSION 3.20)
 
 add_executable(chess_client
     src/main.cpp
-    src/core/input_manager.cpp
-    src/core/resource_manager.cpp
-    src/core/sdl_wrapper.cpp
-    src/core/texture.cpp
-    src/game/game.cpp
-    src/game/ui/components/chessboard_component.cpp
-    src/game/ui/components/promotion_component.cpp
 )
 
-add_custom_command(TARGET chess_client POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3/bin/SDL3.dll"
-        $<TARGET_FILE_DIR:chess_client>
+target_include_directories(chess_client
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3_image/bin/SDL3_image.dll"
-        $<TARGET_FILE_DIR:chess_client>
+target_link_libraries(chess_client
+    PRIVATE
+        chessengine
+        ui_framework
 )
 
 add_custom_command(TARGET chess_client POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/assets"
         "$<TARGET_FILE_DIR:chess_client>/assets"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/fonts"
+        "$<TARGET_FILE_DIR:chess_client>/fonts"
 )
 
-target_include_directories(chess_client
-PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3_image/include
+set(CHESSCLIENT_SDL_DLLS
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ui_framework/external/SDL3/bin/SDL3.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ui_framework/external/SDL3_image/bin/SDL3_image.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../ui_framework/external/SDL3_ttf/bin/SDL3_ttf.dll"
 )
 
-target_link_directories(chess_client
-PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3/lib
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3_image/lib
-)
+foreach(SDL_DLL IN LISTS CHESSCLIENT_SDL_DLLS)
+    if(NOT EXISTS "${SDL_DLL}")
+        message(FATAL_ERROR "Required SDL runtime DLL not found: ${SDL_DLL}")
+    endif()
 
-target_link_libraries(chess_client
-PRIVATE
-    chessengine
-    SDL3
-    SDL3_image
-)
+    add_custom_command(TARGET chess_client POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${SDL_DLL}"
+            "$<TARGET_FILE_DIR:chess_client>"
+        VERBATIM
+    )
+endforeach()

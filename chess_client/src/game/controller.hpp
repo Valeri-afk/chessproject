@@ -1,28 +1,34 @@
 #pragma once
+
+#include <optional>
 #include <vector>
-#include <chessengine/types.hpp>
+
 #include <chessengine/chessengine.hpp>
-#include "core/input_manager.hpp"
+#include <chessengine/types.hpp>
 
 class ChessController
 {
 private:
-    InputManager &input;
     ChessEngine &chessEngine;
 
-    std::optional<MoveOutcome> lastMoveOutcome;
-    std::optional<Position> activePiece;
-    std::vector<Move> activeMoves;
+    std::optional<MoveOutcome> lastMoveOutcome_;
+    std::optional<Position> selectedPosition_;
+    std::vector<Move> legalMoves_;
+    std::vector<Move> promotionMoves_;
 
-    std::vector<Move> promotionMoves;
+    void preparePromotionMoves(const Position &target);
+    void clearSelectionState();
 
 public:
-    ChessController(InputManager &input, ChessEngine &chessEngine);
+    explicit ChessController(ChessEngine &chessEngine);
 
-    void selectPiece(Position pos);
-    void resetSelect();
+    void selectSquare(Position position);
+    bool selectPromotion(PromotionType promotion);
+    void resetSelection();
 
-    void handlePieceSelect(Position pos);
-    void handlePromotion(float x, float y);
-    void handleClick();
+    bool hasSelection() const noexcept;
+    const std::optional<Position> &selectedPosition() const noexcept;
+    const std::vector<Move> &legalMoves() const noexcept;
+    const std::vector<Move> &promotionMoves() const noexcept;
+    const std::optional<MoveOutcome> &lastMoveOutcome() const noexcept;
 };
