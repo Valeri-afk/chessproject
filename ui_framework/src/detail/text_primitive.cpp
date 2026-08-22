@@ -61,8 +61,10 @@ namespace
             if (clipEnabled_ && hasClip_)
             {
                 SDL_Rect physicalClip{};
-                physicalClip.x = static_cast<int>(std::floor(clip_.x * logicalScale_));
-                physicalClip.y = static_cast<int>(std::floor(clip_.y * logicalScale_));
+                physicalClip.x = static_cast<int>(std::floor(
+                    presentationRect_.x + clip_.x * logicalScale_));
+                physicalClip.y = static_cast<int>(std::floor(
+                    presentationRect_.y + clip_.y * logicalScale_));
                 physicalClip.w = static_cast<int>(std::ceil(clip_.w * logicalScale_));
                 physicalClip.h = static_cast<int>(std::ceil(clip_.h * logicalScale_));
                 SDL_SetRenderClipRect(renderer_, &physicalClip);
