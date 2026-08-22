@@ -30,19 +30,6 @@ namespace ui
         releaseTextObject();
     }
 
-    TTF_Font *TextPrimitive::getRenderFont() const noexcept
-    {
-        return renderFont_ ? renderFont_ : font_;
-    }
-
-    void TextPrimitive::setRenderFont(TTF_Font *font) noexcept
-    {
-        if (renderFont_ == font)
-            return;
-        renderFont_ = font;
-        releaseTextObject();
-    }
-
     TextAlignment TextPrimitive::getHorizontalAlignment() const noexcept { return horizontalAlignment_; }
     void TextPrimitive::setHorizontalAlignment(TextAlignment alignment) noexcept { horizontalAlignment_ = alignment; }
     TextAlignment TextPrimitive::getVerticalAlignment() const noexcept { return verticalAlignment_; }
@@ -74,13 +61,12 @@ namespace ui
 
     void TextPrimitive::draw(SDL_Renderer *renderer, const LayoutPosition &position, const LayoutSize &size)
     {
-        TTF_Font *font = getRenderFont();
-        if (!renderer || !font || text_.empty() || !ensureTextObject(renderer))
+        if (!renderer || !font_ || text_.empty() || !ensureTextObject(renderer))
             return;
 
         int textWidth = 0;
         int textHeight = 0;
-        if (!TTF_GetStringSize(font, text_.c_str(), 0, &textWidth, &textHeight))
+        if (!TTF_GetStringSize(font_, text_.c_str(), 0, &textWidth, &textHeight))
             return;
 
         float x = position.x;
@@ -137,10 +123,7 @@ namespace ui
 
         if (!textObject_)
         {
-            TTF_Font *font = getRenderFont();
-            if (!font)
-                return false;
-            textObject_ = TTF_CreateText(textEngine_, font, text_.c_str(), 0);
+            textObject_ = TTF_CreateText(textEngine_, font_, text_.c_str(), 0);
             if (!textObject_)
                 return false;
         }
