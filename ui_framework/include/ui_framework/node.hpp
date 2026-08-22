@@ -10,7 +10,6 @@
 
 #include <SDL3/SDL.h>
 
-#include "ui_framework/detail/event_handler_storage.hpp"
 #include "ui_framework/types.hpp"
 
 namespace ui
@@ -19,6 +18,7 @@ namespace ui
     class PanelNode;
     class LayoutSystem;
     class EventDispatcher;
+    class TextPrimitive;
 
     class Node
     {
@@ -33,11 +33,9 @@ namespace ui
             ~ScopedCoordinateTransform() { coordinateTransform() = std::move(previous_); }
             ScopedCoordinateTransform(const ScopedCoordinateTransform &) = delete;
             ScopedCoordinateTransform &operator=(const ScopedCoordinateTransform &) = delete;
-
         private:
             CoordinateTransform previous_;
         };
-
         Node();
         virtual ~Node();
         Node(const Node &) = delete;
@@ -97,28 +95,18 @@ namespace ui
         void clearEventHandlers() { eventHandlers_.clear<Event>(); }
 
     protected:
-        template <typename Event>
-        EventHandlerId addHandler(std::function<void(Event &, Node &)> handler) { return on<Event>(std::move(handler)); }
-        template <typename Event>
-        void removeHandler(EventHandlerId handlerId) { removeEventHandler<Event>(handlerId); }
-        template <typename Event>
-        void clearHandlers() { clearEventHandlers<Event>(); }
+        template <typename Event> EventHandlerId addHandler(std::function<void(Event &, Node &)> handler) { return on<Event>(std::move(handler)); }
+        template <typename Event> void removeHandler(EventHandlerId handlerId) { removeEventHandler<Event>(handlerId); }
+        template <typename Event> void clearHandlers() { clearEventHandlers<Event>(); }
         virtual void update(float dt) {}
         virtual void draw(SDL_Renderer *renderer) {}
-        virtual LayoutSize measureContent(const LayoutSize &availableContent) const
-        {
-            (void)availableContent;
-            return {};
-        }
-        virtual void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize)
-        {
-            (void)contentPosition;
-            (void)contentSize;
-        }
+        virtual LayoutSize measureContent(const LayoutSize &availableContent) const { (void)availableContent; return {}; }
+        virtual void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize) { (void)contentPosition; (void)contentSize; }
         virtual void onMount() {}
         virtual void onUnmount() {}
         virtual Node *hitTest(float x, float y) noexcept;
         void deferLayoutMutation(std::function<void(Node &)> fn);
+        TextPrimitive &textPrimitive() noexcept;
 
     private:
         static CoordinateTransform &coordinateTransform()
@@ -145,19 +133,9 @@ namespace ui
         bool capturable_ = false;
         EventHandlerStorage eventHandlers_;
         const Id id_ = nextId();
-        static Id nextId() noexcept
-        {
-            static std::atomic<Id> next{1};
-            return next.fetch_add(1, std::memory_order_relaxed);
-        }
+        static Id nextId() noexcept { static std::atomic<Id> next{1}; return next.fetch_add(1, std::memory_order_relaxed); }
         LayoutSize clampSize(LayoutSize size, LayoutSize minSize, LayoutSize maxSize) const;
-        template <typename Event>
-        void dispatchEvent(Event &event, NodeTree &nodeTree)
-        {
-            (void)nodeTree;
-            eventHandlers_.forEachHandler<Event>([this, &event](auto &handler)
-                                                 { handler(event, *this); });
-        }
+        template <typename Event> void dispatchEvent(Event &event, NodeTree &nodeTree) { (void)nodeTree; eventHandlers_.forEachHandler<Event>([this, &event](auto &handler) { handler(event, *this); }); }
         friend class NodeTree;
         friend class PanelNode;
         friend class LayoutSystem;
