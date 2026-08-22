@@ -36,21 +36,6 @@ namespace ui
             const LayoutPosition &position,
             const LayoutSize &size);
 
-        class ScopedCurrent final
-        {
-        public:
-            explicit ScopedCurrent(TextPrimitive &primitive) noexcept;
-            ~ScopedCurrent();
-
-            ScopedCurrent(const ScopedCurrent &) = delete;
-            ScopedCurrent &operator=(const ScopedCurrent &) = delete;
-
-        private:
-            TextPrimitive *previous_ = nullptr;
-        };
-
-        static TextPrimitive *current() noexcept;
-
     private:
         void releaseTextObject() noexcept;
         void releaseRasterFont() noexcept;
