@@ -4,13 +4,14 @@
 
 #include <SDL3/SDL.h>
 
-#include "node_tree.hpp"
-#include "event_dispatcher.hpp"
 #include "ui_framework/event_types.hpp"
+#include "ui_framework/node.hpp"
 #include "ui_framework/types.hpp"
 
 namespace ui
 {
+    class NodeTree;
+
     class InputSystem
     {
     public:
