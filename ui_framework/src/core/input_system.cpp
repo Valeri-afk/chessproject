@@ -1,4 +1,4 @@
-#include "../detail/input_system.hpp"
+#include "input_system.hpp"
 
 #include <algorithm>
 
