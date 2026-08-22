@@ -10,6 +10,7 @@
 
 #include <SDL3/SDL.h>
 
+#include "ui_framework/detail/event_handler_storage.hpp"
 #include "ui_framework/types.hpp"
 
 namespace ui
@@ -109,11 +110,7 @@ namespace ui
         TextPrimitive &textPrimitive() noexcept;
 
     private:
-        static CoordinateTransform &coordinateTransform()
-        {
-            static thread_local CoordinateTransform transform;
-            return transform;
-        }
+        static CoordinateTransform &coordinateTransform() { static thread_local CoordinateTransform transform; return transform; }
         Node *parent_ = nullptr;
         NodeTree *owner_ = nullptr;
         LayoutSizeValue size_{};
