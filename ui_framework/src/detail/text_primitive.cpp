@@ -1,10 +1,55 @@
 #include "text_primitive.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace ui
 {
+    namespace
+    {
+        float getPresentationScale(SDL_Renderer *renderer, float &scaleX, float &scaleY)
+        {
+            scaleX = 1.0f;
+            scaleY = 1.0f;
+
+            int logicalWidth = 0;
+            int logicalHeight = 0;
+            SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
+            SDL_FRect presentationRect{};
+            float renderScaleX = 1.0f;
+            float renderScaleY = 1.0f;
+
+            if (!renderer ||
+                !SDL_GetRenderLogicalPresentation(renderer, &logicalWidth, &logicalHeight, &mode) ||
+                mode == SDL_LOGICAL_PRESENTATION_DISABLED ||
+                logicalWidth <= 0 || logicalHeight <= 0 ||
+                !SDL_GetRenderLogicalPresentationRect(renderer, &presentationRect) ||
+                !SDL_GetRenderScale(renderer, &renderScaleX, &renderScaleY))
+            {
+                return 1.0f;
+            }
+
+            // A custom viewport or render scale changes the mapping between the
+            // framework's logical coordinates and the target. Keep the original
+            // path in that case instead of guessing the client's presentation.
+            if (std::abs(renderScaleX - 1.0f) > 0.0001f ||
+                std::abs(renderScaleY - 1.0f) > 0.0001f ||
+                SDL_RenderViewportSet(renderer))
+            {
+                return 1.0f;
+            }
+
+            scaleX = presentationRect.w / static_cast<float>(logicalWidth);
+            scaleY = presentationRect.h / static_cast<float>(logicalHeight);
+
+            if (scaleX <= 1.0f || scaleY <= 1.0f)
+                return 1.0f;
+
+            return std::min(scaleX, scaleY);
+        }
+    }
+
     TextPrimitive::~TextPrimitive()
     {
         releaseTextObject();
@@ -83,7 +128,46 @@ namespace ui
             y += size.height - static_cast<float>(textHeight);
 
         TTF_SetTextColor(textObject_, color_.r, color_.g, color_.b, color_.a);
-        TTF_DrawRendererText(textObject_, x, y);
+
+        if (renderFontScale_ <= 1.0f)
+        {
+            TTF_DrawRendererText(textObject_, x, y);
+            return;
+        }
+
+        int logicalWidth = 0;
+        int logicalHeight = 0;
+        SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
+        SDL_FRect presentationRect{};
+        if (!SDL_GetRenderLogicalPresentation(renderer, &logicalWidth, &logicalHeight, &mode) ||
+            mode == SDL_LOGICAL_PRESENTATION_DISABLED ||
+            logicalWidth <= 0 || logicalHeight <= 0 ||
+            !SDL_GetRenderLogicalPresentationRect(renderer, &presentationRect))
+        {
+            TTF_DrawRendererText(textObject_, x, y);
+            return;
+        }
+
+        const float scaleX = presentationRect.w / static_cast<float>(logicalWidth);
+        const float scaleY = presentationRect.h / static_cast<float>(logicalHeight);
+
+        if (scaleX <= 1.0f || scaleY <= 1.0f)
+        {
+            TTF_DrawRendererText(textObject_, x, y);
+            return;
+        }
+
+        const float physicalX = presentationRect.x + x * scaleX;
+        const float physicalY = presentationRect.y + y * scaleY;
+
+        if (!SDL_SetRenderLogicalPresentation(renderer, 0, 0, SDL_LOGICAL_PRESENTATION_DISABLED))
+        {
+            TTF_DrawRendererText(textObject_, x, y);
+            return;
+        }
+
+        TTF_DrawRendererText(textObject_, physicalX, physicalY);
+        SDL_SetRenderLogicalPresentation(renderer, logicalWidth, logicalHeight, mode);
     }
 
     void TextPrimitive::releaseTextObject() noexcept
@@ -100,7 +184,14 @@ namespace ui
             textEngine_ = nullptr;
         }
 
+        if (renderFont_)
+        {
+            TTF_CloseFont(renderFont_);
+            renderFont_ = nullptr;
+        }
+
         cachedRenderer_ = nullptr;
+        renderFontScale_ = 1.0f;
     }
 
     bool TextPrimitive::ensureTextObject(SDL_Renderer *renderer)
@@ -109,6 +200,45 @@ namespace ui
         {
             releaseTextObject();
             cachedRenderer_ = renderer;
+        }
+
+        float scaleX = 1.0f;
+        float scaleY = 1.0f;
+        const float rasterScale = getPresentationScale(renderer, scaleX, scaleY);
+
+        if (!renderFont_ || std::abs(renderFontScale_ - rasterScale) > 0.0001f)
+        {
+            if (textObject_)
+            {
+                TTF_DestroyText(textObject_);
+                textObject_ = nullptr;
+            }
+
+            if (renderFont_)
+            {
+                TTF_CloseFont(renderFont_);
+                renderFont_ = nullptr;
+            }
+
+            if (rasterScale > 1.0f)
+            {
+                renderFont_ = TTF_CopyFont(font_);
+                if (!renderFont_ || !TTF_SetFontSize(renderFont_, TTF_GetFontSize(font_) * rasterScale))
+                {
+                    if (renderFont_)
+                        TTF_CloseFont(renderFont_);
+                    renderFont_ = nullptr;
+                    renderFontScale_ = 1.0f;
+                }
+                else
+                {
+                    renderFontScale_ = rasterScale;
+                }
+            }
+            else
+            {
+                renderFontScale_ = 1.0f;
+            }
         }
 
         if (!textEngine_)
@@ -123,7 +253,8 @@ namespace ui
 
         if (!textObject_)
         {
-            textObject_ = TTF_CreateText(textEngine_, font_, text_.c_str(), 0);
+            TTF_Font *fontForRendering = renderFont_ ? renderFont_ : font_;
+            textObject_ = TTF_CreateText(textEngine_, fontForRendering, text_.c_str(), 0);
             if (!textObject_)
                 return false;
         }
