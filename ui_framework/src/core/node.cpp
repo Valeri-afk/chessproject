@@ -35,6 +35,17 @@ namespace ui
         tree->enqueueNodeMutation(*this, [tree, nodeId, fn = std::move(fn)]() mutable { if (Node *node = tree->findNode(nodeId)) fn(*node); if (tree->findNode(nodeId)) tree->insertLayoutQueueById(nodeId); });
     }
     TextPrimitive &Node::textPrimitive() noexcept { return owner_->textPrimitive_; }
+    void Node::dispatchEventImpl(UIEvent &event, const std::type_index &eventType, NodeTree &nodeTree)
+    {
+        (void)nodeTree;
+        std::vector<std::function<void(UIEvent &, Node &)>> callbacks;
+        callbacks.reserve(eventHandlers_.size());
+        for (const EventHandlerRecord &record : eventHandlers_)
+            if (record.eventType == eventType)
+                callbacks.push_back(record.callback);
+        for (auto &callback : callbacks)
+            callback(event, *this);
+    }
     Node::Node() = default;
     Node::~Node() = default;
     Node::Id Node::getId() const noexcept { return id_; }
