@@ -80,7 +80,7 @@ namespace ui
 
         int textWidth = 0;
         int textHeight = 0;
-        if (!TTF_GetStringSize(font_, text_.c_str(), 0, &textWidth, &textHeight))
+        if (!TTF_GetStringSize(font, text_.c_str(), 0, &textWidth, &textHeight))
             return;
 
         float x = position.x;
