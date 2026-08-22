@@ -30,6 +30,19 @@ namespace ui
         releaseTextObject();
     }
 
+    TTF_Font *TextPrimitive::getRenderFont() const noexcept
+    {
+        return renderFont_ ? renderFont_ : font_;
+    }
+
+    void TextPrimitive::setRenderFont(TTF_Font *font) noexcept
+    {
+        if (renderFont_ == font)
+            return;
+        renderFont_ = font;
+        releaseTextObject();
+    }
+
     TextAlignment TextPrimitive::getHorizontalAlignment() const noexcept { return horizontalAlignment_; }
     void TextPrimitive::setHorizontalAlignment(TextAlignment alignment) noexcept { horizontalAlignment_ = alignment; }
     TextAlignment TextPrimitive::getVerticalAlignment() const noexcept { return verticalAlignment_; }
@@ -61,7 +74,8 @@ namespace ui
 
     void TextPrimitive::draw(SDL_Renderer *renderer, const LayoutPosition &position, const LayoutSize &size)
     {
-        if (!renderer || !font_ || text_.empty() || !ensureTextObject(renderer))
+        TTF_Font *font = getRenderFont();
+        if (!renderer || !font || text_.empty() || !ensureTextObject(renderer))
             return;
 
         int textWidth = 0;
@@ -123,7 +137,10 @@ namespace ui
 
         if (!textObject_)
         {
-            textObject_ = TTF_CreateText(textEngine_, font_, text_.c_str(), 0);
+            TTF_Font *font = getRenderFont();
+            if (!font)
+                return false;
+            textObject_ = TTF_CreateText(textEngine_, font, text_.c_str(), 0);
             if (!textObject_)
                 return false;
         }
