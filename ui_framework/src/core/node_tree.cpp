@@ -1,5 +1,5 @@
-#include "../detail/node_tree.hpp"
-#include "../detail/rendering_state.hpp"
+#include "node_tree.hpp"
+#include "rendering_state.hpp"
 
 #include <algorithm>
 #include <optional>
