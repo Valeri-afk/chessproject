@@ -1,6 +1,6 @@
 #include "ui_framework/text_node.hpp"
 
-#include "../detail/text_primitive.hpp"
+#include "text_primitive.hpp"
 
 #include <algorithm>
 
