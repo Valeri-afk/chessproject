@@ -44,7 +44,13 @@ namespace ui
 
     private:
         void releaseTextObject() noexcept;
-        bool ensureTextObject(SDL_Renderer *renderer);
+        void releaseRasterFont() noexcept;
+        bool ensureTextObject(SDL_Renderer *renderer, TTF_Font *font);
+        bool ensureRasterFont(float scale);
+        bool getIntegerPresentationScale(
+            SDL_Renderer *renderer,
+            float &scale,
+            SDL_FRect &presentationRect) const noexcept;
 
         std::string text_;
         TTF_Font *font_ = nullptr;
@@ -53,7 +59,12 @@ namespace ui
         Color color_ = Colors::white;
 
         SDL_Renderer *cachedRenderer_ = nullptr;
+        TTF_Font *cachedTextFont_ = nullptr;
         TTF_TextEngine *textEngine_ = nullptr;
         TTF_Text *textObject_ = nullptr;
+
+        TTF_Font *rasterFont_ = nullptr;
+        float rasterScale_ = 1.0f;
+        Uint32 rasterFontGeneration_ = 0;
     };
 }
