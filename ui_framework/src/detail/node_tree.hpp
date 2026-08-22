@@ -13,7 +13,7 @@
 
 #include "ui_framework/node.hpp"
 #include "ui_framework/panel_node.hpp"
-#include "ui_framework/detail/text_primitive.hpp"
+#include "text_primitive.hpp"
 
 namespace ui
 {
