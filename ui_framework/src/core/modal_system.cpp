@@ -1,4 +1,4 @@
-#include "../detail/modal_system.hpp"
+#include "modal_system.hpp"
 
 #include <algorithm>
 #include <cstddef>
