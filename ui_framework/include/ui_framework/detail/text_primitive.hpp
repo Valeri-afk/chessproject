@@ -26,15 +26,24 @@ namespace ui
         void setColor(Color color) noexcept;
         LayoutSize measure(float availableWidth = -1.0f) const noexcept;
         void draw(SDL_Renderer *renderer, const LayoutPosition &position, const LayoutSize &size);
+
     private:
         void releaseTextObject() noexcept;
-        bool ensureTextObject(SDL_Renderer *renderer);
+        void releaseRasterFont() noexcept;
+        bool ensureTextObject(SDL_Renderer *renderer, TTF_Font *font);
+        bool ensureRasterFont(float scale);
+        bool getIntegerPresentationScale(SDL_Renderer *renderer, float &scale, SDL_FRect &presentationRect) const noexcept;
+
         std::string text_;
         TTF_Font *font_ = nullptr;
+        TTF_Font *rasterFont_ = nullptr;
+        float rasterScale_ = 1.0f;
+        Uint32 rasterFontGeneration_ = 0;
         TextAlignment horizontalAlignment_ = TextAlignment::START;
         TextAlignment verticalAlignment_ = TextAlignment::START;
         Color color_ = Colors::white;
         SDL_Renderer *cachedRenderer_ = nullptr;
+        TTF_Font *cachedTextFont_ = nullptr;
         TTF_TextEngine *textEngine_ = nullptr;
         TTF_Text *textObject_ = nullptr;
     };
