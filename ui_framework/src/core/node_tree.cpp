@@ -1,5 +1,6 @@
 #include "node_tree.hpp"
 #include "rendering_state.hpp"
+#include "text_runtime.hpp"  // Added include for TextRuntime
 
 #include <algorithm>
 #include <optional>
@@ -1212,4 +1213,4 @@ namespace ui
         return false;
     }
 
-}
+} // namespace ui
