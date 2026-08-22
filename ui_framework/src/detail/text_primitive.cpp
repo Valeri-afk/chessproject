@@ -42,12 +42,9 @@ namespace
 
             active_ = true;
 
-            // Logical presentation is independent from the renderer viewport,
-            // so rebuild an explicit viewport in physical pixels if the caller
-            // had one configured.
             if (viewportSet_ && hasViewport_)
             {
-                SDL_Rect physicalViewport = viewport_;
+                SDL_Rect physicalViewport{};
                 physicalViewport.x = static_cast<int>(std::floor(
                     presentationRect_.x + viewport_.x * logicalScale_));
                 physicalViewport.y = static_cast<int>(std::floor(
@@ -63,7 +60,7 @@ namespace
 
             if (clipEnabled_ && hasClip_)
             {
-                SDL_Rect physicalClip = clip_;
+                SDL_Rect physicalClip{};
                 physicalClip.x = static_cast<int>(std::floor(clip_.x * logicalScale_));
                 physicalClip.y = static_cast<int>(std::floor(clip_.y * logicalScale_));
                 physicalClip.w = static_cast<int>(std::ceil(clip_.w * logicalScale_));
@@ -75,8 +72,7 @@ namespace
                 SDL_SetRenderClipRect(renderer_, nullptr);
             }
 
-            // Text coordinates are converted to physical pixels explicitly,
-            // therefore renderer scaling must not apply a second scale.
+            // Coordinates below are already in physical pixels.
             SDL_SetRenderScale(renderer_, 1.0f, 1.0f);
         }
 
@@ -295,39 +291,29 @@ namespace ui
             return;
         }
 
-        // Keep layout/alignment in logical coordinates, but rasterize the glyphs
-        // at the physical resolution and draw them directly into the physical
-        // render target. This avoids scaling an 8px glyph bitmap up to 24px.
+        int logicalWidth = 0;
+        int logicalHeight = 0;
+        SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
+        if (!SDL_GetRenderLogicalPresentation(
+                renderer,
+                &logicalWidth,
+                &logicalHeight,
+                &mode))
+        {
+            return;
+        }
+
         const float physicalX = presentationRect.x + x * scale;
         const float physicalY = presentationRect.y + y * scale;
 
+        // Keep layout/alignment in logical coordinates, but rasterize the glyphs
+        // at the physical resolution and draw them directly into the physical
+        // render target. This avoids scaling an 8px glyph bitmap up to 24px.
         PhysicalTextRenderScope scope(
             renderer,
-            [&]()
-            {
-                int logicalWidth = 0;
-                int logicalHeight = 0;
-                SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
-                SDL_GetRenderLogicalPresentation(
-                    renderer,
-                    &logicalWidth,
-                    &logicalHeight,
-                    &mode);
-                return std::array<int, 2>{logicalWidth, logicalHeight};
-            }()[0],
-            [&]()
-            {
-                int logicalWidth = 0;
-                int logicalHeight = 0;
-                SDL_RendererLogicalPresentation mode = SDL_LOGICAL_PRESENTATION_DISABLED;
-                SDL_GetRenderLogicalPresentation(
-                    renderer,
-                    &logicalWidth,
-                    &logicalHeight,
-                    &mode);
-                return std::array<int, 2>{logicalWidth, logicalHeight};
-            }()[1],
-            SDL_LOGICAL_PRESENTATION_INTEGER_SCALE,
+            logicalWidth,
+            logicalHeight,
+            mode,
             presentationRect,
             scale);
 
