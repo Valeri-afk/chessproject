@@ -1,6 +1,6 @@
 #include "ui_framework/panel_node.hpp"
 
-#include "../detail/node_tree.hpp"
+#include "node_tree.hpp"
 
 #include <algorithm>
 #include <cmath>
