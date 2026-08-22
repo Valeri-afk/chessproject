@@ -33,7 +33,13 @@ namespace ui
         Color color{};
     };
 
-    struct RenderPushClipCommand { SDL_Rect rect{}; };
+    struct RenderPushClipCommand
+    {
+        float x = 0.0f;
+        float y = 0.0f;
+        float width = 0.0f;
+        float height = 0.0f;
+    };
     struct RenderPopClipCommand {};
 
     using RenderCommand = std::variant<
@@ -54,9 +60,9 @@ namespace ui
     public:
         void clear() noexcept { commands_.clear(); }
         bool empty() const noexcept { return commands_.empty(); }
-        size_t size() const noexcept { return commands_.size(); }
-        const RenderCommand &operator[](size_t index) const noexcept { return commands_[index]; }
-        RenderCommand &operator[](size_t index) noexcept { return commands_[index]; }
+        std::size_t size() const noexcept { return commands_.size(); }
+        const RenderCommand &operator[](std::size_t index) const noexcept { return commands_[index]; }
+        RenderCommand &operator[](std::size_t index) noexcept { return commands_[index]; }
         const std::vector<RenderCommand> &getCommands() const noexcept { return commands_; }
         std::vector<RenderCommand> &getCommands() noexcept { return commands_; }
 
