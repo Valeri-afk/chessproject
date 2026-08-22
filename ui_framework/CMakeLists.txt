@@ -37,10 +37,10 @@ add_library(ui_framework STATIC
     src/core/modal_system_backdrop.cpp
     src/core/input_system.cpp
     src/core/primitives.cpp
-    src/detail/layout_constraints.cpp
-    src/detail/linear_layout.cpp
-    src/detail/scroll_system.cpp
-    src/detail/text_primitive.cpp
+    src/core/layout_constraints.cpp
+    src/core/linear_layout.cpp
+    src/core/scroll_system.cpp
+    src/core/text_primitive.cpp
 )
 
 target_include_directories(ui_framework
