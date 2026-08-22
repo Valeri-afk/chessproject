@@ -9,8 +9,9 @@
 
 namespace ui
 {
-    // Internal framework text primitive shared by TextNode and text-bearing components.
-    // It is not a NodeTree object and is not intended as a client-facing service.
+    // Internal runtime text renderer shared by text-bearing nodes/components.
+    // It does not own client-provided fonts. It may own derived rasterization
+    // resources created from those fonts for physical-resolution rendering.
     class TextPrimitive
     {
     public:
@@ -20,50 +21,54 @@ namespace ui
         TextPrimitive(const TextPrimitive &) = delete;
         TextPrimitive &operator=(const TextPrimitive &) = delete;
 
-        const std::string &getText() const noexcept;
-        void setText(std::string text);
-
-        TTF_Font *getFont() const noexcept;
-        void setFont(TTF_Font *font) noexcept;
-
-        TextAlignment getHorizontalAlignment() const noexcept;
-        void setHorizontalAlignment(TextAlignment alignment) noexcept;
-
-        TextAlignment getVerticalAlignment() const noexcept;
-        void setVerticalAlignment(TextAlignment alignment) noexcept;
-
-        Color getColor() const noexcept;
-        void setColor(Color color) noexcept;
-
-        LayoutSize measure(float availableWidth = -1.0f) const noexcept;
+        static LayoutSize measure(
+            TTF_Font *font,
+            const std::string &text,
+            float availableWidth = -1.0f) noexcept;
 
         void draw(
             SDL_Renderer *renderer,
+            const std::string &text,
+            TTF_Font *font,
+            TextAlignment horizontalAlignment,
+            TextAlignment verticalAlignment,
+            Color color,
             const LayoutPosition &position,
             const LayoutSize &size);
+
+        class ScopedCurrent final
+        {
+        public:
+            explicit ScopedCurrent(TextPrimitive &primitive) noexcept;
+            ~ScopedCurrent();
+
+            ScopedCurrent(const ScopedCurrent &) = delete;
+            ScopedCurrent &operator=(const ScopedCurrent &) = delete;
+
+        private:
+            TextPrimitive *previous_ = nullptr;
+        };
+
+        static TextPrimitive *current() noexcept;
 
     private:
         void releaseTextObject() noexcept;
         void releaseRasterFont() noexcept;
-        bool ensureTextObject(SDL_Renderer *renderer, TTF_Font *font);
-        bool ensureRasterFont(float scale);
+        bool ensureTextObject(SDL_Renderer *renderer, TTF_Font *font, const std::string &text);
+        bool ensureRasterFont(TTF_Font *font, float scale);
         bool getIntegerPresentationScale(
             SDL_Renderer *renderer,
             float &scale,
             SDL_FRect &presentationRect) const noexcept;
 
-        std::string text_;
-        TTF_Font *font_ = nullptr;
-        TextAlignment horizontalAlignment_ = TextAlignment::START;
-        TextAlignment verticalAlignment_ = TextAlignment::START;
-        Color color_ = Colors::white;
-
         SDL_Renderer *cachedRenderer_ = nullptr;
         TTF_Font *cachedTextFont_ = nullptr;
+        std::string cachedText_;
         TTF_TextEngine *textEngine_ = nullptr;
         TTF_Text *textObject_ = nullptr;
 
         TTF_Font *rasterFont_ = nullptr;
+        TTF_Font *rasterSourceFont_ = nullptr;
         float rasterScale_ = 1.0f;
         Uint32 rasterFontGeneration_ = 0;
     };
