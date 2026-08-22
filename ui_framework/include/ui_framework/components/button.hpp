@@ -4,7 +4,6 @@
 #include <string>
 
 #include "ui_framework/node.hpp"
-#include "ui_framework/detail/text_primitive.hpp"
 #include "ui_framework/event_types.hpp"
 
 namespace ui
@@ -58,7 +57,9 @@ namespace ui
         void handleMouseLeave(MouseLeaveEvent &event);
         static Color multiplyAlpha(Color color, float factor) noexcept;
         static Color lighten(Color color, float amount) noexcept;
-        TextPrimitive text_;
+        std::string text_;
+        TTF_Font *font_ = nullptr;
+        Color textColor_ = Colors::white;
         Variant variant_ = Variant::FILLED;
         Color backgroundColor_ = Colors::gray;
         Color borderColor_ = Colors::black;
