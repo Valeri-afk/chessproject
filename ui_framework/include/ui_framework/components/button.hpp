@@ -3,6 +3,8 @@
 #include <functional>
 #include <string>
 
+#include <SDL3_ttf/SDL_ttf.h>
+
 #include "ui_framework/node.hpp"
 #include "ui_framework/event_types.hpp"
 
