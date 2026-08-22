@@ -4,7 +4,6 @@
 #include <string>
 
 #include "ui_framework/node.hpp"
-#include "ui_framework/detail/text_primitive.hpp"
 #include "ui_framework/event_types.hpp"
 
 namespace ui
@@ -13,10 +12,8 @@ namespace ui
     {
     public:
         using ActivateCallback = std::function<void(TabItem &)>;
-
         TabItem();
         ~TabItem() override = default;
-
         void setText(std::string text);
         const std::string &getText() const noexcept;
         void setFont(TTF_Font *font);
@@ -29,14 +26,13 @@ namespace ui
         bool isActive() const noexcept;
         void setOnActivate(ActivateCallback callback);
         void activate();
-
     protected:
         LayoutSize measureContent(const LayoutSize &availableContent) const override;
         void draw(SDL_Renderer *renderer) override;
-
     private:
         void handleMouseClick(MouseClickEvent &event);
-        TextPrimitive text_;
+        std::string text_;
+        TTF_Font *font_ = nullptr;
         Color textColor_ = Colors::white;
         Color backgroundColor_ = Colors::transparent;
         bool active_ = false;
