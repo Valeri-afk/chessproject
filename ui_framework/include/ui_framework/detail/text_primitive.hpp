@@ -18,6 +18,8 @@ namespace ui
         void setText(std::string text);
         TTF_Font *getFont() const noexcept;
         void setFont(TTF_Font *font) noexcept;
+        TTF_Font *getRenderFont() const noexcept;
+        void setRenderFont(TTF_Font *font) noexcept;
         TextAlignment getHorizontalAlignment() const noexcept;
         void setHorizontalAlignment(TextAlignment alignment) noexcept;
         TextAlignment getVerticalAlignment() const noexcept;
@@ -31,6 +33,7 @@ namespace ui
         bool ensureTextObject(SDL_Renderer *renderer);
         std::string text_;
         TTF_Font *font_ = nullptr;
+        TTF_Font *renderFont_ = nullptr;
         TextAlignment horizontalAlignment_ = TextAlignment::START;
         TextAlignment verticalAlignment_ = TextAlignment::START;
         Color color_ = Colors::white;
