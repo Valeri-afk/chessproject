@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <SDL3_ttf/SDL_ttf.h>
+
 #include "node.hpp"
 
 namespace ui
