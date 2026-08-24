@@ -192,139 +192,177 @@ This removes the need for a universal property-registration/property-metadata sy
 
 The developer should explicitly report semantic changes that require framework work.
 
-The current candidate API is:
+The current public API is:
 
-```text
+```cpp
 UIManager::invalidateLayout(node)
-UIManager::invalidatePaint(node)
-treeStructureChanged(node)
-...
 ```
 
-The final names are not yet fixed.
+Additional notification APIs are deliberately deferred until the corresponding runtime pipeline has been audited and shown to require them.
 
-Notifications mean:
+`invalidateLayout()` means:
 
 ```text
-"this semantic state is no longer reflected in framework-derived state"
+"this node's layout-derived state is no longer necessarily reflected in
+framework-computed layout state"
 ```
 
-They do **not** mean:
+It does **not** mean:
 
 ```text
-run layout now
-run paint now
-manually mutate NodeTree
+run layout immediately
 flush the framework
+manually mutate NodeTree
 ```
 
 The framework owns those consequences.
 
-`UIManager` is currently the intended public facade for these semantic notifications. Its existing role already spans the public boundary between client code and `NodeTree`, `LayoutSystem`, `InputSystem`, `ModalSystem`, and other runtime subsystems. 
+`UIManager` is the public facade. It delegates to `NodeTree`, which already owns live-node validation, root promotion, queue insertion, and queue deduplication.
 
 ---
 
-# 7. Current layout invalidation mechanics are already root-based
+# 7. `invalidateLayout()` contract
 
-An important implementation fact has been confirmed in `fix/sharp-logical-text`:
+The public call is:
+
+```cpp
+uiManager.invalidateLayout(node);
+```
+
+## 7.1 Live-node validation
+
+The request is accepted only for a node that is currently owned/live in this `UIManager` runtime.
+
+The public facade does not duplicate tree membership checks. `NodeTree::insertLayoutQueue()` performs the authoritative live-node check.
 
 ```text
+invalidateLayout(node)
+    ↓
 NodeTree::insertLayoutQueue(node)
     ↓
-walk parent chain to the top
-    ↓
-NodeTree::insertLayoutQueueById(rootId)
-    ↓
-resolve root again
-    ↓
-require isRoot(root) or isOverlay(root)
-    ↓
-insert root ID into layoutQueue_ once
+node must be live
 ```
 
-Therefore the current implementation does **not** queue the changed child as an independent layout job. It already promotes changes to the top-level root/overlay and deduplicates them with `layoutQueueSet_`.
+A detached node therefore produces no queued layout work.
 
-Conceptually:
+## 7.2 Root promotion
+
+The requested node is not queued as an independent layout job.
 
 ```text
-changed Node
+changed node
     ↓
-find top-level layout root
+walk parent chain
     ↓
-queue root once
+top-level root / overlay
     ↓
-whole root subtree is processed by LayoutSystem
+queue root
 ```
 
-This existing mechanism should be reused by the future public `invalidateLayout(node)` rather than replaced by a new propagation or dependency-tracking system.
+This ensures a layout pass always sees the full affected subtree with the correct parent constraints.
+
+## 7.3 Queue deduplication
+
+The same root is queued at most once until the layout queue is consumed.
+
+```text
+invalidateLayout(A)
+invalidateLayout(A)
+invalidateLayout(child-of-A)
+    ↓
+one queued root
+```
+
+`layoutQueueSet_` remains the deduplication authority.
+
+## 7.4 Timing
+
+`invalidateLayout()` never executes layout synchronously. It only schedules the root for the next framework-controlled layout phase.
+
+The current `UIManager::runFrame()` ordering remains:
+
+```text
+sync state
+    ↓
+update
+    ↓
+process layout queue
+    ↓
+scroll/modal synchronization
+    ↓
+node update
+    ↓
+draw
+```
+
+## 7.5 Mutation scopes
+
+Calling `invalidateLayout()` while a tree mutation scope is active does not flush or bypass the scope. The notification only contributes a root to the existing layout queue.
+
+Structural mutations remain deferred by `NodeTree`; the next Measure/Arrange observes the stable post-mutation tree.
+
+## 7.6 Root and overlay nodes
+
+Calling `invalidateLayout()` on an ordinary root or overlay is valid and queues that node itself.
+
+Calling it on a descendant of either is promoted to that root/overlay.
+
+## 7.7 Custom properties
+
+The framework does not observe arbitrary component fields.
+
+A component-owned change that affects layout must follow the explicit contract:
+
+```cpp
+customState_ = newValue;
+uiManager.invalidateLayout(*this);
+```
+
+For framework-known layout properties the same public notification contract is preferred: property mutation changes the semantic state; `invalidateLayout()` reports that the computed geometry may now be stale.
+
+## 7.8 Coalescing example
+
+```cpp
+button.setText("A");
+button.setFont(font);
+customPanel.setCustomSpacing(8.0f);
+
+uiManager.invalidateLayout(button);
+uiManager.invalidateLayout(button);
+uiManager.invalidateLayout(customPanel);
+```
+
+When these nodes belong to the same top-level root, the framework should perform one layout pass for that root.
 
 ---
 
-# 8. Batching model
+# 8. Framework-known properties remain framework-known
 
-Repeated notifications are expected to be coalesced by the framework.
+The framework must continue to understand properties that its own subsystems directly interpret.
 
-For example:
-
-```text
-setText()
-    → invalidateLayout()
-
-setFont()
-    → invalidateLayout()
-
-setCustomSpacing()
-    → invalidateLayout()
-```
-
-may result in a single queued top-level layout root because `layoutQueueSet_` already deduplicates it.
-
-The current `NodeTree` also has a separate mutation queue and mutation scopes. Therefore notification and batching are intentionally separate concerns:
-
-```text
-Developer may notify repeatedly.
-Framework coalesces the resulting work.
-```
-
-A future explicit batch API may still be considered later, but it is not required for the basic notification model.
+Typical examples include `size`, `min/max size`, `padding`, `border`, `position mode`, and `overflow`. The custom component should not duplicate those semantics merely because it owns its layout policy.
 
 ---
 
-# 9. Mutation batching and structural consistency
+# 9. Component-owned properties and phase semantics
 
-The existing `NodeTree` already has deferred mutation scopes and mutation queue processing.
-
-The target invariant is:
+A property remains component-owned when the component can express its semantic consequences through the existing phase contracts.
 
 ```text
-structural mutation completes
+component property
     ↓
-tree ownership/lifecycle invariants are valid
+Measure / Arrange / Draw / update / input behavior
     ↓
-layout invalidation is queued
-    ↓
-future Measure/Arrange sees the stable tree state
+explicit notification when framework-derived state becomes stale
 ```
 
-`PanelNode` remains the framework-provided structural capability:
-
-```text
-Node
-    no framework-visible children
-
-PanelNode
-    owns framework-visible child Nodes
-```
-
-The framework remains responsible for child ownership, parent relationships, lifecycle, tree registration, and traversal.
+Framework does not need property metadata for these fields.
 
 ---
 
-# 10. `PanelNode` remains the structural capability
+# 10. PanelNode structural capability
 
 At this stage **arbitrary structural composition from plain `Node` is intentionally rejected**.
-
-The current decision is:
 
 ```text
 MyLeaf : Node
@@ -337,7 +375,7 @@ MyContainer : PanelNode
     custom Measure/Arrange/Draw
 ```
 
-`PanelNode` is therefore best understood as a **structural capability implementation**, not as a mandatory layout-policy base class.
+`PanelNode` is a structural capability implementation, not a mandatory layout-policy base class.
 
 `StackPanelNode` is a specialized component:
 
@@ -353,13 +391,9 @@ CustomPanel : PanelNode
     = PanelNode + developer-defined layout policy
 ```
 
-No general `Node` structural contract is being introduced at this stage.
-
 ---
 
 # 11. Custom layout contract
-
-The intended extension model is:
 
 ```text
 Node
@@ -371,297 +405,100 @@ PanelNode
     Measure/Arrange may use framework-managed child operations
 ```
 
-The exact C++ API is still under design.
+The component owns layout policy. The framework owns child measurement execution, child arrangement execution, constraint semantics, geometry commit, scheduling, and traversal.
 
-The important semantic boundary is already decided:
-
-```text
-Component:
-    owns layout policy
-
-Framework:
-    owns child measurement execution
-    owns child arrangement execution
-    owns constraint semantics
-    owns geometry commit
-```
-
-The custom component must not receive direct access to:
-
-```text
-NodeTree internals
-layout queues
-mutation queues
-phase flushing
-raw geometry storage
-framework scheduling internals
-```
+Custom components do not receive direct access to layout queues, mutation queues, phase flushing, or raw geometry storage.
 
 ---
 
 # 12. Measure contract
 
-Measure has one universal meaning:
+Measure means:
 
 > Determine this component's desired content size under the effective constraints supplied by the framework.
 
-For a leaf:
+The supplied available content size is an upper constraint, not a promise of allocation. A component may report a desired size larger than the supplied constraint.
 
-```text
-custom state
-    ↓
-Measure
-    ↓
-desired content size
-```
+A leaf derives its own desired content size. A `PanelNode` may recursively measure children and aggregate their desired sizes.
 
-For a `PanelNode`:
-
-```text
-own state
-    +
-child measurements
-    ↓
-aggregate desired sizes
-    ↓
-own desired content size
-```
-
-The historical layout implementation measured a child through a single proposal and stored one desired size for the normal layout pass. The working contract for the current scope is therefore:
-
-```text
-one child
-    → one ordinary Measure invocation
-    → one effective proposal
-    → one desired result
-```
-
-Multi-pass/intrinsic measurement is not part of the current contract. It can be introduced later as a separate capability if real layout requirements demand it.
+The current scope uses one ordinary Measure result per child invocation. Multi-pass/intrinsic measurement remains deferred until a concrete requirement demands it.
 
 ---
 
 # 13. Arrange contract
 
-Arrange has one universal meaning:
+Arrange means:
 
 > Use the final content geometry assigned by the framework to establish the component's actual internal geometry.
 
-For a leaf this may involve little or no internal work.
-
-For a `PanelNode` it includes:
-
-```text
-custom allocation policy
-    ↓
-child positions
-child allocations
-    ↓
-framework-managed child arrangement
-```
-
-The framework remains responsible for final constraint resolution and actual geometry commit.
+A leaf may simply use that geometry. A `PanelNode` decides child allocations and delegates child arrangement back to framework-managed operations.
 
 ---
 
-# 14. Constraints
+# 14. Rendering and Overflow
 
-`Constraints` are conceptually a framework-level layout concept, even if the current implementation still represents some parts through `Node::size`, `minSize`, `maxSize`, padding, border, and helper functions.
+`Overflow::HIDDEN` is a render-traversal concern, not a Measure/Arrange concern.
 
-The refactor must preserve the existing semantic distinction:
+The current `NodeTree::drawSubtree()` uses RAII renderer-state scopes and intersects the current renderer clip with the node rectangle before drawing the node and its descendants. The previous renderer state is restored when the subtree scope exits.
+
+Conceptually:
 
 ```text
-measurement proposal
-    ≠
-final arrangement allocation
+parent clip
+    ∩
+node clip
+    ↓
+draw node
+    ↓
+draw children
+    ↓
+restore previous clip
 ```
 
-Framework-owned properties are resolved by the framework before the component's custom layout behavior is executed.
-
-The component should not be forced to duplicate framework `size/min/max/padding/border` semantics.
-
-Whether the public API exposes a dedicated `Constraints` type or another equivalent abstraction remains an implementation/API design question.
+`PanelNode` does not own child render traversal. `NodeTree` owns clipping, traversal ordering, mutation safety, and root/overlay ordering; `Node::draw()` is responsible for the node's own visual content.
 
 ---
 
-# 15. `TextNode` and text architecture
+# 15. Current scope intentionally does not expose invalidatePaint()
 
-`TextNode` remains a primary validation case, not necessarily the final architecture.
+Rendering currently executes as part of every frame's draw traversal. Therefore no separate paint dirty queue has been justified yet.
 
-The desired result is that a custom text-bearing component can own:
+A future `invalidatePaint()` API may be introduced only if the rendering pipeline changes to require explicit paint scheduling.
 
-```text
-text
-font
-font size
-color
-alignment
-other text state
-```
-
-and express the consequences through:
-
-```text
-Measure
-Arrange
-Draw
-invalidateLayout()
-invalidatePaint()
-```
-
-`TextPrimitive` can remain a lower-level physical text measurement/rendering mechanism.
-
-The architecture should distinguish:
-
-```text
-text representation/storage
-text semantic participation
-layout/render phase behavior
-change notification
-```
-
-These concepts do not have to be fused into a dedicated `TextNode` type.
+For the current retained-mode renderer, render-only state can be changed without forcing a Measure/Arrange pass.
 
 ---
 
-# 16. Framework-known versus component-owned consequences
+# 16. Structural mutation semantics
 
-The working classification is:
+`PanelNode` and `NodeTree` already own child mutation, ownership, lifecycle, registration, traversal, and structural layout consequences.
+
+Therefore an ordinary:
 
 ```text
-Framework-known state
-    → framework directly interprets it
-
-Component layout state
-    → custom Measure / Arrange
-
-Component paint state
-    → custom Draw
-
-Component interaction state
-    → custom input/update behavior where supported
-
-Notification
-    → developer reports the semantic consequence
+PanelNode::addChild()
+PanelNode::removeChild()
 ```
 
-A component does not need to tell the framework what a property *means* when the component itself can express that meaning through its phase contracts.
+does not require a public `treeStructureChanged()` notification.
+
+Structural changes during an active framework phase are deferred through `NodeTree` mutation scopes and observed by later phases after the mutation queue is flushed.
 
 ---
 
-# 17. `invalidateLayout()` contract — current target
+# 17. Framework-known `Auto` / `Value`
 
-The current internal mechanism already establishes most of the desired semantics. The public contract should make them explicit.
+`LayoutValue` distinguishes `Auto` and explicit `Value`, but the meaning is resolved by framework layout policy rather than exposed as generic Measure metadata.
 
-## Meaning
+Custom layout receives effective Measure constraints, not the raw `Auto/Value` property representation.
 
-`invalidateLayout(node)` means:
-
-> The node's layout-derived state may no longer be reflected in the framework's computed layout state.
-
-It does **not** mean that layout executes immediately.
-
-## Expected framework behavior
-
-```text
-invalidateLayout(node)
-    ↓
-validate that node is live/owned by this UI runtime
-    ↓
-walk to the top-level root/overlay
-    ↓
-queue that root if it is not already queued
-    ↓
-allow the current mutation/frame phase to continue
-    ↓
-run Measure/Arrange at the framework-controlled layout phase
-```
-
-The existing root-promotion and queue-deduplication mechanism should be reused.
-
-## Coalescing
-
-Multiple invalidations of the same subtree before the next layout phase must collapse to the same queued layout root.
-
-```text
-invalidateLayout(A)
-invalidateLayout(A)
-invalidateLayout(child-of-A)
-    ↓
-one queued top-level root
-```
-
-## Detached/non-live nodes
-
-An invalidation request for a node that is not currently owned/live by the `UIManager` should not enqueue work against an arbitrary external object.
-
-The exact public behavior (no-op, boolean failure, debug assertion, or another result) remains an API design decision, but runtime integrity must be preserved.
-
-## During mutation scopes
-
-The notification must not force immediate layout execution.
-
-If a mutation is queued/deferred, the notification should only contribute to the later queued work. Layout must observe the stable post-mutation tree state.
-
-## During lifecycle processing
-
-The API should not expose internal phase flushing. The final contract should document which lifecycle phases permit notification and which are unsafe/undefined.
-
-The preferred philosophy is runtime integrity rather than automatic recovery from arbitrary misuse.
-
-## Relationship to component-owned properties
-
-The developer is responsible for calling `invalidateLayout()` when a custom property changes in a way that affects desired size or framework layout geometry.
-
-For example:
-
-```cpp
-text_ = newText;
-ui.invalidateLayout(*this);
-```
-
-The framework does not inspect `text_` to discover that it changed.
+This keeps `Auto` parent/layout-policy semantics framework-owned and prevents the generic Measure contract from becoming coupled to one particular framework property representation.
 
 ---
 
-# 18. `invalidatePaint()` remains to be audited
+# 18. What is intentionally rejected for this stage
 
-The layout queue is already well understood. The next separate investigation is the rendering path.
-
-Before exposing `invalidatePaint()`, determine:
-
-```text
-whether a paint/render dirty queue already exists
-whether Draw currently runs every frame
-whether paint invalidation needs to schedule anything
-whether a paint invalidation should also imply layout invalidation for specific framework-known state
-```
-
-Do not assume the layout model can simply be duplicated for rendering without checking the current implementation.
-
----
-
-# 19. Structural notification remains narrower than layout invalidation
-
-At present `PanelNode → NodeTree` already owns structural mutations and those mutations already queue the appropriate layout root through the parent.
-
-Therefore a public `treeStructureChanged()` notification is **not yet required for ordinary `PanelNode::addChild/removeChild`**.
-
-It should only be introduced if a future architecture allows structural changes to occur outside the existing `PanelNode → NodeTree` mechanism.
-
-The current stage intentionally keeps:
-
-```text
-PanelNode
-    = structural mutation capability
-```
-
-rather than inventing a second structural notification path prematurely.
-
----
-
-# 20. What is intentionally rejected for this stage
-
-The refactor does **not** currently introduce:
+The refactor does not currently introduce:
 
 ```text
 universal property registration
@@ -677,178 +514,4 @@ full CSS/Flex/Grid semantics
 multi-pass intrinsic measurement as default behavior
 ```
 
-These remain possible future additions only when a concrete requirement demonstrates the need.
-
----
-
-# 21. Concrete architectural work to perform
-
-The refactor should proceed in this order:
-
-## Step 1 — Define and expose `invalidateLayout()`
-
-Reuse the existing root-promotion and queue-deduplication mechanics.
-
-Define:
-
-```text
-meaning
-valid node ownership
-coalescing
-mutation-scope behavior
-lifecycle restrictions
-framework guarantees
-```
-
-## Step 2 — Remove hidden invalidation from component-specific state
-
-Audit existing components and replace framework-specific `deferLayoutMutation()` usage for component-owned state with explicit notifications.
-
-Initial validation cases:
-
-```text
-Button::text
-Button::font
-MenuItem::text
-MenuItem::font
-Checkbox::boxSize
-Menu::itemSpacing
-other real component layout state
-```
-
-## Step 3 — Validate paint invalidation
-
-Trace the current rendering pipeline and determine the smallest correct `invalidatePaint()` implementation and contract.
-
-Validate on:
-
-```text
-textColor
-backgroundColor
-borderColor
-variant
-highlight/selection state
-```
-
-## Step 4 — Open Measure/Arrange behavior
-
-Replace the current closed/specialized layout extension mechanism with a developer-facing custom layout contract while keeping framework ownership of execution.
-
-First validate leaf components, then custom `PanelNode` containers.
-
-## Step 5 — Generalize child layout operations
-
-Derive the minimal child measurement/arrangement capability from the existing linear-layout implementation:
-
-```text
-measure child under proposal
-obtain desired size
-arrange child with allocation
-```
-
-Do not expose `NodeTree` or `LayoutSystem` directly.
-
-## Step 6 — Preserve border-box semantics
-
-Ensure custom Measure/Arrange receives the correct content-space geometry while padding/border/size/min/max remain framework semantics.
-
-## Step 7 — Re-test batching and layout root behavior
-
-Verify that repeated notifications coalesce into one top-level queued root and that mutations occurring before a layout phase are observed in their final stable state.
-
-## Step 8 — Re-evaluate `TextNode`
-
-Only after the new contracts work for real components, decide which role remains for `TextNode` and `TextPrimitive`.
-
-## Step 9 — Re-evaluate documentation/API boundaries
-
-Document the developer contracts, including misuse cases and lifecycle restrictions, after the runtime behavior is stable.
-
----
-
-# 22. Immediate validation scenarios
-
-The first complete end-to-end scenarios should be:
-
-### Leaf
-
-```text
-Button
-    setText
-    invalidateLayout
-    root queued
-    Measure
-    Arrange
-    Draw
-```
-
-### Paint-only leaf state
-
-```text
-Button
-    setTextColor
-    invalidatePaint
-    Draw
-```
-
-### Framework-known property
-
-```text
-Node
-    setPadding / setMinSize / setMaxSize / etc.
-    framework-owned invalidation
-    existing layout semantics preserved
-```
-
-### Custom container
-
-```text
-CustomPanel : PanelNode
-    custom property changes
-    invalidateLayout
-    Measure children
-    aggregate desired sizes
-    Arrange children
-```
-
-### Structural mutation
-
-```text
-PanelNode
-    add/remove child
-    ownership/lifecycle invariants
-    parent/layout root invalidated
-    next layout sees stable child list
-```
-
----
-
-# 23. Success criterion
-
-The refactor is successful if a developer can build a genuinely custom component without requiring the framework to know every custom property, while the framework still controls runtime correctness.
-
-Desired end state:
-
-```text
-Custom component
-    owns arbitrary component state
-    defines custom Measure/Arrange/Draw behavior
-    explicitly reports semantic changes
-
-Framework
-    retains runtime control
-    retains framework-known semantics
-    retains batching/coalescing
-    retains tree ownership/invariants
-    retains border-box layout semantics
-    retains lifecycle/input/render coordination
-```
-
-The goal is **not maximal openness**.
-
-The goal is:
-
-```text
-open enough to make custom components natural
-closed enough to preserve runtime invariants
-```
+These remain possible future additions only when concrete requirements demand them.
