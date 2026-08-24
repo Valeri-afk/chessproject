@@ -1,383 +1,347 @@
-# Text Components Design
+# Typography Design
 
 ## Goal
 
-Define a small set of framework-provided text components that cover the common standalone text use cases without turning typography into a large widget hierarchy.
+Use one framework text component, `Typography`, instead of separate `Heading` and `Paragraph` components.
 
-The design separates:
+The model is inspired by Material UI's `Typography`: the component represents text plus a semantic typography `variant`, while typography presets are a separate policy from the text layout/rendering machinery.
+
+The framework should copy the useful idea, not the web-specific API.
 
 ```text
-text semantics / component API
-        ↓
-shared text layout behavior
-        ↓
-logical → physical rendering preparation
-        ↓
-SDL_ttf rendering backend
+Typography
+    │
+    ├── text content
+    ├── typography variant
+    ├── font resource
+    ├── color
+    ├── alignment
+    └── layout/wrapping properties
+         │
+         ▼
+    TextLayout
+         │
+         ▼
+    Measure / Arrange
+         │
+         ▼
+    physical rasterization
+         │
+         ▼
+    SDL_ttf backend
 ```
 
-`TextPrimitive` is not treated as the architectural center. It is considered legacy backend/rendering machinery from the previous closed layout model and is expected to be reshaped or removed after the new text contract is established.
+`TextPrimitive` is not the architectural center. It remains legacy/backend rendering machinery until the text migration is complete.
 
-## 1. Reference model
+## 1. Material UI reference
 
-Established UI frameworks commonly provide a small simple-text component plus richer text/document abstractions rather than a separate widget class for every typographic style.
+Material UI's `Typography` uses one component with a `variant` property instead of separate components for headings, body text, captions, etc. Its standard variants include heading levels, subtitles, body text, button text, caption, and overline. Typography configuration also includes properties such as font family, font size, font weight, line height, and letter spacing.
 
-Examples:
-
-- Flutter has `Text` for normal single-string text and `RichText` for multi-style text spans. `SelectableText` is a capability-oriented interaction variant rather than a separate typography hierarchy.
-- Qt uses `QLabel` for ordinary text/image display and reserves document-oriented controls such as `QTextEdit`/`QTextBrowser` for richer or larger text content.
-- WPF separates lightweight `TextBlock`/`Label` use from `FlowDocument`/`Paragraph` when document-style flow and rich content are required.
-
-These frameworks are references rather than architectural authorities. The target is a smaller retained-mode C++/SDL framework.
-
-## 2. Proposed minimal standard set
-
-### `TextNode` → rename/reshape toward `Text`
-
-Purpose:
+The important architectural idea for this framework is:
 
 ```text
-ordinary standalone text
-short UI strings
-labels
-captions when no special semantic heading contract is needed
+one text component
+        +
+semantic/style variant
+        +
+shared layout/rendering
 ```
 
-This is the general-purpose text component.
+not a hierarchy of `Heading`, `Paragraph`, `Caption`, `Label`, `BodyText`, and similar classes.
 
-Core state:
+MUI's web-specific properties such as `component`, `sx`, and HTML element mapping are intentionally not part of this framework.
 
-```text
-text
-font
-text color
-horizontal alignment
-vertical alignment
-wrapping policy
-```
+## 2. `Typography`
 
-It participates in the normal framework `Measure/Arrange/Draw` lifecycle.
+`Typography` is the single standard standalone text component.
 
-There should be no requirement for a component such as Button/MenuItem/TabItem to contain a `Text` child merely to display text. Text-bearing components may own a shared text-layout state internally.
-
-### `Heading`
-
-Purpose:
+Its initial variant set is:
 
 ```text
-screen/page section titles
-panel/card titles
-modal titles
-major UI hierarchy labels
-```
-
-`Heading` is a semantic typography component rather than merely a larger `Text`.
-
-The initial design should use a small `HeadingLevel` enum, for example:
-
-```text
+INHERIT
 H1
 H2
 H3
 H4
+H5
+H6
+SUBTITLE1
+SUBTITLE2
+BODY1
+BODY2
+BUTTON
+CAPTION
+OVERLINE
 ```
 
-Do not expose six or more levels until a real application demonstrates the need.
+The exact presets are not yet tied to concrete font resources or numeric sizes.
 
-At the current framework stage, `Heading::Level` is **semantic metadata**, not yet a framework-owned font-size/style system. The existing framework has no established typography/theme layer capable of turning `H1`–`H4` into canonical font resources without introducing a new resource-management contract.
+This is deliberate: the framework currently has no typography/theme/resource policy that can safely manufacture and own a canonical set of `TTF_Font*` resources.
 
-Therefore `Heading` currently reuses the same font/layout/rendering API as `TextNode`; clients may supply the appropriate font resource for the chosen level. A future typography policy may map levels to framework defaults once its ownership and resource lifetime are explicitly designed.
+### Component properties
 
-### `Paragraph`
-
-Purpose:
+The initial component-level properties are:
 
 ```text
-multi-line body copy
-help/rules text
-settings descriptions
-tooltips with longer text
-documentation-like UI content
+text
+variant
+font
+color
+horizontal alignment
+vertical alignment
 ```
 
-`Paragraph` is a convenience semantic component for body text whose normal expectation is wrapping and multi-line layout.
+These come from the existing `TextNode`/`TextLayout` contract, with `variant` being the new typography-specific property.
 
-It should not introduce a second independent text-layout engine. It uses the same shared text-layout/backend contract as `Text` and differs primarily through defaults/policy:
+Future typography-specific properties may include:
 
 ```text
-Text       → generic text defaults
-Heading    → hierarchical heading semantics
-Paragraph  → body-copy / wrapping semantics
+font family / font resource selection
+font size
+font weight
+font style
+line height
+letter spacing
 ```
 
-At the current stage, `Paragraph` does not require a second renderer or layout engine. Its semantic value is the intended component role and future typography defaults, while its actual measurement and rendering are inherited from the shared text contract.
+but these should be introduced through a coherent typography/style policy rather than as ad-hoc properties on every text component.
 
-## 3. What should NOT be a separate standard component yet
+### Wrapping / no-wrap
 
-Do not create separate framework components for:
+MUI exposes `noWrap`. The framework should eventually have an equivalent capability, but it should be introduced as part of the text layout contract rather than as a rendering-only boolean.
+
+A future model could be:
 
 ```text
-Label
-Caption
-Title
-Subtitle
-SmallText
-BodyText
-DisplayText
-Footnote
-Overline
+WrapMode
+    WRAP
+    NO_WRAP
 ```
 
-These are better represented by typography defaults/style or by `Text`/`Paragraph` until concrete application requirements establish a distinct semantic contract.
+possibly followed later by ellipsis/truncation policies.
 
-Do not create `RichText` in the first text migration stage unless the framework has an actual multi-style-inline requirement. Rich text introduces a larger model of spans/runs, selection and document semantics and should follow a concrete use case.
+For the current migration, do not add `noWrap` until `TextLayout` has an explicit wrapping policy. The existing text layout already performs width-constrained wrapping, so a public property needs to be propagated consistently through Measure, Arrange, and Draw.
 
-Do not create `TextField`/`InputField` as a simple text component. Editing, cursor, selection, composition, scrolling and input state are a separate subsystem and are already intentionally deferred.
+## 3. Typography variants are policy, not layout
 
-## 4. Shared text contract
+A variant should describe intended typography semantics:
 
-All three proposed components should use the same underlying text layout behavior.
+```text
+H1/H2/...       → heading hierarchy
+SUBTITLE1/2     → supporting titles
+BODY1/2         → normal body text
+BUTTON          → action/control text
+CAPTION         → secondary small text
+OVERLINE        → auxiliary label text
+INHERIT         → inherit/use supplied typography
+```
+
+The variant must not implement a second layout algorithm.
 
 Conceptually:
 
 ```text
-Text / Heading / Paragraph
-        │
-        ▼
-shared TextLayout state/operation
-        │
-        ├── text
-        ├── font
-        ├── wrap constraint
-        ├── measured logical size
-        ├── line/layout information
-        └── final placement/alignment inputs
-        │
-        ▼
-rendering preparation
-        │
-        ├── framework logical coordinates
-        ├── renderer presentation scale
-        └── physical raster font size
-        │
-        ▼
-SDL_ttf backend
+Typography::Variant
+        ↓
+TypographyPolicy   [future]
+        ↓
+font/style metrics
+        ↓
+TextLayout
 ```
 
-The exact class decomposition is intentionally not frozen yet. The key contract is that text layout works in framework logical coordinates and rendering converts logical font size to physical raster size before rasterization when a presentation scale requires it.
+This allows the framework to introduce a theme/material-like typography system later without coupling it to `Measure/Arrange` or SDL_ttf.
 
-### Current Measure / Arrange boundary
+## 4. No `Heading` / `Paragraph` components
 
-The framework's current `Measure`/`Arrange` API gives a component a logical content constraint during `Measure`, then a final logical content box during `Arrange`. The framework does not currently require components to expose line boxes or other retained text-layout artifacts through the public `ArrangeContext`.
+Separate `Heading` and `Paragraph` components are intentionally removed.
 
-Therefore `TextLayout::measure()` should remain a logical measurement operation for now. It should not prematurely expose a public line-run/line-box model merely to accommodate the legacy renderer.
-
-The current implementation does, however, repeat text layout work in the rendering backend: `TextLayout` calculates the logical desired size while `TextPrimitive::draw()` configures wrapping and asks SDL_ttf for rendered size again. This is an implementation-level duplication, not yet a reason to expand the public API.
-
-Future direction:
+Their use cases map to `Typography` variants:
 
 ```text
-Measure
-    ↓
-TextLayout result / internal prepared layout
-    ↓
-Arrange
-    ↓
-final logical placement
-    ↓
-Draw consumes prepared layout
+Heading H1      → Typography(H1)
+Heading H2      → Typography(H2)
+...
+Paragraph       → Typography(BODY1/BODY2)
+Caption         → Typography(CAPTION)
+Button text     → Typography(BUTTON)
 ```
 
-When concrete text features require stable line positions, hit-testing, selection, baseline access, ellipsis, or rich spans, the prepared layout result can become an explicit internal/public text-layout object. Until then, keep the public contract small.
+There is no reason for a paragraph to own a separate layout engine. Multi-line body text is simply a typography variant combined with the normal text wrapping policy.
 
-## 5. Standalone text vs text embedded in components
+Likewise, a heading is not a different layout primitive. It is a semantic typography variant.
 
-A standard component should not be forced to use `Text` as a child node merely because it displays text.
+## 5. Text embedded in controls
 
-Preferred model:
+Controls that display text should use the same text-layout contract as `Typography`, but they do not need a `Typography` child node.
 
 ```text
 Button
-    └── shared text state/layout operation
+    └── shared text state/layout
 
 MenuItem
-    └── shared text state/layout operation
+    └── shared text state/layout
 
 TabItem
-    └── shared text state/layout operation
+    └── shared text state/layout
 
 Tooltip
-    └── shared text state/layout operation
+    └── shared text state/layout
 
-Text
-    └── same shared text layout
-
-Heading
-    └── same shared text layout
-
-Paragraph
+Typography
     └── same shared text layout
 ```
 
-This follows the framework's existing primitive/component boundary: a visual primitive or shared subsystem may be used internally without becoming a retained child `Node`. The component design guide explicitly allows text to remain an internal primitive rather than requiring a `TextNode` child.
+A text-bearing control may choose an appropriate typography variant internally, for example `BUTTON`, without creating a retained child node.
 
 ## 6. Measure / Arrange contract
 
-Text measurement is part of the open framework layout model.
-
-For standalone text components:
+Typography participates in the open framework layout model:
 
 ```text
 Measure
     available logical content width
         ↓
-    text wrapping / line layout
+    wrapping / text measurement
         ↓
-    desired logical content size
+    desired logical size
 
 Arrange
     final logical content box
         ↓
-    final text placement/alignment
+    final text placement
 
 Draw
-    consume the prepared layout using renderer/backend scale
+    renderer/backend scale
+        ↓
+    physical rasterization
 ```
 
-A text setter remains pure mutation. Client code may explicitly invalidate layout after runtime changes according to the framework invalidation contract.
+The current public `TextLayout::measure()` should remain a logical measurement operation. Do not expose line boxes, glyph runs, baselines, hit-testing structures, or `TTF_Text` through the public layout API until concrete features require them.
 
-Semantic component operations may use the protected component invalidation hook when appropriate.
+There is currently some duplicated work between logical measurement and SDL_ttf rendering. This is an implementation concern to resolve when the backend is reshaped; it is not a reason to prematurely expand the public layout contract.
 
-## 7. Logical vs physical text size
+## 7. Logical → physical typography
 
-The framework's UI coordinate space is logical when SDL logical presentation is configured.
+Typography sizes are expressed in framework logical coordinates.
 
-Therefore a logical font size must not be rasterized at the logical pixel size and then enlarged as a bitmap.
-
-Conceptually:
+When the renderer has a presentation scale, the logical font size must be converted to physical raster size **before** rasterization.
 
 ```text
-8 logical px font
-        ×
-2x renderer presentation scale
+8 logical px
+    × 2x presentation scale
         ↓
-16 physical/raster px font
+16 physical raster px
         ↓
 SDL_ttf rasterization
-        ↓
-physical rendering
 ```
 
-The important rule is:
+This avoids rasterizing an 8px bitmap and then enlarging that bitmap to 16px.
 
-```text
-convert logical font size → physical raster size BEFORE rasterization
-```
-
-This avoids the quality loss caused by rasterizing an 8px glyph and subsequently scaling the resulting bitmap to 16px.
-
-The current `TextPrimitive` contains an implementation of this principle through a copied raster font and integer presentation scale. That implementation is considered legacy/backend machinery and should be preserved semantically while being separated from the new text layout ownership model.
+The existing `TextPrimitive` already contains part of this backend behavior through its copied raster font and presentation scale. That implementation should be preserved semantically while its layout responsibilities are moved out of the legacy primitive.
 
 ## 8. Resource ownership
 
-### Current boundary
-
-At the current stage, the intended resource boundary is:
+The current resource boundary remains:
 
 ```text
 Client
     │
     ├── creates SDL / SDL_ttf resources
-    └── is responsible for their lifetime
+    └── owns source resource lifetime
             │
             ▼
 Framework
-    └── consumes resources through the public API
+    └── consumes TTF_Font*
 ```
 
-In particular, `TTF_Font*` may be created and owned by the client and passed into framework components such as `TextNode`, `Button`, `MenuItem`, and `TabItem`.
+`TTF_Font*` stored by `TextLayout` is non-owning.
 
-This is the **current working boundary**, not a final resource-management architecture.
-
-### Current ambiguity / unresolved responsibility
-
-There are not yet enough framework use cases to prove that client-owned resource lifetime remains sufficient in every scenario. In particular, derived and cached resources introduce a second lifetime domain:
+Framework/backend may own derived resources such as:
 
 ```text
-client-owned TTF_Font*
-        │
-        ▼
-framework/backend caches
-        ├── copied raster font
-        ├── TTF_TextEngine
-        └── TTF_Text
+raster font copy
+TTF_TextEngine
+TTF_Text
 ```
 
-The framework may own these derived/cache objects, but the exact lifetime relationship between the source client resource and framework-owned derived objects is not yet a fully specified public contract.
+The exact lifetime relationship between client-owned source resources and framework-owned derived caches remains intentionally unresolved. The current documentation must not imply that a general resource manager exists.
 
-Therefore the documentation must treat resource lifetime responsibility as **currently ambiguous at the edge between client-owned source resources and framework-owned derived/cache resources**.
+The client should keep a source `TTF_Font*` alive for as long as the framework can use it. Framework-owned derived resources are released by the framework/backend.
 
-The framework must not silently imply that destroying a client-owned `TTF_Font*` is always safe while a framework cache still depends on it, nor should the current implementation be interpreted as establishing a general resource manager.
+## 9. Font mutation and invalidation
 
-### Font mutation and invalidation
-
-`TTF_Font*` is also mutable state from the framework's perspective. The backend currently uses `TTF_GetFontGeneration()` to detect source-font changes when deciding whether its derived raster-font cache is still valid. This is a **backend cache-consistency mechanism**, not a layout invalidation mechanism.
-
-The distinction is intentional:
+`TTF_GetFontGeneration()` is a backend cache-consistency mechanism, not a layout invalidation mechanism.
 
 ```text
 client mutates TTF_Font
         │
-        ├── backend raster cache
-        │      └── generation can trigger cache refresh
+        ├── backend cache
+        │      └── generation → refresh derived resource
         │
         └── framework layout
-               └── does NOT auto-invalidate
+               └── client → invalidateLayout()
 ```
 
-A font mutation can change glyph metrics and therefore change measured logical size or wrapping. Since `TextLayout` does not own the source resource and does not automatically invalidate the containing node, the client remains responsible for calling `invalidateLayout()` when a font mutation can affect geometry.
+A font mutation may change glyph metrics and therefore affect measured size or wrapping. The framework must not silently invalidate layout as a side effect of the resource mutation.
 
-This preserves the framework rule that setters/resource mutation do not secretly introduce framework invalidation side effects. Backend cache refresh and layout invalidation are separate responsibilities.
+If the client mutates a font in a way that can affect geometry, it is responsible for explicitly invalidating affected layout.
 
-### What is intentionally NOT being introduced now
+This preserves the framework rule that setters and resource mutation do not automatically introduce hidden invalidation side effects.
 
-Do not introduce a general `FontManager`, `ResourceManager`, or opaque resource-handle system solely to complete the text/layout refactor.
+## 10. Initial typography policy
 
-The present goal is to preserve the existing client-owned source-resource boundary while explicitly recording the unresolved lifecycle edge so it can be revisited when real use cases expose a limitation.
+Do not introduce concrete Material-like numeric values yet.
 
-### Practical current rule
+The eventual typography policy should probably be a separate framework-level object/theme rather than hardcoded inside `Typography`:
 
-Until this boundary is revisited:
+```text
+Typography
+    variant = H2
+        ↓
+TypographyTheme / TypographyPolicy
+        ↓
+font family
+font size
+font weight
+line height
+letter spacing
+        ↓
+resolved text style
+        ↓
+TextLayout
+```
 
-- the client should keep every source `TTF_Font*` alive for as long as any framework component/backend operation may use it;
-- framework-owned derived objects must be released by the framework/backend according to their own implementation lifetime;
-- no assumption should be made that framework caches extend the lifetime of a client-owned source resource;
-- a client mutation of `TTF_Font` that may affect metrics/geometry should be followed by explicit `invalidateLayout()` on affected components;
-- a backend generation check does not replace explicit layout invalidation;
-- no assumption should be made that a future resource manager will necessarily replace this boundary.
+This also gives us a clean place to solve the future question of who owns the default font resources.
 
-## 9. Initial implementation order
+Until that system exists, the variant remains semantic metadata and the client-supplied `TTF_Font*` remains the actual rendering resource.
 
-1. Establish the shared logical text layout contract.
-2. Separate text layout semantics from SDL_ttf rendering/backend concerns.
-3. Rework standalone `TextNode` into the final `Text` role.
-4. Add `Heading` using the same text layout contract.
-5. Add `Paragraph` using the same text layout contract with body/wrapping defaults.
-6. Migrate Button/MenuItem/TabItem/Dropdown/Tooltip text handling to the shared contract where useful.
-7. Only then revisit `TextPrimitive`/`TextRuntime` removal or final reshaping.
-8. Compile/runtime validation happens after the text migration is internally coherent.
+## 11. Deliberately deferred features
 
-## 10. Open decisions
+Do not add these merely to imitate Material UI:
 
-The following are deliberately not frozen yet:
+```text
+HTML component mapping
+sx/style-object system
+rich text spans
+text selection
+editable text
+ellipsis
+advanced typography theme inheritance
+font resource manager
+```
 
-- exact name of the shared text layout type;
-- whether `Text` replaces `TextNode` or `TextNode` remains the public class name;
-- whether `Heading::Level` should later map to framework-owned typography defaults;
-- exact `HeadingLevel` set;
-- whether `Paragraph` needs properties beyond wrapping and default typography;
-- exact relationship between layout cache and SDL_ttf `TTF_Text` object;
-- exact lifetime model for derived raster fonts and text engines;
-- whether rich text belongs in this framework at all;
-- how text selection should be introduced later for input/selection scenarios;
-- whether the current client-owned resource boundary is sufficient once the framework has more long-lived/shared/cached resource use cases.
+Each should follow an actual framework use case.
+
+The next relevant extension after the base migration is likely `WrapMode`, followed by a real typography policy/theme once resource ownership is understood.
+
+## 12. Refactor order
+
+1. Keep `TextNode`/shared text implementation stable while the new typography API is introduced.
+2. Use `Typography` as the single public standalone text component.
+3. Remove `Heading` and `Paragraph` as separate components.
+4. Migrate text-bearing controls toward the shared typography/text-layout contract.
+5. Separate all layout semantics from `TextPrimitive`.
+6. Preserve rasterization/cache responsibilities in the backend.
+7. Revisit whether `TextPrimitive` can disappear after the new text pipeline is stable.
+8. Only then introduce a framework-wide typography policy/theme if real use cases justify it.
