@@ -27,6 +27,10 @@ namespace ui
         void setText(std::string text);
         TTF_Font *getFont() const noexcept;
         void setFont(TTF_Font *font);
+        float getFontSize() const noexcept;
+        void setFontSize(float logicalSize);
+        WrapMode getWrapMode() const noexcept;
+        void setWrapMode(WrapMode mode);
         TextAlignment getHorizontalAlignment() const noexcept;
         void setHorizontalAlignment(TextAlignment alignment);
         TextAlignment getVerticalAlignment() const noexcept;
