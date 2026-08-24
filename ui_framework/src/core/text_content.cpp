@@ -14,7 +14,6 @@ namespace ui
     TextContent::~TextContent() = default;
 
     const std::string &TextContent::getText() const noexcept { return layout_.getText(); }
-
     void TextContent::setText(std::string text) { layout_.setText(std::move(text)); }
     TTF_Font *TextContent::getFont() const noexcept { return layout_.getFont(); }
     void TextContent::setFont(TTF_Font *font) noexcept { layout_.setFont(font); }
@@ -38,9 +37,37 @@ namespace ui
 
     void TextContent::arrange(const LayoutPosition &contentPosition, const LayoutSize &contentSize)
     {
-        arrangedPosition_ = contentPosition;
         arrangedSize_ = contentSize;
         arrangedLayoutResult_ = layout_.measureLayout(contentSize.width);
+        arrangedPosition_ = contentPosition;
+
+        const LayoutSize textSize = arrangedLayoutResult_.desiredSize;
+
+        switch (horizontalAlignment_)
+        {
+        case TextAlignment::CENTER:
+            arrangedPosition_.x += (contentSize.width - textSize.width) * 0.5f;
+            break;
+        case TextAlignment::END:
+            arrangedPosition_.x += contentSize.width - textSize.width;
+            break;
+        case TextAlignment::START:
+        default:
+            break;
+        }
+
+        switch (verticalAlignment_)
+        {
+        case TextAlignment::CENTER:
+            arrangedPosition_.y += (contentSize.height - textSize.height) * 0.5f;
+            break;
+        case TextAlignment::END:
+            arrangedPosition_.y += contentSize.height - textSize.height;
+            break;
+        case TextAlignment::START:
+        default:
+            break;
+        }
     }
 
     void TextContent::draw(SDL_Renderer *renderer)
@@ -48,13 +75,12 @@ namespace ui
         if (!renderer_ || layout_.getText().empty() || !layout_.getFont())
             return;
 
-        const float wrapWidth = arrangedLayoutResult_.wrapWidth;
         renderer_->draw(
             renderer,
             layout_.getText(),
             layout_.getFont(),
             arrangedPosition_,
-            wrapWidth,
+            arrangedLayoutResult_.wrapWidth,
             color_);
     }
 }
