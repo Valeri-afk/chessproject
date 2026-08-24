@@ -7,14 +7,43 @@
 
 namespace ui
 {
-    Typography::Typography() : textPrimitive_(std::make_unique<TextPrimitive>()) {}
+    namespace
+    {
+        float defaultFontSize(TypographyVariant variant) noexcept
+        {
+            switch (variant)
+            {
+            case TypographyVariant::H1: return 32.0f;
+            case TypographyVariant::H2: return 28.0f;
+            case TypographyVariant::H3: return 24.0f;
+            case TypographyVariant::H4: return 20.0f;
+            case TypographyVariant::H5: return 18.0f;
+            case TypographyVariant::H6: return 16.0f;
+            case TypographyVariant::SUBTITLE1: return 16.0f;
+            case TypographyVariant::SUBTITLE2: return 14.0f;
+            case TypographyVariant::BODY1: return 16.0f;
+            case TypographyVariant::BODY2: return 14.0f;
+            case TypographyVariant::BUTTON: return 14.0f;
+            case TypographyVariant::CAPTION: return 12.0f;
+            case TypographyVariant::OVERLINE: return 12.0f;
+            case TypographyVariant::INHERIT: default: return 16.0f;
+            }
+        }
+    }
+
+    Typography::Typography() : textPrimitive_(std::make_unique<TextPrimitive>())
+    {
+        applyVariantDefaults();
+    }
+
     Typography::~Typography() = default;
 
     const std::string &Typography::getText() const noexcept { return textLayout_.getText(); }
 
     void Typography::setText(std::string text)
     {
-        if (textLayout_.getText() == text) return;
+        if (textLayout_.getText() == text)
+            return;
         textLayout_.setText(std::move(text));
     }
 
@@ -22,15 +51,53 @@ namespace ui
 
     void Typography::setFont(TTF_Font *font)
     {
-        if (textLayout_.getFont() == font) return;
+        if (textLayout_.getFont() == font)
+            return;
         textLayout_.setFont(font);
     }
+
+    void Typography::setVariant(Variant variant) noexcept
+    {
+        if (variant_ == variant)
+            return;
+        variant_ = variant;
+        if (!fontSizeExplicit_ || !lineHeightExplicit_)
+            applyVariantDefaults();
+    }
+
+    Typography::Variant Typography::getVariant() const noexcept { return variant_; }
+
+    void Typography::setFontSize(float logicalSize) noexcept
+    {
+        explicitFontSize_ = std::max(0.0f, logicalSize);
+        fontSizeExplicit_ = true;
+        textLayout_.setFontSize(explicitFontSize_);
+    }
+
+    float Typography::getFontSize() const noexcept { return textLayout_.getFontSize(); }
+
+    void Typography::setLineHeight(float logicalLineHeight) noexcept
+    {
+        explicitLineHeight_ = std::max(0.0f, logicalLineHeight);
+        lineHeightExplicit_ = true;
+        textLayout_.setLineHeight(explicitLineHeight_);
+    }
+
+    float Typography::getLineHeight() const noexcept { return textLayout_.getLineHeight(); }
+
+    void Typography::setWrapMode(WrapMode mode) noexcept
+    {
+        textLayout_.setWrapMode(mode);
+    }
+
+    WrapMode Typography::getWrapMode() const noexcept { return textLayout_.getWrapMode(); }
 
     TextAlignment Typography::getHorizontalAlignment() const noexcept { return horizontalAlignment_; }
 
     void Typography::setHorizontalAlignment(TextAlignment alignment)
     {
-        if (horizontalAlignment_ == alignment) return;
+        if (horizontalAlignment_ == alignment)
+            return;
         horizontalAlignment_ = alignment;
     }
 
@@ -38,7 +105,8 @@ namespace ui
 
     void Typography::setVerticalAlignment(TextAlignment alignment)
     {
-        if (verticalAlignment_ == alignment) return;
+        if (verticalAlignment_ == alignment)
+            return;
         verticalAlignment_ = alignment;
     }
 
@@ -46,29 +114,23 @@ namespace ui
 
     void Typography::setColor(const Color &color) { color_ = color; }
 
-    void Typography::setVariant(Variant variant) noexcept { variant_ = variant; }
-
-    Typography::Variant Typography::getVariant() const noexcept { return variant_; }
-
     LayoutSize Typography::measureContent(const LayoutSize &availableContent) const
     {
-        return textLayout_.measure(availableContent.width);
+        layoutResult_ = textLayout_.measureLayout(availableContent.width);
+        return layoutResult_.desiredSize;
+    }
+
+    void Typography::arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize)
+    {
+        arrangedContentPosition_ = contentPosition;
+        arrangedContentSize_ = contentSize;
+        layoutResult_ = textLayout_.measureLayout(contentSize.width);
     }
 
     void Typography::draw(SDL_Renderer *renderer)
     {
-        if (!textPrimitive_) return;
-
-        const LayoutPosition position = getActualPosition();
-        const LayoutSize size = getActualSize();
-        const Padding padding = getPadding();
-        const Border border = getBorder();
-        const LayoutPosition contentPosition{
-            position.x + border.left + padding.left,
-            position.y + border.top + padding.top};
-        const LayoutSize contentSize{
-            std::max(0.0f, size.width - border.left - border.right - padding.left - padding.right),
-            std::max(0.0f, size.height - border.top - border.bottom - padding.top - padding.bottom)};
+        if (!renderer || !textPrimitive_ || textLayout_.getText().empty())
+            return;
 
         textPrimitive_->draw(
             renderer,
@@ -77,7 +139,28 @@ namespace ui
             horizontalAlignment_,
             verticalAlignment_,
             color_,
-            contentPosition,
-            contentSize);
+            arrangedContentPosition_,
+            arrangedContentSize_);
+    }
+
+    void Typography::applyVariantDefaults() noexcept
+    {
+        if (!fontSizeExplicit_)
+        {
+            textLayout_.setFontSize(defaultFontSize(variant_));
+        }
+        else
+        {
+            textLayout_.setFontSize(explicitFontSize_);
+        }
+
+        if (!lineHeightExplicit_)
+        {
+            textLayout_.setLineHeight(0.0f);
+        }
+        else
+        {
+            textLayout_.setLineHeight(explicitLineHeight_);
+        }
     }
 }
