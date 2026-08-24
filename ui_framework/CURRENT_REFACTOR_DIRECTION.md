@@ -364,7 +364,33 @@ When these nodes belong to the same top-level root, the framework should perform
 
 ---
 
-# 8. Framework-known properties remain framework-known
+# 8. Derived geometry validity
+
+`Node::getDesiredSize()` and `Node::getActualSize()` expose the latest values produced by the framework's layout pass. They are **not live computations**.
+
+The current implementation stores these values directly as derived geometry fields and does not maintain a separate validity bit. Therefore the following semantic distinction applies:
+
+```text
+before first layout
+    → value is the initial/default geometry state
+
+after invalidateLayout(node), before next layout pass
+    → previously committed value remains readable
+    → value must be treated as potentially stale
+
+after the queued root has completed Measure/Arrange
+    → desired/actual values are current for that committed pass
+```
+
+`invalidateLayout()` therefore means that the current cached geometry is no longer guaranteed to describe the latest semantic component state; it does not erase the cached value.
+
+A future API may expose explicit validity/version information if clients need to distinguish these states, but the current stage does not require a dirty flag merely for the sake of `getDesiredSize()`/`getActualSize()`.
+
+For layout-internal logic, the framework should prefer the current Measure/Arrange results rather than relying on stale getters between passes.
+
+---
+
+# 9. Framework-known properties remain framework-known
 
 The framework must continue to understand properties that its own subsystems directly interpret.
 
@@ -372,7 +398,7 @@ Typical examples include `size`, `min/max size`, `padding`, `border`, `position 
 
 ---
 
-# 9. Component-owned properties and phase semantics
+# 10. Component-owned properties and phase semantics
 
 A property remains component-owned when the component can express its semantic consequences through the existing phase contracts.
 
@@ -388,7 +414,7 @@ Framework does not need property metadata for these fields.
 
 ---
 
-# 10. PanelNode structural capability
+# 11. PanelNode structural capability
 
 At this stage **arbitrary structural composition from plain `Node` is intentionally rejected**.
 
@@ -421,7 +447,7 @@ CustomPanel : PanelNode
 
 ---
 
-# 11. Custom layout contract
+# 12. Custom layout contract
 
 ```text
 Node
@@ -439,7 +465,7 @@ Custom components do not receive direct access to layout queues, mutation queues
 
 ---
 
-# 12. Measure contract
+# 13. Measure contract
 
 Measure means:
 
@@ -453,7 +479,7 @@ The current scope uses one ordinary Measure result per child invocation. Multi-p
 
 ---
 
-# 13. Arrange contract
+# 14. Arrange contract
 
 Arrange means:
 
@@ -463,7 +489,7 @@ A leaf may simply use that geometry. A `PanelNode` decides child allocations and
 
 ---
 
-# 14. Rendering and Overflow
+# 15. Rendering and Overflow
 
 `Overflow::HIDDEN` is a render-traversal concern, not a Measure/Arrange concern.
 
@@ -487,7 +513,7 @@ restore previous clip
 
 ---
 
-# 15. Current scope intentionally does not expose invalidatePaint()
+# 16. Current scope intentionally does not expose invalidatePaint()
 
 Rendering currently executes as part of every frame's draw traversal. Therefore no separate paint dirty queue has been justified yet.
 
@@ -497,7 +523,7 @@ For the current retained-mode renderer, render-only state can be changed without
 
 ---
 
-# 16. Structural mutation semantics
+# 17. Structural mutation semantics
 
 `PanelNode` and `NodeTree` already own child mutation, ownership, lifecycle, registration, traversal, and structural layout consequences.
 
@@ -514,7 +540,7 @@ Structural changes during an active framework phase are deferred through `NodeTr
 
 ---
 
-# 17. Framework-known `Auto` / `Value`
+# 18. Framework-known `Auto` / `Value`
 
 `LayoutValue` distinguishes `Auto` and explicit `Value`, but the meaning is resolved by framework layout policy rather than exposed as generic Measure metadata.
 
@@ -524,7 +550,7 @@ This keeps `Auto` parent/layout-policy semantics framework-owned and prevents th
 
 ---
 
-# 18. What is intentionally rejected for this stage
+# 19. What is intentionally rejected for this stage
 
 The refactor does not currently introduce:
 
