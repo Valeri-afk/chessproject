@@ -75,16 +75,18 @@ namespace ui
 
         int width = 0;
         int height = 0;
-
         if (wrapMode_ == WrapMode::WRAP && availableWidth > 0.0f)
         {
-            const int wrapWidth = std::max(1, static_cast<int>(std::floor(availableWidth)));
+            result.wrapWidth = std::max(1.0f, std::floor(availableWidth));
+            const int wrapWidth = static_cast<int>(result.wrapWidth);
             if (!TTF_GetStringSizeWrapped(font, text_.c_str(), 0, wrapWidth, &width, &height))
                 return result;
         }
-        else if (!TTF_GetStringSize(font, text_.c_str(), 0, &width, &height))
+        else
         {
-            return result;
+            result.wrapWidth = 0.0f;
+            if (!TTF_GetStringSize(font, text_.c_str(), 0, &width, &height))
+                return result;
         }
 
         result.desiredSize = {
