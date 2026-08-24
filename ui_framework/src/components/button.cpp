@@ -1,7 +1,6 @@
 #include "ui_framework/components/button.hpp"
 #include "ui_framework/primitives.hpp"
 #include "ui_framework/event_types.hpp"
-#include "../core/text_primitive.hpp"
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -40,7 +39,7 @@ namespace ui
     Color Button::presentationTextColor() const noexcept { return textColor_; }
     void Button::update(float dt) { targetScale_=pressed_?pressScale_:1.0f; if(!pressAnimationEnabled_) { currentScale_=targetScale_; return; } const float t=1.0f-std::exp(-pressAnimationSpeed_*std::max(0.0f,dt)); currentScale_ += (targetScale_-currentScale_)*t; }
     LayoutSize Button::measureContent(const LayoutSize &available) const { return TextPrimitive::measure(font_, text_, available.width); }
-    void Button::draw(SDL_Renderer *renderer) { if(!renderer) return; const auto p=getActualPosition(); const auto s=getActualSize(); const auto bg=presentationBackgroundColor(); const auto border=presentationBorderColor(); const auto tc=presentationTextColor(); if(variant_!=Variant::TEXT) primitives::roundedBoxRGBA(renderer,p.x,p.y,p.x+s.width,p.y+s.height,borderRadius_,bg.r,bg.g,bg.b,bg.a); if(variant_==Variant::OUTLINED) primitives::roundedRectangleRGBA(renderer,p.x,p.y,p.x+s.width,p.y+s.height,borderRadius_,border.r,border.g,border.b,border.a); textPrimitive().draw(renderer,text_,font_,TextAlignment::CENTER,TextAlignment::CENTER,tc,p,s); }
+    void Button::draw(SDL_Renderer *renderer) { if(!renderer) return; const auto p=getActualPosition(); const auto s=getActualSize(); const auto bg=presentationBackgroundColor(); const auto border=presentationBorderColor(); const auto tc=presentationTextColor(); if(variant_!=Variant::TEXT) primitives::roundedBoxRGBA(renderer,p.x,p.y,p.x+s.width,p.y+s.height,borderRadius_,bg.r,bg.g,bg.b,bg.a); if(variant_==Variant::OUTLINED) primitives::roundedRectangleRGBA(renderer,p.x,p.y,p.x+s.width,p.y+s.height,borderRadius_,border.r,border.g,border.b,border.a); text_.draw(renderer,text_,font_,TextAlignment::CENTER,TextAlignment::CENTER,tc,p,s); }
     void Button::handleMouseDown(MouseDownEvent &e) { if(e.button==MouseButton::Left && isEnabled()) pressed_=true; }
     void Button::handleMouseUp(MouseUpEvent &e) { if(e.button==MouseButton::Left) pressed_=false; }
     void Button::handleMouseClick(MouseClickEvent &e) { if(e.button==MouseButton::Left) activate(); }
