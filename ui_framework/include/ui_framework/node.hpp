@@ -23,7 +23,6 @@ namespace ui
     class PanelNode;
     class LayoutSystem;
     class EventDispatcher;
-    class TextPrimitive;
 
     class Node
     {
@@ -144,7 +143,6 @@ namespace ui
         virtual void onMount() {}
         virtual void onUnmount() {}
         virtual Node *hitTest(float x, float y) noexcept;
-        TextPrimitive &textPrimitive() noexcept;
 
     private:
         struct EventHandlerRecord
