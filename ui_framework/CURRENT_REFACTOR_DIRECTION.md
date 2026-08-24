@@ -301,13 +301,41 @@ Calling `invalidateLayout()` while a tree mutation scope is active does not flus
 
 Structural mutations remain deferred by `NodeTree`; the next Measure/Arrange observes the stable post-mutation tree.
 
-## 7.6 Root and overlay nodes
+## 7.6 Re-invalidation during an active Measure/Arrange pass
+
+If a component calls `invalidateLayout()` from inside its current `measure()` or `arrange()`, the current pass is **not restarted recursively**.
+
+The layout queue is consumed into a temporary local queue before the root callback begins. Therefore a new invalidation during the callback inserts the root into the now-empty framework queue again.
+
+Conceptually:
+
+```text
+layout queue
+    ↓
+consume current roots
+    ↓
+Measure / Arrange(root)
+    ↓
+component invalidates root
+    ↓
+root is queued again
+    ↓
+finish current pass
+    ↓
+next framework layout phase processes it
+```
+
+This preserves traversal stability and avoids re-entrant layout execution.
+
+A component that repeatedly invalidates itself from every Measure/Arrange invocation can therefore cause repeated layout passes across frames. That is component logic, not framework scheduling failure.
+
+## 7.7 Root and overlay nodes
 
 Calling `invalidateLayout()` on an ordinary root or overlay is valid and queues that node itself.
 
 Calling it on a descendant of either is promoted to that root/overlay.
 
-## 7.7 Custom properties
+## 7.8 Custom properties
 
 The framework does not observe arbitrary component fields.
 
@@ -320,7 +348,7 @@ uiManager.invalidateLayout(*this);
 
 For framework-known layout properties the same public notification contract is preferred: property mutation changes the semantic state; `invalidateLayout()` reports that the computed geometry may now be stale.
 
-## 7.8 Coalescing example
+## 7.9 Coalescing example
 
 ```cpp
 button.setText("A");
