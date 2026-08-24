@@ -7,6 +7,7 @@
 
 #include "ui_framework/node.hpp"
 #include "ui_framework/typography.hpp"
+#include "ui_framework/text_layout.hpp"
 
 namespace ui
 {
