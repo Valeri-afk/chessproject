@@ -96,12 +96,9 @@ namespace ui
         {
             if (!handler)
                 return 0;
-
             const EventHandlerId token = nextEventHandlerId();
             eventHandlers_.push_back(
-                EventHandlerRecord{
-                    token,
-                    std::type_index(typeid(Event)),
+                EventHandlerRecord{token, std::type_index(typeid(Event)),
                     [handler = std::move(handler)](UIEvent &event, Node &node)
                     {
                         handler(static_cast<Event &>(event), node);
@@ -114,14 +111,11 @@ namespace ui
         {
             const std::type_index eventType(typeid(Event));
             eventHandlers_.erase(
-                std::remove_if(
-                    eventHandlers_.begin(),
-                    eventHandlers_.end(),
+                std::remove_if(eventHandlers_.begin(), eventHandlers_.end(),
                     [eventType, handlerId](const EventHandlerRecord &record)
                     {
                         return record.eventType == eventType && record.token == handlerId;
-                    }),
-                eventHandlers_.end());
+                    }), eventHandlers_.end());
         }
 
         template <typename Event>
@@ -129,14 +123,11 @@ namespace ui
         {
             const std::type_index eventType(typeid(Event));
             eventHandlers_.erase(
-                std::remove_if(
-                    eventHandlers_.begin(),
-                    eventHandlers_.end(),
+                std::remove_if(eventHandlers_.begin(), eventHandlers_.end(),
                     [eventType](const EventHandlerRecord &record)
                     {
                         return record.eventType == eventType;
-                    }),
-                eventHandlers_.end());
+                    }), eventHandlers_.end());
         }
 
     protected:
@@ -150,7 +141,6 @@ namespace ui
         virtual void onMount() {}
         virtual void onUnmount() {}
         virtual Node *hitTest(float x, float y) noexcept;
-        void deferLayoutMutation(std::function<void(Node &)> fn);
         TextPrimitive &textPrimitive() noexcept;
 
     private:
@@ -160,14 +150,12 @@ namespace ui
             std::type_index eventType = typeid(void);
             std::function<void(UIEvent &, Node &)> callback;
         };
-
         static CoordinateTransform &coordinateTransform() { static thread_local CoordinateTransform transform; return transform; }
         static EventHandlerId nextEventHandlerId() noexcept
         {
             static std::atomic<EventHandlerId> next{1};
             return next.fetch_add(1, std::memory_order_relaxed);
         }
-
         Node *parent_ = nullptr;
         NodeTree *owner_ = nullptr;
         LayoutSizeValue size_{};
