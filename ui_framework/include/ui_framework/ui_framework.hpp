@@ -9,6 +9,8 @@
 #include "ui_framework/text_layout.hpp"
 #include "ui_framework/text_node.hpp"
 #include "ui_framework/ui_manager.hpp"
+#include "ui_framework/components/heading.hpp"
+#include "ui_framework/components/paragraph.hpp"
 
 #include "ui_framework/components/button.hpp"
 #include "ui_framework/components/checkbox.hpp"
