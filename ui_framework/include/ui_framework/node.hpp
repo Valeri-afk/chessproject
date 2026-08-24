@@ -134,6 +134,7 @@ namespace ui
         template <typename Event> EventHandlerId addHandler(std::function<void(Event &, Node &)> handler) { return on<Event>(std::move(handler)); }
         template <typename Event> void removeHandler(EventHandlerId handlerId) { removeEventHandler<Event>(handlerId); }
         template <typename Event> void clearHandlers() { clearEventHandlers<Event>(); }
+        void invalidateLayout() noexcept;
         virtual void update(float dt) {}
         virtual void draw(SDL_Renderer *renderer) {}
         virtual LayoutSize measure(const MeasureContext &context) const { return measureContent(context.availableContentSize); }
