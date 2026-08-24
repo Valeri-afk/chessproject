@@ -1,4 +1,4 @@
-#include "text_layout.hpp"
+#include "ui_framework/text_layout.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -52,7 +52,6 @@ namespace ui
             }
 
             TTF_Font *get() const noexcept { return font_; }
-
             MeasureFont(const MeasureFont &) = delete;
             MeasureFont &operator=(const MeasureFont &) = delete;
 
