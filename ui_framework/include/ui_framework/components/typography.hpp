@@ -27,29 +27,39 @@ namespace ui
         void setText(std::string text);
         TTF_Font *getFont() const noexcept;
         void setFont(TTF_Font *font);
+
+        void setVariant(Variant variant) noexcept;
+        Variant getVariant() const noexcept;
+        void setFontSize(float logicalSize) noexcept;
         float getFontSize() const noexcept;
-        void setFontSize(float logicalSize);
+        void setLineHeight(float logicalLineHeight) noexcept;
+        float getLineHeight() const noexcept;
+        void setWrapMode(WrapMode mode) noexcept;
         WrapMode getWrapMode() const noexcept;
-        void setWrapMode(WrapMode mode);
+
         TextAlignment getHorizontalAlignment() const noexcept;
         void setHorizontalAlignment(TextAlignment alignment);
         TextAlignment getVerticalAlignment() const noexcept;
         void setVerticalAlignment(TextAlignment alignment);
         Color getColor() const noexcept;
         void setColor(const Color &color);
-        void setVariant(Variant variant) noexcept;
-        Variant getVariant() const noexcept;
 
     protected:
         LayoutSize measureContent(const LayoutSize &availableContent) const override;
         void draw(SDL_Renderer *renderer) override;
 
     private:
+        void applyVariantDefaults() noexcept;
+
         TextLayout textLayout_;
         std::unique_ptr<TextPrimitive> textPrimitive_;
         TextAlignment horizontalAlignment_ = TextAlignment::START;
         TextAlignment verticalAlignment_ = TextAlignment::START;
         Color color_ = Colors::white;
         Variant variant_ = Variant::BODY1;
+        bool fontSizeExplicit_ = false;
+        float explicitFontSize_ = 0.0f;
+        bool lineHeightExplicit_ = false;
+        float explicitLineHeight_ = 0.0f;
     };
 }
