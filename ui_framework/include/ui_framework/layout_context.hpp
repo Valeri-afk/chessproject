@@ -18,6 +18,7 @@ namespace ui
     {
         LayoutPosition contentPosition{};
         LayoutSize contentSize{};
+        std::function<LayoutSize(Node &)> desiredSize;
         std::function<void(Node &, const LayoutPosition &, const LayoutSize &)> arrangeChild;
     };
 }
