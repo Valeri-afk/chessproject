@@ -166,6 +166,30 @@ SDL_ttf backend
 
 The exact class decomposition is intentionally not frozen yet. The key contract is that text layout works in framework logical coordinates and rendering converts logical font size to physical raster size before rasterization when a presentation scale requires it.
 
+### Current Measure / Arrange boundary
+
+The framework's current `Measure`/`Arrange` API gives a component a logical content constraint during `Measure`, then a final logical content box during `Arrange`. The framework does not currently require components to expose line boxes or other retained text-layout artifacts through the public `ArrangeContext`.
+
+Therefore `TextLayout::measure()` should remain a logical measurement operation for now. It should not prematurely expose a public line-run/line-box model merely to accommodate the legacy renderer.
+
+The current implementation does, however, repeat text layout work in the rendering backend: `TextLayout` calculates the logical desired size while `TextPrimitive::draw()` configures wrapping and asks SDL_ttf for rendered size again. This is an implementation-level duplication, not yet a reason to expand the public API.
+
+Future direction:
+
+```text
+Measure
+    ↓
+TextLayout result / internal prepared layout
+    ↓
+Arrange
+    ↓
+final logical placement
+    ↓
+Draw consumes prepared layout
+```
+
+When concrete text features require stable line positions, hit-testing, selection, baseline access, ellipsis, or rich spans, the prepared layout result can become an explicit internal/public text-layout object. Until then, keep the public contract small.
+
 ## 5. Standalone text vs text embedded in components
 
 A standard component should not be forced to use `Text` as a child node merely because it displays text.
