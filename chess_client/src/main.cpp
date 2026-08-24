@@ -56,7 +56,11 @@ namespace
                 if (!child || !child->isVisible() || child->getPositionMode() == ui::PositionMode::Absolute)
                     continue;
 
-                const ui::LayoutSize childDesired = context.measureChild(*child, context.availableContentSize);
+                ui::LayoutSize childConstraints = context.availableContentSize;
+                if (visibleChildCount % 2 == 0)
+                    childConstraints.width *= 0.65f;
+
+                const ui::LayoutSize childDesired = context.measureChild(*child, childConstraints);
                 desired.width = std::max(desired.width, childDesired.width);
                 desired.height += childDesired.height;
                 ++visibleChildCount;
@@ -74,6 +78,7 @@ namespace
                 return;
 
             float y = context.contentPosition.y;
+            std::size_t visibleChildIndex = 0;
 
             for (std::size_t i = 0; i < getChildCount(); ++i)
             {
@@ -81,12 +86,19 @@ namespace
                 if (!child || !child->isVisible() || child->getPositionMode() == ui::PositionMode::Absolute)
                     continue;
 
-                const ui::LayoutSize childSize = context.desiredSize(*child);
+                const ui::LayoutSize desired = context.desiredSize(*child);
+                const float allocatedWidth =
+                    visibleChildIndex % 2 == 0
+                        ? context.contentSize.width * 0.65f
+                        : context.contentSize.width;
+
                 context.arrangeChild(
                     *child,
                     {context.contentPosition.x, y},
-                    {context.contentSize.width, childSize.height});
-                y += childSize.height + customSpacing_;
+                    {allocatedWidth, desired.height});
+
+                y += desired.height + customSpacing_;
+                ++visibleChildIndex;
             }
         }
 
