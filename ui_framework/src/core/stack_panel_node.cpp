@@ -63,7 +63,7 @@ namespace ui
         internal::LinearMeasureContext linearContext;
         linearContext.availableSize = context.availableContentSize;
         linearContext.measureChild = context.measureChild;
-        return internal::measureLinearPanel(*const_cast<StackPanelNode *>(this), linearContext);
+        return internal::measureLinearPanel(*this, linearContext);
     }
 
     void StackPanelNode::arrange(const ArrangeContext &context)
