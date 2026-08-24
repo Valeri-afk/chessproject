@@ -14,6 +14,7 @@
 #include <SDL3/SDL.h>
 
 #include "ui_framework/event_types.hpp"
+#include "ui_framework/layout_context.hpp"
 #include "ui_framework/types.hpp"
 
 namespace ui
@@ -136,6 +137,8 @@ namespace ui
         template <typename Event> void clearHandlers() { clearEventHandlers<Event>(); }
         virtual void update(float dt) {}
         virtual void draw(SDL_Renderer *renderer) {}
+        virtual LayoutSize measure(const MeasureContext &context) const { return measureContent(context.availableContentSize); }
+        virtual void arrange(const ArrangeContext &context) { arrangeContent(context.contentPosition, context.contentSize); }
         virtual LayoutSize measureContent(const LayoutSize &availableContent) const { (void)availableContent; return {}; }
         virtual void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize) { (void)contentPosition; (void)contentSize; }
         virtual void onMount() {}
