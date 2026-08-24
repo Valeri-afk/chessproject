@@ -28,7 +28,7 @@ namespace ui
         LayoutSize measureContent(const LayoutSize &availableContent) const override;
         void draw(SDL_Renderer *renderer) override;
     private:
-        TextPrimitive text_;
+        TextPrimitive textPrimitive_;
         std::string text_;
         TTF_Font *font_ = nullptr;
         TextAlignment horizontalAlignment_ = TextAlignment::START;
