@@ -2,7 +2,7 @@
 
 > **Status:** active implementation checkpoint
 > **Branch:** `fix/sharp-logical-text`
-> **Purpose:** freeze the architectural decisions reached during the Measure/Arrange and imperative invalidation investigation, distinguish settled semantics from implementation work, and define the completion criteria.
+> **Purpose:** freeze the architectural decisions reached during the Measure/Arrange, imperative invalidation, and text-layout investigation; distinguish settled semantics from implementation work; and define the remaining completion criteria.
 
 ## 1. Goal
 
@@ -296,21 +296,9 @@ Historical stretch behavior confirms this ordering.
 
 `Overflow::HIDDEN` does not participate in Measure/Arrange.
 
-The current `NodeTree::drawSubtree()` applies nested clipping through renderer-state RAII:
+The current `NodeTree::drawSubtree()` applies nested clipping through renderer-state RAII.
 
-```text
-previous clip
-    ∩
-node rect
-    ↓
-draw node and subtree
-    ↓
-restore previous renderer state
-```
-
-This is effectively stack semantics.
-
-`PanelNode` does not own child render traversal. `NodeTree` owns clipping, traversal ordering, mutation safety, root/overlay ordering, and the recursive draw traversal.
+`PanelNode` does not own child render traversal. `NodeTree` owns clipping, traversal ordering, mutation safety, root/overlay ordering, and recursive draw traversal.
 
 ### 2.19 No separate `invalidatePaint()` at this stage
 
@@ -326,51 +314,203 @@ After invalidation and before the next layout pass, the previous value remains r
 
 No explicit geometry-validity flag is required at this stage.
 
-### 2.21 TextPrimitive ownership and responsibility
+### 2.21 Text is now a separate typography/layout layer
 
-`TextPrimitive` is **not** a layout owner and must not be stored in base `Node`.
+The old standalone `TextNode` role is being replaced by public `Typography`.
 
-Its current intended role is a low-level text utility:
+The current direction is one typography component with a compact variant model rather than separate `Heading` and `Paragraph` components.
 
-```text
-TextPrimitive::measure()
-    → intrinsic text measurement / wrapping measurement
-
-TextPrimitive::draw()
-    → low-level text rendering
-```
-
-`TextNode` owns its own `TextPrimitive` and uses it from `measureContent()` and `draw()`.
-
-The framework therefore owns the outer Measure/Arrange process, while `TextNode` owns its component-specific text state and delegates the low-level text operation to `TextPrimitive`.
-
-`TextPrimitive` itself remains subject to a later focused review for wrapping, logical presentation, raster scaling, caching, and whether its API should eventually be split into narrower measurement/rendering responsibilities. That review is not allowed to reintroduce layout ownership into the primitive.
-
-## 3. Historical evidence used to settle the model
-
-The old `Valeri-afk/ui-framework` repository remains the primary historical reference for previous Measure/Arrange behavior.
-
-The most relevant evidence includes:
+Current semantic variants:
 
 ```text
-docs/PHASE2_CONSTRAINT_SEMANTICS.md
-docs/PHASE2_NUMERICAL_LAYOUT_CASES.md
-src/core/linear_layout.cpp
+INHERIT
+H1 / H2 / H3 / H4 / H5 / H6
+SUBTITLE1 / SUBTITLE2
+BODY1 / BODY2
+BUTTON
+CAPTION
+OVERLINE
 ```
 
-These establish the minimal constraint model, numeric acceptance cases, Auto semantics, min/max ordering, stretch behavior, padding/border composition, absolute children, and text wrapping constraints.
+The variants currently resolve to small default logical font-size presets. There is intentionally no full Material-style theme/resource system yet.
 
-The current `fix/sharp-logical-text` branch is the primary reference for the present architecture and runtime integration.
+Current `Typography` responsibilities:
 
-## 4. Current implementation status
+```text
+text
+font (non-owning client resource)
+variant
+logical font size
+logical line height
+wrap mode
+horizontal / vertical alignment
+color
+Measure
+Arrange
+Draw delegation
+```
+
+### 2.22 Logical text size is resolved before rasterization
+
+The required text pipeline is:
+
+```text
+logical font size
+    ↓
+presentation scale
+    ↓
+physical raster font size
+    ↓
+SDL_ttf rasterization
+```
+
+An 8 logical-pixel font must therefore be rasterized at the required physical size rather than rasterized at 8 physical pixels and then scaled as a bitmap.
+
+The current backend already contains the necessary raster-font copy/generation logic and that behavior must be preserved through the cleanup.
+
+### 2.23 SDL_ttf owns the basic font metrics
+
+The framework should not invent a separate font-metrics engine for basic Typography needs.
+
+The current text layout uses SDL_ttf facilities for:
+
+```text
+font size
+font height
+font ascent/descent when needed later
+font line skip
+wrapped text size
+```
+
+`lineHeight == 0` means native SDL_ttf line skip for the current font.
+
+A public baseline API is intentionally deferred until a concrete inline/rich-text/caret use case requires it.
+
+### 2.24 Text resource ownership is intentionally provisional
+
+The current source-resource boundary is:
+
+```text
+Client creates TTF_Font*
+    ↓
+Client owns its lifetime
+    ↓
+Framework consumes non-owning TTF_Font*
+```
+
+Framework/backend owns derived resources such as copied raster fonts, `TTF_TextEngine`, and `TTF_Text` objects.
+
+The lifetime relationship between client-owned source fonts and framework-owned derived caches is explicitly documented as an unresolved edge case. No general `ResourceManager` is introduced at this stage.
+
+### 2.25 Font mutation and layout invalidation are separate
+
+The backend may inspect `TTF_GetFontGeneration()` to refresh derived raster resources.
+
+That backend cache check does **not** invalidate framework layout.
+
+If the client mutates a font in a way that may change metrics or wrapping, the client/component must explicitly call `invalidateLayout()` on affected nodes.
+
+### 2.26 TextLayoutResult is local to text components
+
+The current text layer introduces:
+
+```text
+TextLayoutResult
+    desiredSize
+    lineHeight
+    lineCount
+```
+
+`TextLayout::measureLayout()` produces the prepared logical result; the legacy `measure()` remains a convenience wrapper returning only `desiredSize`.
+
+The result is not added to base `Node` or `ArrangeContext` yet because generic Node layout does not require text-specific metadata.
+
+For `Typography`, the intended lifecycle is:
+
+```text
+Measure
+    → result under Measure constraint
+
+Arrange
+    → re-resolve wrapping under actual allocated width
+
+Draw
+    → consume the arranged text state
+```
+
+This avoids treating the Measure result as final when wrapping width can change during parent allocation.
+
+### 2.27 TextPrimitive is not a layout owner
+
+`TextPrimitive` is explicitly not part of the framework layout contract.
+
+Its current code still contains historical layout-related behavior such as wrap-width setup, rendered-size queries, alignment calculation, and low-level rendering. This is the remaining cleanup target.
+
+The desired endpoint is:
+
+```text
+Typography / text component
+    ↓
+TextLayoutResult + TextRenderState
+    ↓
+low-level text renderer/backend
+    ↓
+SDL_ttf + renderer
+```
+
+### 2.28 TextPrimitive likely should be renamed after semantic cleanup
+
+The current name `TextPrimitive` reflects the old layout-engine representation and is misleading once it no longer owns layout semantics.
+
+The preferred name after the API cleanup is:
+
+```text
+TextRenderer
+```
+
+because the surviving responsibility is expected to be:
+
+```text
+SDL_ttf text object/cache management
+physical raster font preparation
+logical → physical render conversion
+renderer state handling
+actual glyph/text draw
+```
+
+`TextPrimitive` should not be renamed prematurely while old callers still use the compatibility overload. Rename is a final mechanical cleanup after migration to the new render-state contract.
+
+### 2.29 TextPrimitive should not necessarily survive as a public concept
+
+Even after the rename, `TextRenderer` is expected to be an internal/backend class rather than part of the client-facing framework API.
+
+The final decision is therefore:
+
+```text
+Do not expose TextPrimitive/TextRenderer as a client extension point.
+
+Keep an internal renderer object only if it simplifies:
+    renderer cache lifetime
+    SDL_ttf text object ownership
+    raster font caching
+    logical → physical conversion
+
+If those responsibilities can be expressed as a smaller internal implementation
+without a persistent object, the class may disappear entirely at the final
+cleanup stage.
+```
+
+This is intentionally different from the old `TextPrimitive` concept: it is no longer a framework layout primitive.
+
+## 3. Current implementation status
 
 ### Architecture / semantics
 
 ```text
 Imperative invalidation                DONE / settled
 Measure on Node                       DONE / settled
-Measure on PanelNode                  DONE / settled
 Arrange on Node                       DONE / settled
+Measure on PanelNode                  DONE / settled
 Arrange on PanelNode                  DONE / settled
 PanelNode as structural capability    DONE / settled
 Auto/min/max semantics                DONE / validated
@@ -378,7 +518,11 @@ Border-box semantics                  DONE / validated
 Overflow clipping model               DONE / validated
 Root-based layout queue               DONE / validated
 Re-invalidation semantics             DONE / validated
-TextPrimitive ownership boundary      DONE / settled
+Client-owned source font boundary     DONE / provisional
+Typography component direction        DONE / settled
+TextLayoutResult direction             DONE / settled
+TextPrimitive final role               IN PROGRESS
+TextRenderer rename                    DEFERRED until migration complete
 ```
 
 ### Implementation / migration
@@ -387,23 +531,44 @@ TextPrimitive ownership boundary      DONE / settled
 Node public Measure/Arrange hooks
     PRESENT
 
-Node → TextPrimitive coupling removed
-    DONE
+NodeTree root/coalesced invalidation
+    PRESENT
 
-TextNode → own TextPrimitive
-    DONE
+TextLayout logical font sizing
+    PRESENT
 
-Old deferLayoutMutation path removal
-    IN PROGRESS / audit remaining uses
+TextLayout logical line height
+    PRESENT
 
-Migration of all real components
+Typography component
+    PRESENT / migration in progress
+
+TextLayoutResult
+    PRESENT
+
+TextRenderState
+    PRESENT
+
+New TextPrimitive render-state overload
+    PRESENT
+
+Typography → Arrange-specific text resolution
+    PRESENT
+
+TextPrimitive old layout-heavy draw path
+    STILL PRESENT / cleanup target
+
+Embedded text components fully migrated
     NOT DONE
 
-Framework-known property invalidation audit
+Old TextNode compatibility cleanup
     NOT DONE
 
-TextPrimitive semantic/layout review
+Framework-wide explicit invalidation audit
     NOT DONE
+
+Typography policy/theme layer
+    NOT PLANNED YET
 
 Full framework build/runtime validation
     NOT DONE
@@ -412,57 +577,70 @@ Real chess client validation
     NOT DONE
 ```
 
-The project is now beyond the initial architecture-definition stage and is in the **active migration/cleanup stage**. The base layout contract is substantially settled; the remaining risk is implementation completeness and preserving the verified historical semantics while migrating real components.
+## 4. Remaining implementation work
 
-## 5. Remaining implementation work
+### Step 1 — Complete the text renderer split
 
-### Step 1 — Finish old-layout mechanism audit
+Finish the new `TextRenderState + TextLayoutResult` path in the backend.
 
-Search the current branch for all remaining:
-
-```text
-deferLayoutMutation
-property-driven deferred layout callbacks
-implicit property → layout scheduling
-old layout hook names
-base-Node text/layout helpers that no longer belong there
-```
-
-Each remaining use must either be removed or explicitly justified as unrelated to the new layout contract.
-
-### Step 2 — Finish public Measure/Arrange implementation
-
-Confirm that the production layout traversal uses only the intended hooks:
+Then remove from the renderer layer the semantics that belong to `TextLayout`/component policy:
 
 ```text
-Node::measure(const MeasureContext&)
-Node::arrange(const ArrangeContext&)
-Node::draw(...)
+wrapping decisions
+alignment policy
+logical geometry calculation
+layout measurement
 ```
 
-and that no experimental duplicate layout path remains.
+The renderer should retain only physical/backend responsibilities.
 
-### Step 3 — Migrate real components
+### Step 2 — Migrate all text-bearing components
 
 Audit and migrate at least:
 
 ```text
-TextNode
+TextNode / legacy text component
+Typography
 Button
 MenuItem
-StackPanelNode
+TabItem
 Dropdown
-Checkbox
-other real layout-affecting components
+other real text-bearing controls
 ```
 
-Validate leaf components through `measureContent()` where appropriate and containers through custom Measure/Arrange.
+Each should either:
 
-For each component verify its custom state remains local and that its layout consequences are expressed through Measure/Arrange plus explicit invalidation.
+```text
+own a TextLayout/text state directly
+```
 
-### Step 4 — Complete imperative invalidation migration
+or use the shared internal text contract.
 
-Audit framework-known layout properties and custom component setters.
+Do not make every control a child `Typography` node merely to draw a string.
+
+### Step 3 — Decide final TextRenderer existence
+
+After migration, inspect the remaining backend responsibilities.
+
+Keep an internal `TextRenderer` only if its object lifetime/cache state is useful. Otherwise fold the implementation into a smaller text-rendering subsystem and remove the class completely.
+
+The old name `TextPrimitive` must not survive the final public API.
+
+### Step 4 — Remove legacy TextNode/compatibility paths
+
+After all real callers migrate:
+
+```text
+remove old TextNode public role if no longer required
+remove old TextPrimitive draw overload
+remove old measure compatibility helpers if unused
+```
+
+Do not perform this before the actual callers are migrated.
+
+### Step 5 — Finish imperative invalidation audit
+
+Audit framework-known and custom state that can affect Measure/Arrange.
 
 Required rule:
 
@@ -472,36 +650,15 @@ state mutation
 explicit invalidateLayout()
 ```
 
-Do not restore hidden setter-driven `deferLayoutMutation()` scheduling merely to reduce client call sites.
+Do not restore hidden setter-driven layout scheduling merely to reduce client call sites.
 
-### Step 5 — Finish TextPrimitive review
+Interactive callbacks may explicitly call `invalidateLayout()` when interaction changes geometry.
 
-Do not redesign it speculatively. Validate first:
+### Step 6 — Final layout/text acceptance coverage
 
-```text
-measure(font, text, availableWidth)
-    → wrapping semantics
-
-TextNode Measure
-    → content constraint semantics
-
-TextNode Arrange
-    → actual content box / alignment
-
-TextPrimitive draw
-    → actual allocated geometry
-    → logical presentation / integer scaling
-    → clipping compatibility
-```
-
-Then decide whether `TextPrimitive` needs an API cleanup. The default is to keep it as a rendering/measurement utility.
-
-### Step 6 — Custom layout acceptance coverage
-
-Maintain a focused custom-panel test that combines:
+Maintain focused acceptance cases combining:
 
 ```text
-custom layout property
 custom Measure/Arrange
 min/max
 fixed size
@@ -510,10 +667,13 @@ stretch
 padding
 border
 text wrapping
+font size
+line height
+logical presentation scaling
 invalidateLayout()
 ```
 
-The test must include real constraint conflicts, not only compatible values.
+The text cases should specifically verify that a logical font size is converted to physical raster size before rasterization.
 
 ### Step 7 — Runtime/build validation
 
@@ -526,10 +686,12 @@ run existing tests
 run custom layout acceptance tests
 verify resize
 verify text wrapping
+verify line height
 verify clipping
 verify overlays/modals
 verify structural mutation
 verify repeated invalidation
+verify text at presentation scales
 ```
 
 Historical Phase 2 numerical cases remain semantic acceptance references.
@@ -540,14 +702,14 @@ Only after runtime validation:
 
 ```text
 remove obsolete helpers
-remove obsolete documentation about the old property/layout model
-remove duplicate compatibility paths
+remove obsolete documentation about old property/layout models
+remove compatibility overloads
+rename TextPrimitive → TextRenderer if retained
+or remove the class completely if its responsibilities collapse naturally
 update public documentation
 ```
 
-Keep historical reference material in the old repository.
-
-## 6. Definition of done
+## 5. Definition of done
 
 The refactor is complete when all of the following are true:
 
@@ -574,14 +736,23 @@ The refactor is complete when all of the following are true:
 9. Re-invalidation during Measure/Arrange remains deferred rather than
    recursively re-entering layout.
 
-10. TextPrimitive is a lower-level utility and is not a base-Node layout owner.
+10. Typography is the single public standalone text component family;
+    separate Heading/Paragraph components are not required.
 
-11. The real chess client builds and runs correctly on the new model.
+11. Text layout works in logical coordinates and rasterizes at physical size
+    before rendering.
 
-12. Historical numerical acceptance cases remain semantically satisfied.
+12. Text rendering backend is not a layout owner.
+
+13. TextPrimitive is either removed or reduced to an internal renderer with a
+    correct name such as TextRenderer.
+
+14. The real chess client builds and runs correctly on the new model.
+
+15. Historical numerical acceptance cases remain semantically satisfied.
 ```
 
-## 7. Working mode from this checkpoint onward
+## 6. Working mode from this checkpoint onward
 
 The architecture-definition phase is considered largely complete.
 
@@ -604,12 +775,11 @@ update this checkpoint if the architectural contract changes
 Current priority order:
 
 ```text
-1. remaining old-layout/deferred-mutation cleanup
-2. real component migration
-3. explicit invalidation audit
-4. TextPrimitive semantic review
-5. build + runtime + chess-client validation
-6. final cleanup
+1. finish TextPrimitive → renderer split
+2. migrate all real text-bearing components
+3. remove legacy TextNode / compatibility paths
+4. complete explicit invalidation audit
+5. final TextRenderer existence/name decision
+6. build + runtime + chess-client validation
+7. final cleanup
 ```
-
-The next work should therefore prioritize **implementation and migration**, not further speculative redesign.
