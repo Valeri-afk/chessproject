@@ -10,14 +10,14 @@ namespace ui
         addChild(std::move(trigger),0); addChild(std::move(menu),1);
     }
     MenuItem *Dropdown::addItem(std::unique_ptr<MenuItem> item,size_t index){ if(!item||!menu_) return nullptr; return menu_->addItem(std::move(item),index); }
-    void Dropdown::removeItem(MenuItem &item){ if(menu_) menu_->removeItem(item); if(selectedItem_==&item){selectedItem_=nullptr;selectedIndex_=INVALID_INDEX;if(trigger_)trigger_->setText(placeholder_);} }
-    void Dropdown::open(){if(!menu_||!isEnabled())return;syncMenuGeometry();menu_->setVisible(true);}
-    void Dropdown::close() noexcept{if(menu_)menu_->setVisible(false);}
+    void Dropdown::removeItem(MenuItem &item){ if(menu_) menu_->removeItem(item); if(selectedItem_==&item){selectedItem_=nullptr;selectedIndex_=INVALID_INDEX;if(trigger_)trigger_->setText(placeholder_);invalidateLayout();} }
+    void Dropdown::open(){if(!menu_||!isEnabled())return;syncMenuGeometry();menu_->setVisible(true);invalidateLayout();}
+    void Dropdown::close() noexcept{if(!menu_||!menu_->isVisible())return;menu_->setVisible(false);invalidateLayout();}
     void Dropdown::toggle(){if(isOpen())close();else open();}
     bool Dropdown::isOpen() const noexcept{return menu_&&menu_->isVisible();}
     MenuItem *Dropdown::getSelectedItem() const noexcept{return selectedItem_;}
     size_t Dropdown::getSelectedIndex() const noexcept{return selectedIndex_;}
-    void Dropdown::clearSelection() noexcept{if(selectedItem_)selectedItem_->setSelected(false);selectedItem_=nullptr;selectedIndex_=INVALID_INDEX;if(trigger_)trigger_->setText(placeholder_);}
+    void Dropdown::clearSelection() noexcept{if(selectedItem_)selectedItem_->setSelected(false);selectedItem_=nullptr;selectedIndex_=INVALID_INDEX;if(trigger_)trigger_->setText(placeholder_);invalidateLayout();}
     Button &Dropdown::getTrigger() noexcept{return *trigger_;}
     const Button &Dropdown::getTrigger() const noexcept{return *trigger_;}
     Menu &Dropdown::getMenu() noexcept{return *menu_;}
