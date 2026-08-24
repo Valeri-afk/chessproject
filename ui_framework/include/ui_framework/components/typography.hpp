@@ -44,14 +44,18 @@ namespace ui
         Color getColor() const noexcept;
         void setColor(const Color &color);
 
+        const TextLayoutResult &getLayoutResult() const noexcept { return layoutResult_; }
+
     protected:
         LayoutSize measureContent(const LayoutSize &availableContent) const override;
+        void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize) override;
         void draw(SDL_Renderer *renderer) override;
 
     private:
         void applyVariantDefaults() noexcept;
 
         TextLayout textLayout_;
+        mutable TextLayoutResult layoutResult_{};
         std::unique_ptr<TextPrimitive> textPrimitive_;
         TextAlignment horizontalAlignment_ = TextAlignment::START;
         TextAlignment verticalAlignment_ = TextAlignment::START;
@@ -61,5 +65,7 @@ namespace ui
         float explicitFontSize_ = 0.0f;
         bool lineHeightExplicit_ = false;
         float explicitLineHeight_ = 0.0f;
+        LayoutPosition arrangedContentPosition_{};
+        LayoutSize arrangedContentSize_{};
     };
 }
