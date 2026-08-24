@@ -1,4 +1,6 @@
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <memory>
 #include <string>
 
@@ -7,6 +9,7 @@
 
 #include <ui_framework/colors.hpp>
 #include <ui_framework/ui_manager.hpp>
+#include <ui_framework/panel_node.hpp>
 #include <ui_framework/components/button.hpp>
 #include <ui_framework/components/dropdown.hpp>
 #include <ui_framework/components/menu_item.hpp>
@@ -25,6 +28,85 @@ namespace
 
         return std::string(basePath) + relativePath;
     }
+
+    class CustomSpacingPanel final : public ui::PanelNode
+    {
+    public:
+        void setCustomSpacing(float spacing) noexcept
+        {
+            if (!std::isfinite(spacing) || spacing < 0.0f || customSpacing_ == spacing)
+                return;
+            customSpacing_ = spacing;
+        }
+
+        float getCustomSpacing() const noexcept { return customSpacing_; }
+
+    protected:
+        ui::LayoutSize measure(const ui::MeasureContext &context) const override
+        {
+            ui::LayoutSize desired{};
+            std::size_t visibleChildCount = 0;
+
+            if (!context.measureChild)
+                return desired;
+
+            for (std::size_t i = 0; i < getChildCount(); ++i)
+            {
+                const ui::Node *child = getChild(i);
+                if (!child || !child->isVisible() || child->getPositionMode() == ui::PositionMode::Absolute)
+                    continue;
+
+                const std::size_t visibleIndex = getVisibleIndex(i);
+                const ui::LayoutSize childDesired = context.measureChild(visibleIndex, context.availableContentSize);
+                desired.width = std::max(desired.width, childDesired.width);
+                desired.height += childDesired.height;
+                ++visibleChildCount;
+            }
+
+            if (visibleChildCount > 1)
+                desired.height += customSpacing_ * static_cast<float>(visibleChildCount - 1);
+
+            return desired;
+        }
+
+        void arrange(const ui::ArrangeContext &context) override
+        {
+            if (!context.arrangeChild)
+                return;
+
+            float y = context.contentPosition.y;
+
+            for (std::size_t i = 0; i < getChildCount(); ++i)
+            {
+                const ui::Node *child = getChild(i);
+                if (!child || !child->isVisible() || child->getPositionMode() == ui::PositionMode::Absolute)
+                    continue;
+
+                const std::size_t visibleIndex = getVisibleIndex(i);
+                const ui::LayoutSize childSize = child->getDesiredSize();
+                context.arrangeChild(
+                    visibleIndex,
+                    {context.contentPosition.x, y},
+                    {context.contentSize.width, childSize.height});
+                y += childSize.height + customSpacing_;
+            }
+        }
+
+    private:
+        std::size_t getVisibleIndex(std::size_t childIndex) const noexcept
+        {
+            std::size_t visibleIndex = 0;
+            for (std::size_t i = 0; i < childIndex; ++i)
+            {
+                const ui::Node *child = getChild(i);
+                if (child && child->isVisible())
+                    ++visibleIndex;
+            }
+            return visibleIndex;
+        }
+
+        float customSpacing_ = 2.0f;
+    };
 }
 
 int main()
@@ -86,14 +168,9 @@ int main()
         return -1;
     }
 
-    // Keep the UI runtime alive while all client-owned fonts are alive. The
-    // framework may retain internal TTF_Text objects that reference these fonts.
     {
         ui::UIManager uiManager;
 
-        // Header buttons. Most use the 8 px logical font; Statistics uses a
-        // different font object so the shared TextPrimitive exercises cache
-        // invalidation and reuse across different fonts and text strings.
         constexpr std::array<const char *, 4> buttonLabels{"Play", "Openings", "Academy", "Statistics"};
         constexpr float buttonWidth = 52.0f;
         constexpr float buttonGap = 3.0f;
@@ -115,7 +192,44 @@ int main()
             x += buttonWidth + buttonGap;
         }
 
-        // One dropdown in the header.
+        auto customPanel = std::make_unique<CustomSpacingPanel>();
+        CustomSpacingPanel *customPanelPtr = customPanel.get();
+        customPanel->setPosition({8.0f, 38.0f});
+        customPanel->setSize(ui::LayoutSizeValue::fixed(120.0f, 82.0f));
+        customPanel->setCustomSpacing(2.0f);
+
+        for (const char *label : {"Custom A", "Custom B", "Custom C"})
+        {
+            auto child = std::make_unique<ui::Button>();
+            child->setText(label);
+            child->setFont(font);
+            child->setTextColor(ui::Colors::white);
+            child->setBackgroundColor(ui::Colors::gray);
+            child->setBorderColor(ui::Colors::gray);
+            child->setVariant(ui::Button::Variant::FILLED);
+            customPanel->addChild(std::move(child), customPanel->getChildCount());
+        }
+
+        ui::Button *spacingButton = new ui::Button();
+        std::unique_ptr<ui::Button> spacingButtonOwner(spacingButton);
+        spacingButton->setText("Grow gap");
+        spacingButton->setFont(font);
+        spacingButton->setTextColor(ui::Colors::white);
+        spacingButton->setBackgroundColor(ui::Colors::gray);
+        spacingButton->setBorderColor(ui::Colors::gray);
+        spacingButton->setVariant(ui::Button::Variant::FILLED);
+        spacingButton->setPosition({140.0f, 38.0f});
+        spacingButton->setSize(ui::LayoutSizeValue::fixed(70.0f, 20.0f));
+        spacingButton->setOnActivate(
+            [customPanelPtr, &uiManager](ui::Button &)
+            {
+                customPanelPtr->setCustomSpacing(customPanelPtr->getCustomSpacing() + 3.0f);
+                uiManager.invalidateLayout(*customPanelPtr);
+            });
+
+        uiManager.addRoot(std::move(customPanel));
+        uiManager.addRoot(std::move(spacingButtonOwner));
+
         auto dropdown = std::make_unique<ui::Dropdown>();
         dropdown->setPosition({239.0f, 2.0f});
         dropdown->setSize(ui::LayoutSizeValue::fixed(73.0f, 20.0f));
