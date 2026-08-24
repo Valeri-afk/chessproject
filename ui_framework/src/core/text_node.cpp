@@ -44,6 +44,6 @@ namespace ui
         const LayoutSize contentSize{
             std::max(0.0f, size.width - border.left - border.right - padding.left - padding.right),
             std::max(0.0f, size.height - border.top - border.bottom - padding.top - padding.bottom)};
-        text_.draw(renderer, text_, font_, horizontalAlignment_, verticalAlignment_, color_, contentPosition, contentSize);
+        textPrimitive_.draw(renderer, text_, font_, horizontalAlignment_, verticalAlignment_, color_, contentPosition, contentSize);
     }
 }
