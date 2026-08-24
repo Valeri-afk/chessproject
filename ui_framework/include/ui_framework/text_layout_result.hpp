@@ -8,6 +8,7 @@ namespace ui
     {
         LayoutSize desiredSize{};
         float lineHeight = 0.0f;
+        float wrapWidth = 0.0f;
         int lineCount = 0;
     };
 }
