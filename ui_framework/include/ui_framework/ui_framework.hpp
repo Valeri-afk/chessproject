@@ -6,6 +6,7 @@
 #include "ui_framework/node.hpp"
 #include "ui_framework/panel_node.hpp"
 #include "ui_framework/stack_panel_node.hpp"
+#include "ui_framework/text_layout.hpp"
 #include "ui_framework/text_node.hpp"
 #include "ui_framework/ui_manager.hpp"
 
