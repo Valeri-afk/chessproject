@@ -1,19 +1,16 @@
 #pragma once
 
 #include <functional>
-#include <memory>
 #include <string>
 
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include "ui_framework/node.hpp"
 #include "ui_framework/event_types.hpp"
-#include "ui_framework/text_layout.hpp"
+#include "../core/text_content.hpp"
 
 namespace ui
 {
-    class TextPrimitive;
-
     class Button : public Node
     {
     public:
@@ -55,6 +52,7 @@ namespace ui
         virtual Color presentationTextColor() const noexcept;
         void update(float dt) override;
         LayoutSize measureContent(const LayoutSize &availableContent) const override;
+        void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize) override;
         void draw(SDL_Renderer *renderer) override;
     private:
         void setDefaultGeometry();
@@ -65,8 +63,7 @@ namespace ui
         void handleMouseLeave(MouseLeaveEvent &event);
         static Color multiplyAlpha(Color color, float factor) noexcept;
         static Color lighten(Color color, float amount) noexcept;
-        TextLayout textLayout_;
-        std::unique_ptr<TextPrimitive> textPrimitive_;
+        TextContent text_;
         Color textColor_ = Colors::white;
         Variant variant_ = Variant::FILLED;
         Color backgroundColor_ = Colors::gray;
