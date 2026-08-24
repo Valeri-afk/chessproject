@@ -40,8 +40,6 @@ namespace ui
 
     void Typography::setText(std::string text)
     {
-        if (text_.getText() == text)
-            return;
         text_.setText(std::move(text));
     }
 
@@ -49,8 +47,6 @@ namespace ui
 
     void Typography::setFont(TTF_Font *font)
     {
-        if (text_.getFont() == font)
-            return;
         text_.setFont(font);
     }
 
@@ -88,17 +84,11 @@ namespace ui
 
     TextAlignment Typography::getHorizontalAlignment() const noexcept { return text_.getHorizontalAlignment(); }
 
-    void Typography::setHorizontalAlignment(TextAlignment alignment) noexcept
-    {
-        text_.setHorizontalAlignment(alignment);
-    }
+    void Typography::setHorizontalAlignment(TextAlignment alignment) { text_.setHorizontalAlignment(alignment); }
 
     TextAlignment Typography::getVerticalAlignment() const noexcept { return text_.getVerticalAlignment(); }
 
-    void Typography::setVerticalAlignment(TextAlignment alignment) noexcept
-    {
-        text_.setVerticalAlignment(alignment);
-    }
+    void Typography::setVerticalAlignment(TextAlignment alignment) { text_.setVerticalAlignment(alignment); }
 
     Color Typography::getColor() const noexcept { return text_.getColor(); }
 
@@ -121,7 +111,14 @@ namespace ui
 
     void Typography::applyVariantDefaults() noexcept
     {
-        text_.setFontSize(fontSizeExplicit_ ? explicitFontSize_ : defaultFontSize(variant_));
-        text_.setLineHeight(lineHeightExplicit_ ? explicitLineHeight_ : 0.0f);
+        if (!fontSizeExplicit_)
+            text_.setFontSize(defaultFontSize(variant_));
+        else
+            text_.setFontSize(explicitFontSize_);
+
+        if (!lineHeightExplicit_)
+            text_.setLineHeight(0.0f);
+        else
+            text_.setLineHeight(explicitLineHeight_);
     }
 }
