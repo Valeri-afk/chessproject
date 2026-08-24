@@ -27,5 +27,5 @@ namespace ui
     void Dropdown::setOnSelectionChanged(SelectionCallback callback){onSelectionChanged_=std::move(callback);}
     void Dropdown::handleTriggerActivate(){toggle();}
     void Dropdown::handleItemActivate(MenuItem &item){size_t index=INVALID_INDEX;if(menu_){for(size_t i=0;i<menu_->getChildCount();++i){if(menu_->getChild(i)==&item){index=i;break;}}}if(index==INVALID_INDEX||!item.isEnabled()||!item.isVisible())return;if(selectedItem_&&selectedItem_!=&item)selectedItem_->setSelected(false);selectedItem_=&item;selectedIndex_=index;selectedItem_->setSelected(true);if(trigger_)trigger_->setText(item.getText());close();if(onSelectionChanged_)onSelectionChanged_(*this,item);}
-    void Dropdown::syncMenuGeometry(){if(!trigger_||!menu_)return;const auto p=trigger_->getPosition();const auto s=trigger_->getDesiredSize();menu_->setPosition({p.x,p.y+s.height});menu_->setSize(LayoutSizeValue::fixed(s.width,menu_->getDesiredSize().height));}
+    void Dropdown::syncMenuGeometry(){if(!trigger_||!menu_)return;const auto p=trigger_->getPosition();const auto s=trigger_->getDesiredSize();menu_->setPosition({p.x,p.y+s.height});menu_->setSize(LayoutSizeValue{{LayoutValueType::Value,s.width},LayoutValue::autoValue()});}
 }
