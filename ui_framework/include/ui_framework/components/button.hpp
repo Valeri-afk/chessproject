@@ -1,16 +1,18 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include "ui_framework/node.hpp"
 #include "ui_framework/event_types.hpp"
-#include "../core/text_content.hpp"
 
 namespace ui
 {
+    class TextContent;
+
     class Button : public Node
     {
     public:
@@ -63,7 +65,7 @@ namespace ui
         void handleMouseLeave(MouseLeaveEvent &event);
         static Color multiplyAlpha(Color color, float factor) noexcept;
         static Color lighten(Color color, float amount) noexcept;
-        TextContent text_;
+        std::unique_ptr<TextContent> text_;
         Color textColor_ = Colors::white;
         Variant variant_ = Variant::FILLED;
         Color backgroundColor_ = Colors::gray;
