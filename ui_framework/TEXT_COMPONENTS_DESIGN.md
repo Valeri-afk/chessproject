@@ -24,9 +24,9 @@ Established UI frameworks commonly provide a small simple-text component plus ri
 
 Examples:
 
-- Flutter has `Text` for normal single-string text and `RichText` for multi-style text spans. `SelectableText` is a capability-oriented interaction variant rather than a separate typography hierarchy. citehttps://api.flutter.dev/flutter/widgets/Text-class.html
-- Qt uses `QLabel` for ordinary text/image display and reserves document-oriented controls such as `QTextEdit`/`QTextBrowser` for richer or larger text content. citehttps://doc.qt.io/qt-6/qlabel.html citehttps://doc.qt.io/qt-6/qtextbrowser.html
-- WPF separates lightweight `TextBlock`/`Label` use from `FlowDocument`/`Paragraph` when document-style flow and rich content are required. citehttps://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/optimizing-performance-text citehttps://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/flow-document-overview
+- Flutter has `Text` for normal single-string text and `RichText` for multi-style text spans. `SelectableText` is a capability-oriented interaction variant rather than a separate typography hierarchy.
+- Qt uses `QLabel` for ordinary text/image display and reserves document-oriented controls such as `QTextEdit`/`QTextBrowser` for richer or larger text content.
+- WPF separates lightweight `TextBlock`/`Label` use from `FlowDocument`/`Paragraph` when document-style flow and rich content are required.
 
 These frameworks are references rather than architectural authorities. The target is a smaller retained-mode C++/SDL framework.
 
@@ -256,13 +256,59 @@ The current `TextPrimitive` contains an implementation of this principle through
 
 ## 8. Resource ownership
 
-The framework currently does not have a general resource manager for fonts/textures/images, and the existing public contract intentionally permits `TTF_Font*` to cross the framework/client boundary.
+### Current boundary
 
-Do not introduce a general `FontManager` or resource-handle system solely to complete this refactor.
+At the current stage, the intended resource boundary is:
 
-Text layout/backend code may cache derived SDL_ttf objects, but their lifetime must remain clearly separated from framework Node ownership and from client-owned `TTF_Font*` lifetime.
+```text
+Client
+    │
+    ├── creates SDL / SDL_ttf resources
+    └── is responsible for their lifetime
+            │
+            ▼
+Framework
+    └── consumes resources through the public API
+```
 
-Any derived raster font or `TTF_TextEngine`/`TTF_Text` cache must not implicitly become a new public resource-ownership contract.
+In particular, `TTF_Font*` may be created and owned by the client and passed into framework components such as `TextNode`, `Button`, `MenuItem`, and `TabItem`.
+
+This is the **current working boundary**, not a final resource-management architecture.
+
+### Current ambiguity / unresolved responsibility
+
+There are not yet enough framework use cases to prove that client-owned resource lifetime remains sufficient in every scenario. In particular, derived and cached resources introduce a second lifetime domain:
+
+```text
+client-owned TTF_Font*
+        │
+        ▼
+framework/backend caches
+        ├── copied raster font
+        ├── TTF_TextEngine
+        └── TTF_Text
+```
+
+The framework may own these derived/cache objects, but the exact lifetime relationship between the source client resource and framework-owned derived objects is not yet a fully specified public contract.
+
+Therefore the documentation must treat resource lifetime responsibility as **currently ambiguous at the edge between client-owned source resources and framework-owned derived/cache resources**.
+
+The framework must not silently imply that destroying a client-owned `TTF_Font*` is always safe while a framework cache still depends on it, nor should the current implementation be interpreted as establishing a general resource manager.
+
+### What is intentionally NOT being introduced now
+
+Do not introduce a general `FontManager`, `ResourceManager`, or opaque resource-handle system solely to complete the text/layout refactor.
+
+The present goal is to preserve the existing client-owned source-resource boundary while explicitly recording the unresolved lifecycle edge so it can be revisited when real use cases expose a limitation.
+
+### Practical current rule
+
+Until this boundary is revisited:
+
+- the client should keep every source `TTF_Font*` alive for as long as any framework component/backend operation may use it;
+- framework-owned derived objects must be released by the framework/backend according to their own implementation lifetime;
+- no assumption should be made that framework caches extend the lifetime of a client-owned source resource;
+- no assumption should be made that a future resource manager will necessarily replace this boundary.
 
 ## 9. Initial implementation order
 
@@ -286,4 +332,5 @@ The following are deliberately not frozen yet:
 - exact relationship between layout cache and SDL_ttf `TTF_Text` object;
 - exact lifetime model for derived raster fonts and text engines;
 - whether rich text belongs in this framework at all;
-- how text selection should be introduced later for input/selection scenarios.
+- how text selection should be introduced later for input/selection scenarios;
+- whether the current client-owned resource boundary is sufficient once the framework has more long-lived/shared/cached resource use cases.
