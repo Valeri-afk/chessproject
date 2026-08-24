@@ -1,19 +1,16 @@
 #pragma once
 
 #include <functional>
-#include <memory>
 #include <string>
 
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include "ui_framework/node.hpp"
 #include "ui_framework/event_types.hpp"
-#include "ui_framework/text_layout.hpp"
+#include "../core/text_content.hpp"
 
 namespace ui
 {
-    class TextPrimitive;
-
     class MenuItem : public Node
     {
     public:
@@ -39,13 +36,13 @@ namespace ui
     protected:
         void update(float dt) override;
         LayoutSize measureContent(const LayoutSize &availableContent) const override;
+        void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize) override;
         void draw(SDL_Renderer *renderer) override;
     private:
         void handleMouseEnter(MouseEnterEvent &event);
         void handleMouseLeave(MouseLeaveEvent &event);
         void handleMouseClick(MouseClickEvent &event);
-        TextLayout textLayout_;
-        std::unique_ptr<TextPrimitive> textPrimitive_;
+        TextContent text_;
         Color textColor_ = Colors::white;
         Color backgroundColor_ = Colors::transparent;
         bool highlighted_ = false;
