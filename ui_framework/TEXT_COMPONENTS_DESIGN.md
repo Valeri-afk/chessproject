@@ -295,6 +295,26 @@ Therefore the documentation must treat resource lifetime responsibility as **cur
 
 The framework must not silently imply that destroying a client-owned `TTF_Font*` is always safe while a framework cache still depends on it, nor should the current implementation be interpreted as establishing a general resource manager.
 
+### Font mutation and invalidation
+
+`TTF_Font*` is also mutable state from the framework's perspective. The backend currently uses `TTF_GetFontGeneration()` to detect source-font changes when deciding whether its derived raster-font cache is still valid. This is a **backend cache-consistency mechanism**, not a layout invalidation mechanism.
+
+The distinction is intentional:
+
+```text
+client mutates TTF_Font
+        │
+        ├── backend raster cache
+        │      └── generation can trigger cache refresh
+        │
+        └── framework layout
+               └── does NOT auto-invalidate
+```
+
+A font mutation can change glyph metrics and therefore change measured logical size or wrapping. Since `TextLayout` does not own the source resource and does not automatically invalidate the containing node, the client remains responsible for calling `invalidateLayout()` when a font mutation can affect geometry.
+
+This preserves the framework rule that setters/resource mutation do not secretly introduce framework invalidation side effects. Backend cache refresh and layout invalidation are separate responsibilities.
+
 ### What is intentionally NOT being introduced now
 
 Do not introduce a general `FontManager`, `ResourceManager`, or opaque resource-handle system solely to complete the text/layout refactor.
@@ -308,6 +328,8 @@ Until this boundary is revisited:
 - the client should keep every source `TTF_Font*` alive for as long as any framework component/backend operation may use it;
 - framework-owned derived objects must be released by the framework/backend according to their own implementation lifetime;
 - no assumption should be made that framework caches extend the lifetime of a client-owned source resource;
+- a client mutation of `TTF_Font` that may affect metrics/geometry should be followed by explicit `invalidateLayout()` on affected components;
+- a backend generation check does not replace explicit layout invalidation;
 - no assumption should be made that a future resource manager will necessarily replace this boundary.
 
 ## 9. Initial implementation order
