@@ -10,9 +10,9 @@ namespace ui
     Button::Button() { setDefaultGeometry(); setFocusable(true); setCapturable(true); addHandler<MouseDownEvent>([this](MouseDownEvent &e, Node &) { handleMouseDown(e); }); addHandler<MouseUpEvent>([this](MouseUpEvent &e, Node &) { handleMouseUp(e); }); addHandler<MouseClickEvent>([this](MouseClickEvent &e, Node &) { handleMouseClick(e); }); addHandler<MouseEnterEvent>([this](MouseEnterEvent &e, Node &) { handleMouseEnter(e); }); addHandler<MouseLeaveEvent>([this](MouseLeaveEvent &e, Node &) { handleMouseLeave(e); }); }
     Button::Button(float borderRadius) : Button() { setBorderRadius(borderRadius); }
     void Button::setDefaultGeometry() { setPadding({12.0f,12.0f,8.0f,8.0f}); setBorder({1.0f,1.0f,1.0f,1.0f}); }
-    void Button::setText(std::string text) { if (text_ == text) return; deferLayoutMutation([text=std::move(text)](Node &n){ static_cast<Button&>(n).text_=std::move(text); }); }
+    void Button::setText(std::string text) { if (text_ == text) return; text_ = std::move(text); }
     const std::string &Button::getText() const noexcept { return text_; }
-    void Button::setFont(TTF_Font *font) { if (font_ == font) return; deferLayoutMutation([font](Node &n){ static_cast<Button&>(n).font_=font; }); }
+    void Button::setFont(TTF_Font *font) { if (font_ == font) return; font_ = font; }
     TTF_Font *Button::getFont() const noexcept { return font_; }
     void Button::setTextColor(Color c) noexcept { textColor_=c; }
     Color Button::getTextColor() const noexcept { return textColor_; }
