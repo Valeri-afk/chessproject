@@ -7,6 +7,7 @@
 
 #include "ui_framework/node.hpp"
 #include "ui_framework/event_types.hpp"
+#include "ui_framework/core/text_primitive.hpp"
 
 namespace ui
 {
@@ -59,6 +60,7 @@ namespace ui
         void handleMouseLeave(MouseLeaveEvent &event);
         static Color multiplyAlpha(Color color, float factor) noexcept;
         static Color lighten(Color color, float amount) noexcept;
+        TextPrimitive text_;
         std::string text_;
         TTF_Font *font_ = nullptr;
         Color textColor_ = Colors::white;
