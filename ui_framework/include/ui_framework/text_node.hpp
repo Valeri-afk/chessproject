@@ -1,19 +1,25 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include "node.hpp"
-#include "core/text_primitive.hpp"
+#include "text_layout.hpp"
 
 namespace ui
 {
+    class TextPrimitive;
+
     class TextNode : public Node
     {
     public:
-        TextNode() = default;
-        ~TextNode() override = default;
+        TextNode();
+        ~TextNode() override;
+        TextNode(const TextNode &) = delete;
+        TextNode &operator=(const TextNode &) = delete;
+
         const std::string &getText() const noexcept;
         void setText(std::string text);
         TTF_Font *getFont() const noexcept;
@@ -28,9 +34,8 @@ namespace ui
         LayoutSize measureContent(const LayoutSize &availableContent) const override;
         void draw(SDL_Renderer *renderer) override;
     private:
-        TextPrimitive textPrimitive_;
-        std::string text_;
-        TTF_Font *font_ = nullptr;
+        TextLayout textLayout_;
+        std::unique_ptr<TextPrimitive> textPrimitive_;
         TextAlignment horizontalAlignment_ = TextAlignment::START;
         TextAlignment verticalAlignment_ = TextAlignment::START;
         Color color_ = Colors::white;
