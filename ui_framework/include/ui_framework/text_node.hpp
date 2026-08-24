@@ -5,6 +5,7 @@
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include "node.hpp"
+#include "core/text_primitive.hpp"
 
 namespace ui
 {
@@ -27,6 +28,7 @@ namespace ui
         LayoutSize measureContent(const LayoutSize &availableContent) const override;
         void draw(SDL_Renderer *renderer) override;
     private:
+        TextPrimitive text_;
         std::string text_;
         TTF_Font *font_ = nullptr;
         TextAlignment horizontalAlignment_ = TextAlignment::START;
