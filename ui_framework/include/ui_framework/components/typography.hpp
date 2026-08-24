@@ -3,16 +3,15 @@
 #include <memory>
 #include <string>
 
+#include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include "ui_framework/node.hpp"
-#include "ui_framework/text_layout.hpp"
 #include "ui_framework/typography.hpp"
+#include "text_content.hpp"
 
 namespace ui
 {
-    class TextPrimitive;
-
     class Typography : public Node
     {
     public:
@@ -44,8 +43,6 @@ namespace ui
         Color getColor() const noexcept;
         void setColor(const Color &color);
 
-        const TextLayoutResult &getLayoutResult() const noexcept { return layoutResult_; }
-
     protected:
         LayoutSize measureContent(const LayoutSize &availableContent) const override;
         void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize) override;
@@ -54,18 +51,11 @@ namespace ui
     private:
         void applyVariantDefaults() noexcept;
 
-        TextLayout textLayout_;
-        mutable TextLayoutResult layoutResult_{};
-        std::unique_ptr<TextPrimitive> textPrimitive_;
-        TextAlignment horizontalAlignment_ = TextAlignment::START;
-        TextAlignment verticalAlignment_ = TextAlignment::START;
-        Color color_ = Colors::white;
+        TextContent text_;
         Variant variant_ = Variant::BODY1;
         bool fontSizeExplicit_ = false;
         float explicitFontSize_ = 0.0f;
         bool lineHeightExplicit_ = false;
         float explicitLineHeight_ = 0.0f;
-        LayoutPosition arrangedContentPosition_{};
-        LayoutSize arrangedContentSize_{};
     };
 }
