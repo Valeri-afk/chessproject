@@ -1,21 +1,27 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include "ui_framework/node.hpp"
 #include "ui_framework/event_types.hpp"
+#include "ui_framework/text_layout.hpp"
 
 namespace ui
 {
+    class TextPrimitive;
+
     class MenuItem : public Node
     {
     public:
         using ActivateCallback = std::function<void(MenuItem &)>;
         MenuItem();
-        ~MenuItem() override = default;
+        ~MenuItem() override;
+        MenuItem(const MenuItem &) = delete;
+        MenuItem &operator=(const MenuItem &) = delete;
         void setText(std::string text);
         const std::string &getText() const noexcept;
         void setFont(TTF_Font *font);
@@ -38,8 +44,8 @@ namespace ui
         void handleMouseEnter(MouseEnterEvent &event);
         void handleMouseLeave(MouseLeaveEvent &event);
         void handleMouseClick(MouseClickEvent &event);
-        std::string text_;
-        TTF_Font *font_ = nullptr;
+        TextLayout textLayout_;
+        std::unique_ptr<TextPrimitive> textPrimitive_;
         Color textColor_ = Colors::white;
         Color backgroundColor_ = Colors::transparent;
         bool highlighted_ = false;
