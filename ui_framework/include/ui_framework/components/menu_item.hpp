@@ -1,16 +1,18 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include "ui_framework/node.hpp"
 #include "ui_framework/event_types.hpp"
-#include "../core/text_content.hpp"
 
 namespace ui
 {
+    class TextContent;
+
     class MenuItem : public Node
     {
     public:
@@ -42,7 +44,7 @@ namespace ui
         void handleMouseEnter(MouseEnterEvent &event);
         void handleMouseLeave(MouseLeaveEvent &event);
         void handleMouseClick(MouseClickEvent &event);
-        TextContent text_;
+        std::unique_ptr<TextContent> text_;
         Color textColor_ = Colors::white;
         Color backgroundColor_ = Colors::transparent;
         bool highlighted_ = false;
