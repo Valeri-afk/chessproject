@@ -62,15 +62,16 @@ namespace ui
         };
     }
 
-    LayoutSize TextLayout::measure(float availableWidth) const noexcept
+    TextLayoutResult TextLayout::measureLayout(float availableWidth) const noexcept
     {
+        TextLayoutResult result{};
         if (!font_ || text_.empty())
-            return {};
+            return result;
 
         MeasureFont measureFont(font_, fontSize_, lineHeight_);
         TTF_Font *font = measureFont.get();
         if (!font)
-            return {};
+            return result;
 
         int width = 0;
         int height = 0;
@@ -79,16 +80,26 @@ namespace ui
         {
             const int wrapWidth = std::max(1, static_cast<int>(std::floor(availableWidth)));
             if (!TTF_GetStringSizeWrapped(font, text_.c_str(), 0, wrapWidth, &width, &height))
-                return {};
+                return result;
         }
         else if (!TTF_GetStringSize(font, text_.c_str(), 0, &width, &height))
         {
-            return {};
+            return result;
         }
 
-        return {
+        result.desiredSize = {
             static_cast<float>(std::max(width, 0)),
             static_cast<float>(std::max(height, 0))
         };
+        result.lineHeight = static_cast<float>(TTF_GetFontLineSkip(font));
+        result.lineCount = result.lineHeight > 0.0f
+            ? std::max(1, static_cast<int>(std::lround(result.desiredSize.height / result.lineHeight)))
+            : 1;
+        return result;
+    }
+
+    LayoutSize TextLayout::measure(float availableWidth) const noexcept
+    {
+        return measureLayout(availableWidth).desiredSize;
     }
 }
