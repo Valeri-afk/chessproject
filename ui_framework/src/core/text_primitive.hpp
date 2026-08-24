@@ -3,6 +3,8 @@
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include "ui_framework/types.hpp"
+#include "ui_framework/text_layout_result.hpp"
+#include "ui_framework/text_render_state.hpp"
 namespace ui
 {
 class TextPrimitive
@@ -13,6 +15,7 @@ public:
     TextPrimitive(const TextPrimitive&)=delete;
     TextPrimitive& operator=(const TextPrimitive&)=delete;
     static LayoutSize measure(TTF_Font *font,const std::string &text,float availableWidth=-1.0f) noexcept;
+    void draw(SDL_Renderer *renderer,const TextRenderState &state,const TextLayoutResult &layoutResult);
     void draw(SDL_Renderer *renderer,const std::string &text,TTF_Font *font,TextAlignment horizontalAlignment,TextAlignment verticalAlignment,Color color,const LayoutPosition &position,const LayoutSize &size);
 private:
     void releaseTextObject() noexcept;
