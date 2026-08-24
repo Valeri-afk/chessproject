@@ -3,15 +3,15 @@
 #include <memory>
 #include <string>
 
-#include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include "ui_framework/node.hpp"
 #include "ui_framework/typography.hpp"
-#include "text_content.hpp"
 
 namespace ui
 {
+    class TextContent;
+
     class Typography : public Node
     {
     public:
@@ -51,7 +51,7 @@ namespace ui
     private:
         void applyVariantDefaults() noexcept;
 
-        TextContent text_;
+        std::unique_ptr<TextContent> text_;
         Variant variant_ = Variant::BODY1;
         bool fontSizeExplicit_ = false;
         float explicitFontSize_ = 0.0f;
