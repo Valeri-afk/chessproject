@@ -26,6 +26,7 @@ add_library(ui_framework STATIC
     src/components/tab_control.cpp
     src/components/tab_item.cpp
     src/components/toggle_button.cpp
+    src/components/typography.cpp
     src/core/ui_manager.cpp
     src/core/node_tree.cpp
     src/core/node.cpp
