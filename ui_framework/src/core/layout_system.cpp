@@ -1,5 +1,4 @@
 #include "layout_system.hpp"
-#include "linear_layout.hpp"
 #include "layout_constraints.hpp"
 
 #include <algorithm>
