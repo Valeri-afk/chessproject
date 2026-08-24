@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <utility>
 
-#include "text_primitive.hpp"
-
 namespace ui
 {
     namespace
@@ -31,29 +29,29 @@ namespace ui
         }
     }
 
-    Typography::Typography() : textPrimitive_(std::make_unique<TextPrimitive>())
+    Typography::Typography()
     {
         applyVariantDefaults();
     }
 
     Typography::~Typography() = default;
 
-    const std::string &Typography::getText() const noexcept { return textLayout_.getText(); }
+    const std::string &Typography::getText() const noexcept { return text_.getText(); }
 
     void Typography::setText(std::string text)
     {
-        if (textLayout_.getText() == text)
+        if (text_.getText() == text)
             return;
-        textLayout_.setText(std::move(text));
+        text_.setText(std::move(text));
     }
 
-    TTF_Font *Typography::getFont() const noexcept { return textLayout_.getFont(); }
+    TTF_Font *Typography::getFont() const noexcept { return text_.getFont(); }
 
     void Typography::setFont(TTF_Font *font)
     {
-        if (textLayout_.getFont() == font)
+        if (text_.getFont() == font)
             return;
-        textLayout_.setFont(font);
+        text_.setFont(font);
     }
 
     void Typography::setVariant(Variant variant) noexcept
@@ -61,8 +59,7 @@ namespace ui
         if (variant_ == variant)
             return;
         variant_ = variant;
-        if (!fontSizeExplicit_ || !lineHeightExplicit_)
-            applyVariantDefaults();
+        applyVariantDefaults();
     }
 
     Typography::Variant Typography::getVariant() const noexcept { return variant_; }
@@ -71,96 +68,60 @@ namespace ui
     {
         explicitFontSize_ = std::max(0.0f, logicalSize);
         fontSizeExplicit_ = true;
-        textLayout_.setFontSize(explicitFontSize_);
+        text_.setFontSize(explicitFontSize_);
     }
 
-    float Typography::getFontSize() const noexcept { return textLayout_.getFontSize(); }
+    float Typography::getFontSize() const noexcept { return text_.getFontSize(); }
 
     void Typography::setLineHeight(float logicalLineHeight) noexcept
     {
         explicitLineHeight_ = std::max(0.0f, logicalLineHeight);
         lineHeightExplicit_ = true;
-        textLayout_.setLineHeight(explicitLineHeight_);
+        text_.setLineHeight(explicitLineHeight_);
     }
 
-    float Typography::getLineHeight() const noexcept { return textLayout_.getLineHeight(); }
+    float Typography::getLineHeight() const noexcept { return text_.getLineHeight(); }
 
-    void Typography::setWrapMode(WrapMode mode) noexcept
+    void Typography::setWrapMode(WrapMode mode) noexcept { text_.setWrapMode(mode); }
+
+    WrapMode Typography::getWrapMode() const noexcept { return text_.getWrapMode(); }
+
+    TextAlignment Typography::getHorizontalAlignment() const noexcept { return text_.getHorizontalAlignment(); }
+
+    void Typography::setHorizontalAlignment(TextAlignment alignment) noexcept
     {
-        textLayout_.setWrapMode(mode);
+        text_.setHorizontalAlignment(alignment);
     }
 
-    WrapMode Typography::getWrapMode() const noexcept { return textLayout_.getWrapMode(); }
+    TextAlignment Typography::getVerticalAlignment() const noexcept { return text_.getVerticalAlignment(); }
 
-    TextAlignment Typography::getHorizontalAlignment() const noexcept { return horizontalAlignment_; }
-
-    void Typography::setHorizontalAlignment(TextAlignment alignment)
+    void Typography::setVerticalAlignment(TextAlignment alignment) noexcept
     {
-        if (horizontalAlignment_ == alignment)
-            return;
-        horizontalAlignment_ = alignment;
+        text_.setVerticalAlignment(alignment);
     }
 
-    TextAlignment Typography::getVerticalAlignment() const noexcept { return verticalAlignment_; }
+    Color Typography::getColor() const noexcept { return text_.getColor(); }
 
-    void Typography::setVerticalAlignment(TextAlignment alignment)
-    {
-        if (verticalAlignment_ == alignment)
-            return;
-        verticalAlignment_ = alignment;
-    }
-
-    Color Typography::getColor() const noexcept { return color_; }
-
-    void Typography::setColor(const Color &color) { color_ = color; }
+    void Typography::setColor(const Color &color) { text_.setColor(color); }
 
     LayoutSize Typography::measureContent(const LayoutSize &availableContent) const
     {
-        layoutResult_ = textLayout_.measureLayout(availableContent.width);
-        return layoutResult_.desiredSize;
+        return text_.measure(availableContent.width);
     }
 
     void Typography::arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize)
     {
-        arrangedContentPosition_ = contentPosition;
-        arrangedContentSize_ = contentSize;
-        layoutResult_ = textLayout_.measureLayout(contentSize.width);
+        text_.arrange(contentPosition, contentSize);
     }
 
     void Typography::draw(SDL_Renderer *renderer)
     {
-        if (!renderer || !textPrimitive_ || textLayout_.getText().empty())
-            return;
-
-        textPrimitive_->draw(
-            renderer,
-            textLayout_.getText(),
-            textLayout_.getFont(),
-            horizontalAlignment_,
-            verticalAlignment_,
-            color_,
-            arrangedContentPosition_,
-            arrangedContentSize_);
+        text_.draw(renderer);
     }
 
     void Typography::applyVariantDefaults() noexcept
     {
-        if (!fontSizeExplicit_)
-        {
-            textLayout_.setFontSize(defaultFontSize(variant_));
-        }
-        else
-        {
-            textLayout_.setFontSize(explicitFontSize_);
-        }
-
-        if (!lineHeightExplicit_)
-        {
-            textLayout_.setLineHeight(0.0f);
-        }
-        else
-        {
-            textLayout_.setLineHeight(explicitLineHeight_);
-        }
+        text_.setFontSize(fontSizeExplicit_ ? explicitFontSize_ : defaultFontSize(variant_));
+        text_.setLineHeight(lineHeightExplicit_ ? explicitLineHeight_ : 0.0f);
     }
 }
