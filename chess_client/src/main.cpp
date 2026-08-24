@@ -26,7 +26,6 @@ namespace
         const char *basePath = SDL_GetBasePath();
         if (!basePath)
             return relativePath;
-
         return std::string(basePath) + relativePath;
     }
 
@@ -47,7 +46,6 @@ namespace
         {
             ui::LayoutSize desired{};
             std::size_t visibleChildCount = 0;
-
             if (!context.measureChild)
                 return desired;
 
@@ -93,11 +91,7 @@ namespace
                         ? context.contentSize.width * 0.65f
                         : context.contentSize.width;
 
-                context.arrangeChild(
-                    *child,
-                    {context.contentPosition.x, y},
-                    {allocatedWidth, desired.height});
-
+                context.arrangeChild(*child, {context.contentPosition.x, y}, {allocatedWidth, desired.height});
                 y += desired.height + customSpacing_;
                 ++visibleChildIndex;
             }
@@ -135,6 +129,7 @@ int main()
         SDL_Quit();
         return -1;
     }
+
     SDL_Renderer *renderer = SDL_CreateRenderer(window, nullptr);
     if (!renderer)
     {
@@ -152,14 +147,8 @@ int main()
     TTF_Font *largeFont = TTF_OpenFont(fontPath.c_str(), 12.0f);
     if (!font || !largeFont)
     {
-        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                     "Failed to load font(s): %s (%s)",
-                     fontPath.c_str(),
-                     SDL_GetError());
-        if (largeFont)
-            TTF_CloseFont(largeFont);
-        if (font)
-            TTF_CloseFont(font);
+        if (largeFont) TTF_CloseFont(largeFont);
+        if (font) TTF_CloseFont(font);
         SDL_DestroyRenderer(renderer);
         SDL_DestroyWindow(window);
         TTF_Quit();
@@ -170,30 +159,11 @@ int main()
     {
         ui::UIManager uiManager;
 
-        constexpr std::array<const char *, 4> buttonLabels{"Play", "Openings", "Academy", "Statistics"};
-        constexpr float buttonWidth = 52.0f;
-        constexpr float buttonGap = 3.0f;
-        float x = 8.0f;
-
-        for (size_t i = 0; i < buttonLabels.size(); ++i)
-        {
-            const char *label = buttonLabels[i];
-            auto button = std::make_unique<ui::Button>();
-            button->setText(label);
-            button->setFont(i == buttonLabels.size() - 1 ? largeFont : font);
-            button->setTextColor(ui::Colors::white);
-            button->setBackgroundColor(ui::Colors::transparent);
-            button->setBorderColor(ui::Colors::transparent);
-            button->setVariant(ui::Button::Variant::TEXT);
-            button->setPosition({x, 2.0f});
-            button->setSize(ui::LayoutSizeValue::fixed(buttonWidth, 20.0f));
-            uiManager.addRoot(std::move(button));
-            x += buttonWidth + buttonGap;
-        }
-
         auto customPanel = std::make_unique<CustomSpacingPanel>();
         CustomSpacingPanel *customPanelPtr = customPanel.get();
         customPanel->setSize(ui::LayoutSizeValue::fixed(120.0f, 82.0f));
+        customPanel->setMinSize({100.0f, 72.0f});
+        customPanel->setMaxSize({140.0f, 92.0f});
         customPanel->setCustomSpacing(2.0f);
 
         for (const char *label : {"Custom A", "Custom B", "Custom C"})
@@ -208,30 +178,33 @@ int main()
             customPanel->addChild(std::move(child), customPanel->getChildCount());
         }
 
-        auto customLayoutRoot = std::make_unique<ui::StackPanelNode>(ui::StackPanelNode::Orientation::Vertical);
-        customLayoutRoot->setPosition({8.0f, 38.0f});
-        customLayoutRoot->setSize(ui::LayoutSizeValue::fixed(120.0f, 82.0f));
-        customLayoutRoot->addChild(std::move(customPanel), 0);
+        auto root = std::make_unique<ui::StackPanelNode>(ui::StackPanelNode::Orientation::Vertical);
+        root->setPosition({8.0f, 38.0f});
+        root->setSize(ui::LayoutSizeValue::fixed(120.0f, 120.0f));
+        root->setPadding({4.0f, 4.0f, 4.0f, 4.0f});
+        root->addChild(std::move(customPanel), 0);
 
-        ui::Button *spacingButton = new ui::Button();
-        std::unique_ptr<ui::Button> spacingButtonOwner(spacingButton);
-        spacingButton->setText("Grow gap");
-        spacingButton->setFont(font);
-        spacingButton->setTextColor(ui::Colors::white);
-        spacingButton->setBackgroundColor(ui::Colors::gray);
-        spacingButton->setBorderColor(ui::Colors::gray);
-        spacingButton->setVariant(ui::Button::Variant::FILLED);
-        spacingButton->setPosition({140.0f, 38.0f});
-        spacingButton->setSize(ui::LayoutSizeValue::fixed(70.0f, 20.0f));
-        spacingButton->setOnActivate(
+        ui::Button *constraintButton = new ui::Button();
+        std::unique_ptr<ui::Button> constraintButtonOwner(constraintButton);
+        constraintButton->setText("Change spacing + constraints");
+        constraintButton->setFont(font);
+        constraintButton->setTextColor(ui::Colors::white);
+        constraintButton->setBackgroundColor(ui::Colors::gray);
+        constraintButton->setBorderColor(ui::Colors::gray);
+        constraintButton->setVariant(ui::Button::Variant::FILLED);
+        constraintButton->setPosition({140.0f, 38.0f});
+        constraintButton->setSize(ui::LayoutSizeValue::fixed(110.0f, 20.0f));
+        constraintButton->setOnActivate(
             [customPanelPtr, &uiManager](ui::Button &)
             {
                 customPanelPtr->setCustomSpacing(customPanelPtr->getCustomSpacing() + 3.0f);
+                customPanelPtr->setMinWidth(customPanelPtr->getMinWidth() + 5.0f);
+                customPanelPtr->setMaxWidth(customPanelPtr->getMaxWidth() + 5.0f);
                 uiManager.invalidateLayout(*customPanelPtr);
             });
 
-        uiManager.addRoot(std::move(customLayoutRoot));
-        uiManager.addRoot(std::move(spacingButtonOwner));
+        uiManager.addRoot(std::move(root));
+        uiManager.addRoot(std::move(constraintButtonOwner));
 
         auto dropdown = std::make_unique<ui::Dropdown>();
         dropdown->setPosition({239.0f, 2.0f});
@@ -243,8 +216,7 @@ int main()
         dropdown->getTrigger().setVariant(ui::Button::Variant::FILLED);
         dropdown->setPlaceholder("More");
 
-        constexpr std::array<const char *, 3> dropdownItems{"Settings", "About", "Quit"};
-        for (const char *label : dropdownItems)
+        for (const char *label : {"Settings", "About", "Quit"})
         {
             auto item = std::make_unique<ui::MenuItem>();
             item->setText(label);
@@ -253,12 +225,6 @@ int main()
             item->setBackgroundColor(ui::Colors::gray);
             dropdown->addItem(std::move(item));
         }
-
-        dropdown->setOnSelectionChanged(
-            [](ui::Dropdown &, ui::MenuItem &item)
-            {
-                SDL_Log("Selected menu item: %s", item.getText().c_str());
-            });
 
         uiManager.addRoot(std::move(dropdown));
 
@@ -275,11 +241,6 @@ int main()
 
             SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
             SDL_RenderClear(renderer);
-
-            SDL_FRect header{0.0f, 0.0f, static_cast<float>(logicalWidth), headerHeight};
-            SDL_SetRenderDrawColor(renderer, 24, 24, 24, 255);
-            SDL_RenderFillRect(renderer, &header);
-
             uiManager.runFrame(1.0f / 60.0f, renderer);
             SDL_RenderPresent(renderer);
             SDL_Delay(16);
