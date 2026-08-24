@@ -10,25 +10,25 @@ namespace ui
     void TextNode::setText(std::string text)
     {
         if (text_ == text) return;
-        deferLayoutMutation([text = std::move(text)](Node &node) { static_cast<TextNode &>(node).text_ = std::move(text); });
+        text_ = std::move(text);
     }
     TTF_Font *TextNode::getFont() const noexcept { return font_; }
     void TextNode::setFont(TTF_Font *font)
     {
         if (font_ == font) return;
-        deferLayoutMutation([font](Node &node) { static_cast<TextNode &>(node).font_ = font; });
+        font_ = font;
     }
     TextAlignment TextNode::getHorizontalAlignment() const noexcept { return horizontalAlignment_; }
     void TextNode::setHorizontalAlignment(TextAlignment alignment)
     {
         if (horizontalAlignment_ == alignment) return;
-        deferLayoutMutation([alignment](Node &node) { static_cast<TextNode &>(node).horizontalAlignment_ = alignment; });
+        horizontalAlignment_ = alignment;
     }
     TextAlignment TextNode::getVerticalAlignment() const noexcept { return verticalAlignment_; }
     void TextNode::setVerticalAlignment(TextAlignment alignment)
     {
         if (verticalAlignment_ == alignment) return;
-        deferLayoutMutation([alignment](Node &node) { static_cast<TextNode &>(node).verticalAlignment_ = alignment; });
+        verticalAlignment_ = alignment;
     }
     Color TextNode::getColor() const noexcept { return color_; }
     void TextNode::setColor(const Color &color) { color_ = color; }
