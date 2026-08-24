@@ -52,12 +52,11 @@ namespace
 
             for (std::size_t i = 0; i < getChildCount(); ++i)
             {
-                const ui::Node *child = getChild(i);
+                ui::Node *child = getChild(i);
                 if (!child || !child->isVisible() || child->getPositionMode() == ui::PositionMode::Absolute)
                     continue;
 
-                const std::size_t visibleIndex = getVisibleIndex(i);
-                const ui::LayoutSize childDesired = context.measureChild(visibleIndex, context.availableContentSize);
+                const ui::LayoutSize childDesired = context.measureChild(*child, context.availableContentSize);
                 desired.width = std::max(desired.width, childDesired.width);
                 desired.height += childDesired.height;
                 ++visibleChildCount;
@@ -71,21 +70,20 @@ namespace
 
         void arrange(const ui::ArrangeContext &context) override
         {
-            if (!context.arrangeChild)
+            if (!context.arrangeChild || !context.desiredSize)
                 return;
 
             float y = context.contentPosition.y;
 
             for (std::size_t i = 0; i < getChildCount(); ++i)
             {
-                const ui::Node *child = getChild(i);
+                ui::Node *child = getChild(i);
                 if (!child || !child->isVisible() || child->getPositionMode() == ui::PositionMode::Absolute)
                     continue;
 
-                const std::size_t visibleIndex = getVisibleIndex(i);
-                const ui::LayoutSize childSize = child->getDesiredSize();
+                const ui::LayoutSize childSize = context.desiredSize(*child);
                 context.arrangeChild(
-                    visibleIndex,
+                    *child,
                     {context.contentPosition.x, y},
                     {context.contentSize.width, childSize.height});
                 y += childSize.height + customSpacing_;
@@ -93,18 +91,6 @@ namespace
         }
 
     private:
-        std::size_t getVisibleIndex(std::size_t childIndex) const noexcept
-        {
-            std::size_t visibleIndex = 0;
-            for (std::size_t i = 0; i < childIndex; ++i)
-            {
-                const ui::Node *child = getChild(i);
-                if (child && child->isVisible())
-                    ++visibleIndex;
-            }
-            return visibleIndex;
-        }
-
         float customSpacing_ = 2.0f;
     };
 }
