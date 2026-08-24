@@ -60,7 +60,7 @@ namespace ui
         void handleMouseLeave(MouseLeaveEvent &event);
         static Color multiplyAlpha(Color color, float factor) noexcept;
         static Color lighten(Color color, float amount) noexcept;
-        TextPrimitive text_;
+        TextPrimitive textPrimitive_;
         std::string text_;
         TTF_Font *font_ = nullptr;
         Color textColor_ = Colors::white;
