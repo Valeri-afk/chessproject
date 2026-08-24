@@ -161,7 +161,7 @@ int main()
 
         auto customPanel = std::make_unique<CustomSpacingPanel>();
         CustomSpacingPanel *customPanelPtr = customPanel.get();
-        customPanel->setSize(ui::LayoutSizeValue::fixed(120.0f, 82.0f));
+        customPanel->setSize(ui::LayoutSizeValue::fixed(80.0f, 82.0f));
         customPanel->setMinSize({100.0f, 72.0f});
         customPanel->setMaxSize({140.0f, 92.0f});
         customPanel->setCustomSpacing(2.0f);
