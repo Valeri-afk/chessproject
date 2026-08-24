@@ -326,6 +326,26 @@ After invalidation and before the next layout pass, the previous value remains r
 
 No explicit geometry-validity flag is required at this stage.
 
+### 2.21 TextPrimitive ownership and responsibility
+
+`TextPrimitive` is **not** a layout owner and must not be stored in base `Node`.
+
+Its current intended role is a low-level text utility:
+
+```text
+TextPrimitive::measure()
+    → intrinsic text measurement / wrapping measurement
+
+TextPrimitive::draw()
+    → low-level text rendering
+```
+
+`TextNode` owns its own `TextPrimitive` and uses it from `measureContent()` and `draw()`.
+
+The framework therefore owns the outer Measure/Arrange process, while `TextNode` owns its component-specific text state and delegates the low-level text operation to `TextPrimitive`.
+
+`TextPrimitive` itself remains subject to a later focused review for wrapping, logical presentation, raster scaling, caching, and whether its API should eventually be split into narrower measurement/rendering responsibilities. That review is not allowed to reintroduce layout ownership into the primitive.
+
 ## 3. Historical evidence used to settle the model
 
 The old `Valeri-afk/ui-framework` repository remains the primary historical reference for previous Measure/Arrange behavior.
@@ -358,18 +378,31 @@ Border-box semantics                  DONE / validated
 Overflow clipping model               DONE / validated
 Root-based layout queue               DONE / validated
 Re-invalidation semantics             DONE / validated
+TextPrimitive ownership boundary      DONE / settled
 ```
 
 ### Implementation / migration
 
 ```text
-Final public Measure/Arrange API
-    IN PROGRESS
+Node public Measure/Arrange hooks
+    PRESENT
+
+Node → TextPrimitive coupling removed
+    DONE
+
+TextNode → own TextPrimitive
+    DONE
+
+Old deferLayoutMutation path removal
+    IN PROGRESS / audit remaining uses
 
 Migration of all real components
     NOT DONE
 
-Removal of old deferLayoutMutation paths
+Framework-known property invalidation audit
+    NOT DONE
+
+TextPrimitive semantic/layout review
     NOT DONE
 
 Full framework build/runtime validation
@@ -379,49 +412,35 @@ Real chess client validation
     NOT DONE
 ```
 
-The project is therefore **past the architecture-definition stage and entering the main implementation/migration stage**.
+The project is now beyond the initial architecture-definition stage and is in the **active migration/cleanup stage**. The base layout contract is substantially settled; the remaining risk is implementation completeness and preserving the verified historical semantics while migrating real components.
 
 ## 5. Remaining implementation work
 
-### Step 1 — Finalize the public Measure/Arrange API
+### Step 1 — Finish old-layout mechanism audit
 
-Make the intended API concrete and stable:
+Search the current branch for all remaining:
+
+```text
+deferLayoutMutation
+property-driven deferred layout callbacks
+implicit property → layout scheduling
+old layout hook names
+base-Node text/layout helpers that no longer belong there
+```
+
+Each remaining use must either be removed or explicitly justified as unrelated to the new layout contract.
+
+### Step 2 — Finish public Measure/Arrange implementation
+
+Confirm that the production layout traversal uses only the intended hooks:
 
 ```text
 Node::measure(const MeasureContext&)
 Node::arrange(const ArrangeContext&)
 Node::draw(...)
-
-MeasureContext
-    availableContentSize
-    measureChild(...)
-
-ArrangeContext
-    contentPosition
-    contentSize
-    desiredSize(...)
-    arrangeChild(...)
 ```
 
-Preserve the semantic contracts above while removing experimental or duplicated paths.
-
-### Step 2 — Make the framework layout engine use the final hooks
-
-Ensure the production layout traversal:
-
-```text
-root
-    ↓
-Measure subtree
-    ↓
-resolve desired outer sizes
-    ↓
-Arrange subtree
-    ↓
-commit actual geometry
-```
-
-uses the final custom hooks without exposing framework internals.
+and that no experimental duplicate layout path remains.
 
 ### Step 3 — Migrate real components
 
@@ -439,17 +458,13 @@ other real layout-affecting components
 
 Validate leaf components through `measureContent()` where appropriate and containers through custom Measure/Arrange.
 
-### Step 4 — Remove old hidden layout mutation mechanisms
+For each component verify its custom state remains local and that its layout consequences are expressed through Measure/Arrange plus explicit invalidation.
 
-Find every remaining use of:
+### Step 4 — Complete imperative invalidation migration
 
-```text
-deferLayoutMutation
-property-driven deferred layout callbacks
-implicit layout scheduling that contradicts the new public contract
-```
+Audit framework-known layout properties and custom component setters.
 
-Replace them with:
+Required rule:
 
 ```text
 state mutation
@@ -457,29 +472,48 @@ state mutation
 explicit invalidateLayout()
 ```
 
-where appropriate.
+Do not restore hidden setter-driven `deferLayoutMutation()` scheduling merely to reduce client call sites.
 
-### Step 5 — Ensure framework-known property setters are consistent
+### Step 5 — Finish TextPrimitive review
 
-Framework-known layout properties may mutate state directly; the current contract expects explicit invalidation to report the semantic change.
+Do not redesign it speculatively. Validate first:
 
-Do not reintroduce hidden per-setter scheduling merely to avoid explicit client notifications.
+```text
+measure(font, text, availableWidth)
+    → wrapping semantics
 
-### Step 6 — Validate custom component behavior
+TextNode Measure
+    → content constraint semantics
 
-Keep a focused custom-panel test that combines:
+TextNode Arrange
+    → actual content box / alignment
+
+TextPrimitive draw
+    → actual allocated geometry
+    → logical presentation / integer scaling
+    → clipping compatibility
+```
+
+Then decide whether `TextPrimitive` needs an API cleanup. The default is to keep it as a rendering/measurement utility.
+
+### Step 6 — Custom layout acceptance coverage
+
+Maintain a focused custom-panel test that combines:
 
 ```text
 custom layout property
 custom Measure/Arrange
 min/max
 fixed size
+Auto
+stretch
 padding
 border
+text wrapping
 invalidateLayout()
 ```
 
-The test must exercise real constraint conflicts, not only non-conflicting values.
+The test must include real constraint conflicts, not only compatible values.
 
 ### Step 7 — Runtime/build validation
 
@@ -490,20 +524,28 @@ build framework
 build chess client
 run existing tests
 run custom layout acceptance tests
-verify layout under resize
+verify resize
 verify text wrapping
 verify clipping
 verify overlays/modals
-verify structural mutation behavior
+verify structural mutation
+verify repeated invalidation
 ```
 
-The historical Phase 2 documents explicitly leave runtime/build validation for the final validation stage; it must now become part of the implementation phase.
+Historical Phase 2 numerical cases remain semantic acceptance references.
 
 ### Step 8 — Final cleanup
 
-Remove obsolete documentation and code paths only after the new path passes real validation.
+Only after runtime validation:
 
-Do not delete historical reference material from the old repository; that repository remains useful as a compatibility/reference source.
+```text
+remove obsolete helpers
+remove obsolete documentation about the old property/layout model
+remove duplicate compatibility paths
+update public documentation
+```
+
+Keep historical reference material in the old repository.
 
 ## 6. Definition of done
 
@@ -532,14 +574,16 @@ The refactor is complete when all of the following are true:
 9. Re-invalidation during Measure/Arrange remains deferred rather than
    recursively re-entering layout.
 
-10. The real chess client builds and runs correctly on the new model.
+10. TextPrimitive is a lower-level utility and is not a base-Node layout owner.
 
-11. Historical numerical acceptance cases remain semantically satisfied.
+11. The real chess client builds and runs correctly on the new model.
+
+12. Historical numerical acceptance cases remain semantically satisfied.
 ```
 
 ## 7. Working mode from this checkpoint onward
 
-From this checkpoint onward the investigation phase is considered largely complete.
+The architecture-definition phase is considered largely complete.
 
 New questions should be investigated only when they block implementation or reveal a contradiction with the settled historical semantics.
 
@@ -555,6 +599,17 @@ make the smallest implementation change
 validate
     ↓
 update this checkpoint if the architectural contract changes
+```
+
+Current priority order:
+
+```text
+1. remaining old-layout/deferred-mutation cleanup
+2. real component migration
+3. explicit invalidation audit
+4. TextPrimitive semantic review
+5. build + runtime + chess-client validation
+6. final cleanup
 ```
 
 The next work should therefore prioritize **implementation and migration**, not further speculative redesign.
