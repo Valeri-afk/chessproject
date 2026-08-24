@@ -23,23 +23,6 @@ namespace
 
 namespace ui
 {
-    void Node::deferLayoutMutation(std::function<void(Node&)>fn)
-    {
-        if(!owner_)
-        {
-            fn(*this);
-            return;
-        }
-        NodeTree*tree=owner_;
-        const Id nodeId=id_;
-        tree->enqueueNodeMutation(*this,[tree,nodeId,fn=std::move(fn)]()mutable{
-            if(Node*node=tree->findNode(nodeId))
-                fn(*node);
-            if(tree->findNode(nodeId))
-                tree->insertLayoutQueueById(nodeId);
-        });
-    }
-
     // Removed: TextPrimitive& Node::textPrimitive() noexcept
 
     void Node::dispatchEventImpl(UIEvent&event,const std::type_index&eventType,NodeTree&nodeTree)
