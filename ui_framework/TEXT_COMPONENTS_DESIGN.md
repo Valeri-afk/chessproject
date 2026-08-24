@@ -84,9 +84,9 @@ H4
 
 Do not expose six or more levels until a real application demonstrates the need.
 
-Heading level should map to framework typography defaults, while allowing the same normal text properties (font override, color, alignment, wrapping) where appropriate.
+At the current framework stage, `Heading::Level` is **semantic metadata**, not yet a framework-owned font-size/style system. The existing framework has no established typography/theme layer capable of turning `H1`–`H4` into canonical font resources without introducing a new resource-management contract.
 
-The framework should not require clients to reproduce the default heading sizes themselves.
+Therefore `Heading` currently reuses the same font/layout/rendering API as `TextNode`; clients may supply the appropriate font resource for the chosen level. A future typography policy may map levels to framework defaults once its ownership and resource lifetime are explicitly designed.
 
 ### `Paragraph`
 
@@ -106,11 +106,11 @@ It should not introduce a second independent text-layout engine. It uses the sam
 
 ```text
 Text       → generic text defaults
-Heading    → hierarchical heading defaults
-Paragraph  → body-copy / wrapping defaults
+Heading    → hierarchical heading semantics
+Paragraph  → body-copy / wrapping semantics
 ```
 
-The component should remain small.
+At the current stage, `Paragraph` does not require a second renderer or layout engine. Its semantic value is the intended component role and future typography defaults, while its actual measurement and rendering are inherited from the shared text contract.
 
 ## 3. What should NOT be a separate standard component yet
 
@@ -373,6 +373,7 @@ The following are deliberately not frozen yet:
 
 - exact name of the shared text layout type;
 - whether `Text` replaces `TextNode` or `TextNode` remains the public class name;
+- whether `Heading::Level` should later map to framework-owned typography defaults;
 - exact `HeadingLevel` set;
 - whether `Paragraph` needs properties beyond wrapping and default typography;
 - exact relationship between layout cache and SDL_ttf `TTF_Text` object;
