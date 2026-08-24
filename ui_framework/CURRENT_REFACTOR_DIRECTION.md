@@ -197,7 +197,7 @@ The current candidate API is:
 ```text
 UIManager::invalidateLayout(node)
 UIManager::invalidatePaint(node)
-UIManager::treeStructureChanged(node)
+treeStructureChanged(node)
 ...
 ```
 
@@ -220,37 +220,43 @@ flush the framework
 
 The framework owns those consequences.
 
+`UIManager` is currently the intended public facade for these semantic notifications. Its existing role already spans the public boundary between client code and `NodeTree`, `LayoutSystem`, `InputSystem`, `ModalSystem`, and other runtime subsystems. 
+
 ---
 
-# 7. Existing layout batching/root promotion is retained
+# 7. Current layout invalidation mechanics are already root-based
 
-The current `fix/sharp-logical-text` implementation already has:
+An important implementation fact has been confirmed in `fix/sharp-logical-text`:
 
 ```text
-mutationQueue_
-layoutQueue_
-layoutQueueSet_
+NodeTree::insertLayoutQueue(node)
+    ↓
+walk parent chain to the top
+    ↓
+NodeTree::insertLayoutQueueById(rootId)
+    ↓
+resolve root again
+    ↓
+require isRoot(root) or isOverlay(root)
+    ↓
+insert root ID into layoutQueue_ once
 ```
 
-and the layout queue already promotes an affected node to the top-level root/overlay before queueing it, with deduplication. Therefore the current queue should not be replaced merely to introduce explicit invalidation.
+Therefore the current implementation does **not** queue the changed child as an independent layout job. It already promotes changes to the top-level root/overlay and deduplicates them with `layoutQueueSet_`.
 
-Existing semantics are effectively:
+Conceptually:
 
 ```text
 changed Node
     ↓
-walk parent chain
+find top-level layout root
     ↓
-top-level layout root
+queue root once
     ↓
-queue once
-    ↓
-whole root subtree is Measure/Arrange processed
+whole root subtree is processed by LayoutSystem
 ```
 
-This existing mechanism is an important foundation for the refactor.
-
-The future `invalidateLayout(node)` should reuse this behavior rather than create a separate propagation system.
+This existing mechanism should be reused by the future public `invalidateLayout(node)` rather than replaced by a new propagation or dependency-tracking system.
 
 ---
 
@@ -273,7 +279,12 @@ setCustomSpacing()
 
 may result in a single queued top-level layout root because `layoutQueueSet_` already deduplicates it.
 
-Therefore batching does not require the developer to manually surround every sequence with a special batch transaction merely to avoid repeated layout requests.
+The current `NodeTree` also has a separate mutation queue and mutation scopes. Therefore notification and batching are intentionally separate concerns:
+
+```text
+Developer may notify repeatedly.
+Framework coalesces the resulting work.
+```
 
 A future explicit batch API may still be considered later, but it is not required for the basic notification model.
 
@@ -537,55 +548,118 @@ A component does not need to tell the framework what a property *means* when the
 
 ---
 
-# 17. Notification responsibilities
+# 17. `invalidateLayout()` contract — current target
 
-The developer is responsible for correct use of the notification contract.
+The current internal mechanism already establishes most of the desired semantics. The public contract should make them explicit.
 
-The framework is responsible for:
+## Meaning
+
+`invalidateLayout(node)` means:
+
+> The node's layout-derived state may no longer be reflected in the framework's computed layout state.
+
+It does **not** mean that layout executes immediately.
+
+## Expected framework behavior
 
 ```text
-coalescing queued work
-choosing a safe processing point
-promoting layout invalidation to the correct layout root
-running Measure/Arrange
-preserving lifecycle ordering
-preserving ownership/tree invariants
+invalidateLayout(node)
+    ↓
+validate that node is live/owned by this UI runtime
+    ↓
+walk to the top-level root/overlay
+    ↓
+queue that root if it is not already queued
+    ↓
+allow the current mutation/frame phase to continue
+    ↓
+run Measure/Arrange at the framework-controlled layout phase
 ```
 
-A forgotten notification may produce stale framework-derived state. This is an accepted part of opening imperative extension points.
+The existing root-promotion and queue-deduplication mechanism should be reused.
 
-The framework should protect runtime integrity, not attempt to infer arbitrary developer state changes automatically.
+## Coalescing
+
+Multiple invalidations of the same subtree before the next layout phase must collapse to the same queued layout root.
+
+```text
+invalidateLayout(A)
+invalidateLayout(A)
+invalidateLayout(child-of-A)
+    ↓
+one queued top-level root
+```
+
+## Detached/non-live nodes
+
+An invalidation request for a node that is not currently owned/live by the `UIManager` should not enqueue work against an arbitrary external object.
+
+The exact public behavior (no-op, boolean failure, debug assertion, or another result) remains an API design decision, but runtime integrity must be preserved.
+
+## During mutation scopes
+
+The notification must not force immediate layout execution.
+
+If a mutation is queued/deferred, the notification should only contribute to the later queued work. Layout must observe the stable post-mutation tree state.
+
+## During lifecycle processing
+
+The API should not expose internal phase flushing. The final contract should document which lifecycle phases permit notification and which are unsafe/undefined.
+
+The preferred philosophy is runtime integrity rather than automatic recovery from arbitrary misuse.
+
+## Relationship to component-owned properties
+
+The developer is responsible for calling `invalidateLayout()` when a custom property changes in a way that affects desired size or framework layout geometry.
+
+For example:
+
+```cpp
+text_ = newText;
+ui.invalidateLayout(*this);
+```
+
+The framework does not inspect `text_` to discover that it changed.
 
 ---
 
-# 18. Notification scope remains semantic, not universal
+# 18. `invalidatePaint()` remains to be audited
 
-The preferred model is several explicit notifications rather than one opaque `changed()` mechanism.
+The layout queue is already well understood. The next separate investigation is the rendering path.
 
-Candidate domains:
-
-```text
-layout
-paint
-structure
-```
-
-Each notification must define:
+Before exposing `invalidatePaint()`, determine:
 
 ```text
-what semantic fact it represents
-who may call it
-when it is safe
-what framework work it may queue
-whether it is coalesced
-what guarantees exist after the call
+whether a paint/render dirty queue already exists
+whether Draw currently runs every frame
+whether paint invalidation needs to schedule anything
+whether a paint invalidation should also imply layout invalidation for specific framework-known state
 ```
 
-Do not introduce notifications merely to expose implementation subsystems.
+Do not assume the layout model can simply be duplicated for rendering without checking the current implementation.
 
 ---
 
-# 19. What is intentionally rejected for this stage
+# 19. Structural notification remains narrower than layout invalidation
+
+At present `PanelNode → NodeTree` already owns structural mutations and those mutations already queue the appropriate layout root through the parent.
+
+Therefore a public `treeStructureChanged()` notification is **not yet required for ordinary `PanelNode::addChild/removeChild`**.
+
+It should only be introduced if a future architecture allows structural changes to occur outside the existing `PanelNode → NodeTree` mechanism.
+
+The current stage intentionally keeps:
+
+```text
+PanelNode
+    = structural mutation capability
+```
+
+rather than inventing a second structural notification path prematurely.
+
+---
+
+# 20. What is intentionally rejected for this stage
 
 The refactor does **not** currently introduce:
 
@@ -595,7 +669,7 @@ property metadata/dependency system
 dynamic property map
 automatic observation of arbitrary fields
 global property dependency graph
-layout diffing/reconciliation
+diffing/reconciliation engine
 React-style tree reconciliation
 arbitrary child ownership from plain Node
 full WPF DependencyProperty clone
@@ -607,22 +681,24 @@ These remain possible future additions only when a concrete requirement demonstr
 
 ---
 
-# 20. Concrete architectural work to perform
+# 21. Concrete architectural work to perform
 
 The refactor should proceed in this order:
 
-## Step 1 — Public invalidation API
+## Step 1 — Define and expose `invalidateLayout()`
 
-Expose semantic invalidation through `UIManager` and connect it to the existing `NodeTree` queue/root-promotion mechanics.
+Reuse the existing root-promotion and queue-deduplication mechanics.
 
-Target concepts:
+Define:
 
 ```text
-invalidateLayout(node)
-invalidatePaint(node)
+meaning
+valid node ownership
+coalescing
+mutation-scope behavior
+lifecycle restrictions
+framework guarantees
 ```
-
-`treeStructureChanged(node)` remains a semantic option to evaluate alongside the existing `PanelNode → NodeTree` mutation path rather than replacing that path prematurely.
 
 ## Step 2 — Remove hidden invalidation from component-specific state
 
@@ -690,7 +766,7 @@ Document the developer contracts, including misuse cases and lifecycle restricti
 
 ---
 
-# 21. Immediate validation scenarios
+# 22. Immediate validation scenarios
 
 The first complete end-to-end scenarios should be:
 
@@ -747,7 +823,7 @@ PanelNode
 
 ---
 
-# 22. Success criterion
+# 23. Success criterion
 
 The refactor is successful if a developer can build a genuinely custom component without requiring the framework to know every custom property, while the framework still controls runtime correctness.
 
