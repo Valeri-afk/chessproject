@@ -35,6 +35,7 @@ add_library(ui_framework STATIC
     src/core/text_node.cpp
     src/core/text_layout.cpp
     src/core/text_content.cpp
+    src/core/text_renderer.cpp
     src/core/layout_system.cpp
     src/core/modal_system.cpp
     src/core/modal_system_backdrop.cpp
@@ -43,7 +44,6 @@ add_library(ui_framework STATIC
     src/core/layout_constraints.cpp
     src/core/linear_layout.cpp
     src/core/scroll_system.cpp
-    src/core/text_primitive.cpp
 )
 
 target_include_directories(ui_framework
