@@ -22,6 +22,8 @@ namespace ui
         void setText(std::string text) { text_ = std::move(text); }
         const std::string &getText() const noexcept { return text_; }
 
+        // Non-owning. The caller is responsible for keeping the source font
+        // alive for as long as this layout may be measured or rendered.
         void setFont(TTF_Font *font) noexcept { font_ = font; }
         TTF_Font *getFont() const noexcept { return font_; }
 
