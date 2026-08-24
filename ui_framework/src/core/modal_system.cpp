@@ -1,7 +1,7 @@
 #include "modal_system.hpp"
 #include "node_tree.hpp"
 #include "input_system.hpp"
-#include "panel_node.hpp"
+#include "ui_framework/panel_node.hpp"
 
 #include <algorithm>
 #include <cstddef>
