@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <memory>
 
 namespace ui
 {
@@ -11,26 +10,37 @@ namespace ui
         class MeasureFont final
         {
         public:
-            explicit MeasureFont(TTF_Font *source, float requestedSize) noexcept
+            explicit MeasureFont(TTF_Font *source, float requestedSize, float requestedLineHeight) noexcept
             {
                 font_ = source;
-                if (!source || requestedSize <= 0.0f)
+                if (!source)
                     return;
+
                 const float sourceSize = TTF_GetFontSize(source);
-                if (sourceSize <= 0.0f || std::abs(sourceSize - requestedSize) < 0.001f)
+                const bool needsSize = requestedSize > 0.0f && sourceSize > 0.0f && std::abs(sourceSize - requestedSize) >= 0.001f;
+                const int nativeLineSkip = TTF_GetFontLineSkip(source);
+                const bool needsLineSkip = requestedLineHeight > 0.0f && std::abs(static_cast<float>(nativeLineSkip) - requestedLineHeight) >= 0.001f;
+
+                if (!needsSize && !needsLineSkip)
                     return;
+
                 TTF_Font *copy = TTF_CopyFont(source);
                 if (!copy)
                 {
                     font_ = nullptr;
                     return;
                 }
-                if (!TTF_SetFontSize(copy, requestedSize))
+
+                if (needsSize && !TTF_SetFontSize(copy, requestedSize))
                 {
                     TTF_CloseFont(copy);
                     font_ = nullptr;
                     return;
                 }
+
+                if (requestedLineHeight > 0.0f)
+                    TTF_SetFontLineSkip(copy, std::max(1, static_cast<int>(std::lround(requestedLineHeight))));
+
                 owned_ = copy;
                 font_ = copy;
             }
@@ -57,7 +67,7 @@ namespace ui
         if (!font_ || text_.empty())
             return {};
 
-        MeasureFont measureFont(font_, fontSize_);
+        MeasureFont measureFont(font_, fontSize_, lineHeight_);
         TTF_Font *font = measureFont.get();
         if (!font)
             return {};
