@@ -11,7 +11,7 @@
 
 namespace ui
 {
-    class TextPrimitive;
+    class TextRenderer;
 
     class TextContent
     {
@@ -23,25 +23,18 @@ namespace ui
 
         const std::string &getText() const noexcept;
         void setText(std::string text);
-
         TTF_Font *getFont() const noexcept;
         void setFont(TTF_Font *font) noexcept;
-
         float getFontSize() const noexcept;
         void setFontSize(float logicalSize) noexcept;
-
         float getLineHeight() const noexcept;
         void setLineHeight(float logicalLineHeight) noexcept;
-
         WrapMode getWrapMode() const noexcept;
         void setWrapMode(WrapMode mode) noexcept;
-
         TextAlignment getHorizontalAlignment() const noexcept;
         void setHorizontalAlignment(TextAlignment alignment) noexcept;
-
         TextAlignment getVerticalAlignment() const noexcept;
         void setVerticalAlignment(TextAlignment alignment) noexcept;
-
         Color getColor() const noexcept;
         void setColor(const Color &color) noexcept;
 
@@ -57,6 +50,6 @@ namespace ui
         LayoutPosition arrangedPosition_{};
         LayoutSize arrangedSize_{};
         TextLayoutResult arrangedLayoutResult_{};
-        std::unique_ptr<TextPrimitive> renderer_;
+        std::unique_ptr<TextRenderer> renderer_;
     };
 }
