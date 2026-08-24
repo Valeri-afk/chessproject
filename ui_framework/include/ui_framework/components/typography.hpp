@@ -1,10 +1,18 @@
 #pragma once
 
-#include "ui_framework/text_node.hpp"
+#include <memory>
+#include <string>
+
+#include <SDL3_ttf/SDL_ttf.h>
+
+#include "ui_framework/node.hpp"
+#include "ui_framework/text_layout.hpp"
 
 namespace ui
 {
-    class Typography : public TextNode
+    class TextPrimitive;
+
+    class Typography : public Node
     {
     public:
         enum class Variant
@@ -25,14 +33,34 @@ namespace ui
             OVERLINE
         };
 
-        Typography() = default;
-        explicit Typography(Variant variant) noexcept : variant_(variant) {}
-        ~Typography() override = default;
+        Typography();
+        ~Typography() override;
+        Typography(const Typography &) = delete;
+        Typography &operator=(const Typography &) = delete;
 
-        void setVariant(Variant variant) noexcept { variant_ = variant; }
-        Variant getVariant() const noexcept { return variant_; }
+        const std::string &getText() const noexcept;
+        void setText(std::string text);
+        TTF_Font *getFont() const noexcept;
+        void setFont(TTF_Font *font);
+        TextAlignment getHorizontalAlignment() const noexcept;
+        void setHorizontalAlignment(TextAlignment alignment);
+        TextAlignment getVerticalAlignment() const noexcept;
+        void setVerticalAlignment(TextAlignment alignment);
+        Color getColor() const noexcept;
+        void setColor(const Color &color);
+        void setVariant(Variant variant) noexcept;
+        Variant getVariant() const noexcept;
+
+    protected:
+        LayoutSize measureContent(const LayoutSize &availableContent) const override;
+        void draw(SDL_Renderer *renderer) override;
 
     private:
+        TextLayout textLayout_;
+        std::unique_ptr<TextPrimitive> textPrimitive_;
+        TextAlignment horizontalAlignment_ = TextAlignment::START;
+        TextAlignment verticalAlignment_ = TextAlignment::START;
+        Color color_ = Colors::white;
         Variant variant_ = Variant::BODY1;
     };
 }
