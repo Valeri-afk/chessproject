@@ -32,6 +32,7 @@ add_library(ui_framework STATIC
     src/core/panel_node.cpp
     src/core/stack_panel_node.cpp
     src/core/text_node.cpp
+    src/core/text_layout.cpp
     src/core/layout_system.cpp
     src/core/modal_system.cpp
     src/core/modal_system_backdrop.cpp
