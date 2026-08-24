@@ -62,7 +62,7 @@ namespace ui
     void Node::setVisible(bool visible)
     {
         if(visible_==visible)return;
-        deferLayoutMutation([visible](Node&node){node.visible_=visible;});
+        visible_=visible;
     }
     bool Node::isVisible()const noexcept{return visible_;}
 
@@ -77,55 +77,49 @@ namespace ui
 
     void Node::setPosition(const LayoutPosition&position)
     {
-        auto safePosition=sanitizePosition(position);
-        deferLayoutMutation([safePosition](Node&node)mutable{node.position_=safePosition;});
+        position_=sanitizePosition(position);
     }
     LayoutPosition Node::getPosition()const noexcept{return position_;}
 
     void Node::setPositionMode(PositionMode positionMode)
     {
-        deferLayoutMutation([positionMode](Node&node)mutable{node.positionMode_=positionMode;});
+        positionMode_=positionMode;
     }
     PositionMode Node::getPositionMode()const noexcept{return positionMode_;}
 
     void Node::setSize(const LayoutSizeValue&size)
     {
-        const LayoutSizeValue safe=sanitizeSizeValue(size);
-        deferLayoutMutation([safe](Node&node){node.size_=safe;});
+        size_=sanitizeSizeValue(size);
     }
     LayoutSizeValue Node::getSize()const noexcept{return size_;}
     LayoutSize Node::getDesiredSize()const noexcept{return desiredSize_;}
 
     void Node::setMinSize(const LayoutSize&size)
     {
-        const LayoutSize safeSize=sanitizeSize(size);
-        deferLayoutMutation([safeSize](Node&node){node.minSize_=safeSize;keepMaxAtLeastMin(node.minSize_,node.maxSize_);});
+        minSize_=sanitizeSize(size);
+        keepMaxAtLeastMin(minSize_,maxSize_);
     }
     void Node::setMaxSize(const LayoutSize&size)
     {
-        const LayoutSize safeSize=sanitizeSize(size);
-        deferLayoutMutation([safeSize](Node&node){node.maxSize_=safeSize;keepMinAtMostMax(node.minSize_,node.maxSize_);});
+        maxSize_=sanitizeSize(size);
+        keepMinAtMostMax(minSize_,maxSize_);
     }
 
     void Node::setMinWidth(float width)
     {
-        const float safeWidth=finiteOrZero(width);
-        deferLayoutMutation([safeWidth](Node&node){setMinWidthValue(node.minSize_,node.maxSize_,safeWidth);});
+        setMinWidthValue(minSize_,maxSize_,finiteOrZero(width));
     }
     void Node::setMinHeight(float height)
     {
-        const float safeHeight=finiteOrZero(height);
-        deferLayoutMutation([safeHeight](Node&node){setMinHeightValue(node.minSize_,node.maxSize_,safeHeight);});
+        setMinHeightValue(minSize_,maxSize_,finiteOrZero(height));
     }
     void Node::setMaxWidth(float width)
     {
-        const float safeWidth=finiteOrZero(width);
-        deferLayoutMutation([safeWidth](Node&node){setMaxWidthValue(node.minSize_,node.maxSize_,safeWidth);});
+        setMaxWidthValue(minSize_,maxSize_,finiteOrZero(width));
     }
     void Node::setMaxHeight(float height)
     {
-        const float safeHeight=finiteOrZero(height);
-        deferLayoutMutation([safeHeight](Node&node){setMaxHeightValue(node.minSize_,node.maxSize_,safeHeight);});
+        setMaxHeightValue(minSize_,maxSize_,finiteOrZero(height));
     }
 
     LayoutSize Node::getMinSize()const noexcept{return minSize_;}
@@ -147,53 +141,53 @@ namespace ui
 
     void Node::setPadding(const Padding&padding)
     {
-        deferLayoutMutation([padding](Node&node){node.padding_=sanitizePadding(padding);});
+        padding_=sanitizePadding(padding);
     }
     Padding Node::getPadding()const noexcept{return padding_;}
 
     void Node::setLeftPadding(float value)
     {
-        deferLayoutMutation([value](Node&node){node.padding_.left=finiteOrZero(value);});
+        padding_.left=finiteOrZero(value);
     }
     void Node::setRightPadding(float value)
     {
-        deferLayoutMutation([value](Node&node){node.padding_.right=finiteOrZero(value);});
+        padding_.right=finiteOrZero(value);
     }
     void Node::setTopPadding(float value)
     {
-        deferLayoutMutation([value](Node&node){node.padding_.top=finiteOrZero(value);});
+        padding_.top=finiteOrZero(value);
     }
     void Node::setBottomPadding(float value)
     {
-        deferLayoutMutation([value](Node&node){node.padding_.bottom=finiteOrZero(value);});
+        padding_.bottom=finiteOrZero(value);
     }
 
     void Node::setBorder(const Border&border)
     {
-        deferLayoutMutation([border](Node&node){node.border_=sanitizeBorder(border);});
+        border_=sanitizeBorder(border);
     }
     Border Node::getBorder()const noexcept{return border_;}
 
     void Node::setLeftBorder(float value)
     {
-        deferLayoutMutation([value](Node&node){node.border_.left=finiteOrZero(value);});
+        border_.left=finiteOrZero(value);
     }
     void Node::setRightBorder(float value)
     {
-        deferLayoutMutation([value](Node&node){node.border_.right=finiteOrZero(value);});
+        border_.right=finiteOrZero(value);
     }
     void Node::setTopBorder(float value)
     {
-        deferLayoutMutation([value](Node&node){node.border_.top=finiteOrZero(value);});
+        border_.top=finiteOrZero(value);
     }
     void Node::setBottomBorder(float value)
     {
-        deferLayoutMutation([value](Node&node){node.border_.bottom=finiteOrZero(value);});
+        border_.bottom=finiteOrZero(value);
     }
 
     void Node::setOverflow(Overflow overflow)
     {
-        deferLayoutMutation([overflow](Node&node){node.overflow_=overflow;});
+        overflow_=overflow;
     }
     Overflow Node::getOverflow()const noexcept{return overflow_;}
 
