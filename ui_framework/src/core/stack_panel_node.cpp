@@ -1,10 +1,10 @@
 #include "ui_framework/stack_panel_node.hpp"
+#include "linear_layout.hpp"
 
 #include <cmath>
 
 namespace ui
 {
-
     StackPanelNode::StackPanelNode(Orientation orientation)
         : orientation_(orientation)
     {
@@ -14,34 +14,19 @@ namespace ui
     {
         if (orientation_ == orientation)
             return;
-
-        deferLayoutMutation(
-            [orientation](Node &node)
-            {
-                static_cast<StackPanelNode &>(node).orientation_ =
-                    orientation;
-            });
+        orientation_ = orientation;
     }
 
-    StackPanelNode::Orientation StackPanelNode::getOrientation()
-        const noexcept
+    StackPanelNode::Orientation StackPanelNode::getOrientation() const noexcept
     {
         return orientation_;
     }
 
     void StackPanelNode::setGap(float gap)
     {
-        if (!std::isfinite(gap) || gap < 0.0f)
+        if (!std::isfinite(gap) || gap < 0.0f || gap_ == gap)
             return;
-
-        if (gap_ == gap)
-            return;
-
-        deferLayoutMutation(
-            [gap](Node &node)
-            {
-                static_cast<StackPanelNode &>(node).gap_ = gap;
-            });
+        gap_ = gap;
     }
 
     float StackPanelNode::getGap() const noexcept
@@ -53,13 +38,7 @@ namespace ui
     {
         if (mainAlignment_ == alignment)
             return;
-
-        deferLayoutMutation(
-            [alignment](Node &node)
-            {
-                static_cast<StackPanelNode &>(node).mainAlignment_ =
-                    alignment;
-            });
+        mainAlignment_ = alignment;
     }
 
     MainAxisAlignment StackPanelNode::getMainAlignment() const noexcept
@@ -71,13 +50,7 @@ namespace ui
     {
         if (crossAlignment_ == alignment)
             return;
-
-        deferLayoutMutation(
-            [alignment](Node &node)
-            {
-                static_cast<StackPanelNode &>(node).crossAlignment_ =
-                    alignment;
-            });
+        crossAlignment_ = alignment;
     }
 
     CrossAxisAlignment StackPanelNode::getCrossAlignment() const noexcept
@@ -85,4 +58,20 @@ namespace ui
         return crossAlignment_;
     }
 
+    LayoutSize StackPanelNode::measure(const MeasureContext &context) const
+    {
+        internal::LinearMeasureContext linearContext;
+        linearContext.availableSize = context.availableContentSize;
+        linearContext.measureChild = context.measureChild;
+        return internal::measureLinearPanel(*const_cast<StackPanelNode *>(this), linearContext);
+    }
+
+    void StackPanelNode::arrange(const ArrangeContext &context)
+    {
+        internal::LinearArrangeContext linearContext;
+        linearContext.contentPosition = context.contentPosition;
+        linearContext.contentSize = context.contentSize;
+        linearContext.placeChild = context.arrangeChild;
+        internal::arrangeLinearPanel(*this, linearContext);
+    }
 }
