@@ -1,16 +1,19 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 
 #include <SDL3_ttf/SDL_ttf.h>
 
 #include "ui_framework/node.hpp"
 #include "ui_framework/event_types.hpp"
-#include "ui_framework/core/text_primitive.hpp"
+#include "ui_framework/text_layout.hpp"
 
 namespace ui
 {
+    class TextPrimitive;
+
     class Button : public Node
     {
     public:
@@ -18,7 +21,9 @@ namespace ui
         using ActivateCallback = std::function<void(Button &)>;
         Button();
         explicit Button(float borderRadius);
-        ~Button() override = default;
+        ~Button() override;
+        Button(const Button &) = delete;
+        Button &operator=(const Button &) = delete;
         void setText(std::string text);
         const std::string &getText() const noexcept;
         void setFont(TTF_Font *font);
@@ -60,9 +65,8 @@ namespace ui
         void handleMouseLeave(MouseLeaveEvent &event);
         static Color multiplyAlpha(Color color, float factor) noexcept;
         static Color lighten(Color color, float amount) noexcept;
-        TextPrimitive textPrimitive_;
-        std::string text_;
-        TTF_Font *font_ = nullptr;
+        TextLayout textLayout_;
+        std::unique_ptr<TextPrimitive> textPrimitive_;
         Color textColor_ = Colors::white;
         Variant variant_ = Variant::FILLED;
         Color backgroundColor_ = Colors::gray;
