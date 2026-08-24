@@ -32,6 +32,8 @@ namespace ui
         void removeRoot(Node *node);
         void removeOverlay(Node *node);
 
+        void invalidateLayout(Node &node);
+
         bool enableScrolling(Node &node);
         bool disableScrolling(Node &node);
         bool isScrollingEnabled(const Node &node) const noexcept;
