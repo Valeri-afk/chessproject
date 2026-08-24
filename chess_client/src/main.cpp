@@ -10,6 +10,7 @@
 #include <ui_framework/colors.hpp>
 #include <ui_framework/ui_manager.hpp>
 #include <ui_framework/panel_node.hpp>
+#include <ui_framework/stack_panel_node.hpp>
 #include <ui_framework/components/button.hpp>
 #include <ui_framework/components/dropdown.hpp>
 #include <ui_framework/components/menu_item.hpp>
@@ -192,7 +193,6 @@ int main()
 
         auto customPanel = std::make_unique<CustomSpacingPanel>();
         CustomSpacingPanel *customPanelPtr = customPanel.get();
-        customPanel->setPosition({8.0f, 38.0f});
         customPanel->setSize(ui::LayoutSizeValue::fixed(120.0f, 82.0f));
         customPanel->setCustomSpacing(2.0f);
 
@@ -207,6 +207,11 @@ int main()
             child->setVariant(ui::Button::Variant::FILLED);
             customPanel->addChild(std::move(child), customPanel->getChildCount());
         }
+
+        auto customLayoutRoot = std::make_unique<ui::StackPanelNode>(ui::StackPanelNode::Orientation::Vertical);
+        customLayoutRoot->setPosition({8.0f, 38.0f});
+        customLayoutRoot->setSize(ui::LayoutSizeValue::fixed(120.0f, 82.0f));
+        customLayoutRoot->addChild(std::move(customPanel), 0);
 
         ui::Button *spacingButton = new ui::Button();
         std::unique_ptr<ui::Button> spacingButtonOwner(spacingButton);
@@ -225,7 +230,7 @@ int main()
                 uiManager.invalidateLayout(*customPanelPtr);
             });
 
-        uiManager.addRoot(std::move(customPanel));
+        uiManager.addRoot(std::move(customLayoutRoot));
         uiManager.addRoot(std::move(spacingButtonOwner));
 
         auto dropdown = std::make_unique<ui::Dropdown>();
