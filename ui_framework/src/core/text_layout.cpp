@@ -2,24 +2,76 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
 namespace ui
 {
+    namespace
+    {
+        class MeasureFont final
+        {
+        public:
+            explicit MeasureFont(TTF_Font *source, float requestedSize) noexcept
+            {
+                font_ = source;
+                if (!source || requestedSize <= 0.0f)
+                    return;
+                const float sourceSize = TTF_GetFontSize(source);
+                if (sourceSize <= 0.0f || std::abs(sourceSize - requestedSize) < 0.001f)
+                    return;
+                TTF_Font *copy = TTF_CopyFont(source);
+                if (!copy)
+                {
+                    font_ = nullptr;
+                    return;
+                }
+                if (!TTF_SetFontSize(copy, requestedSize))
+                {
+                    TTF_CloseFont(copy);
+                    font_ = nullptr;
+                    return;
+                }
+                owned_ = copy;
+                font_ = copy;
+            }
+
+            ~MeasureFont()
+            {
+                if (owned_)
+                    TTF_CloseFont(owned_);
+            }
+
+            TTF_Font *get() const noexcept { return font_; }
+
+            MeasureFont(const MeasureFont &) = delete;
+            MeasureFont &operator=(const MeasureFont &) = delete;
+
+        private:
+            TTF_Font *font_ = nullptr;
+            TTF_Font *owned_ = nullptr;
+        };
+    }
+
     LayoutSize TextLayout::measure(float availableWidth) const noexcept
     {
         if (!font_ || text_.empty())
             return {};
 
+        MeasureFont measureFont(font_, fontSize_);
+        TTF_Font *font = measureFont.get();
+        if (!font)
+            return {};
+
         int width = 0;
         int height = 0;
 
-        if (availableWidth > 0.0f)
+        if (wrapMode_ == WrapMode::WRAP && availableWidth > 0.0f)
         {
             const int wrapWidth = std::max(1, static_cast<int>(std::floor(availableWidth)));
-            if (!TTF_GetStringSizeWrapped(font_, text_.c_str(), 0, wrapWidth, &width, &height))
+            if (!TTF_GetStringSizeWrapped(font, text_.c_str(), 0, wrapWidth, &width, &height))
                 return {};
         }
-        else if (!TTF_GetStringSize(font_, text_.c_str(), 0, &width, &height))
+        else if (!TTF_GetStringSize(font, text_.c_str(), 0, &width, &height))
         {
             return {};
         }
