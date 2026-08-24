@@ -7,6 +7,7 @@
 
 #include "ui_framework/node.hpp"
 #include "ui_framework/text_layout.hpp"
+#include "ui_framework/typography.hpp"
 
 namespace ui
 {
@@ -15,23 +16,7 @@ namespace ui
     class Typography : public Node
     {
     public:
-        enum class Variant
-        {
-            INHERIT,
-            H1,
-            H2,
-            H3,
-            H4,
-            H5,
-            H6,
-            SUBTITLE1,
-            SUBTITLE2,
-            BODY1,
-            BODY2,
-            BUTTON,
-            CAPTION,
-            OVERLINE
-        };
+        using Variant = TypographyVariant;
 
         Typography();
         ~Typography() override;
