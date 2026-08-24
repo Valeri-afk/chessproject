@@ -6,9 +6,9 @@
 namespace ui
 {
     TabItem::TabItem() { setPadding({12.0f,12.0f,8.0f,8.0f}); setFocusable(true); setCapturable(true); addHandler<MouseClickEvent>([this](MouseClickEvent &event, Node &) { handleMouseClick(event); }); }
-    void TabItem::setText(std::string text) { if(text_==text) return; deferLayoutMutation([text=std::move(text)](Node &node){ static_cast<TabItem &>(node).text_=std::move(text); }); }
+    void TabItem::setText(std::string text) { if(text_==text) return; text_=std::move(text); }
     const std::string &TabItem::getText() const noexcept { return text_; }
-    void TabItem::setFont(TTF_Font *font) { if(font_==font) return; deferLayoutMutation([font](Node &node){ static_cast<TabItem &>(node).font_=font; }); }
+    void TabItem::setFont(TTF_Font *font) { if(font_==font) return; font_=font; }
     TTF_Font *TabItem::getFont() const noexcept { return font_; }
     void TabItem::setTextColor(Color color) noexcept { textColor_=color; }
     Color TabItem::getTextColor() const noexcept { return textColor_; }
