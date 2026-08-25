@@ -58,7 +58,6 @@ namespace ui
         std::optional<Node::Id> pendingFocusNodeId_;
         bool pendingClearFocus_ = false;
         bool focusTransitionInProgress_ = false;
-        bool dragEndDispatchInProgress_ = false;
 
         static void rememberNode(Node *&node, std::optional<Node::Id> &id) noexcept;
         static void clearTrackedNode(Node *&node, std::optional<Node::Id> &id) noexcept;
