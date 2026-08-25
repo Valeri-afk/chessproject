@@ -1,4 +1,6 @@
 #include "modal_system.hpp"
+#include "node_tree.hpp"
+#include "input_system.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -16,6 +18,7 @@ namespace ui
             color_ = color;
             opacity_ = std::clamp(opacity, 0.0f, 1.0f);
         }
+
         void setViewport(const LayoutSize &size)
         {
             setPosition({0.0f, 0.0f});
@@ -45,12 +48,14 @@ namespace ui
         if (backdropNode_)
             backdropNode_->setViewport(viewportSize_);
     }
+
     void ModalSystem::setBackdropColor(const Color &color) noexcept
     {
         backdropColor_ = color;
         if (backdropNode_)
             backdropNode_->setBackdrop(backdropColor_, backdropOpacity_);
     }
+
     Color ModalSystem::getBackdropColor() const noexcept { return backdropColor_; }
     void ModalSystem::setBackdropFadeDuration(float seconds) noexcept { backdropFadeDuration_ = std::max(0.0f, seconds); }
     float ModalSystem::getBackdropFadeDuration() const noexcept { return backdropFadeDuration_; }
@@ -71,6 +76,7 @@ namespace ui
                 }
             }
         }
+
         backdropNode_ = nullptr;
         auto backdrop = std::make_unique<BackdropNode>();
         backdrop->setFocusable(false);
@@ -92,6 +98,7 @@ namespace ui
         if (node && nodeTree.isOverlay(node))
             nodeTree.removeOverlay(node);
     }
+
     void ModalSystem::updateBackdropState() noexcept
     {
         backdropTargetOpacity_ = modals_.empty() ? 0.0f : 1.0f;
@@ -101,6 +108,7 @@ namespace ui
             backdropNode_->setBackdrop(backdropColor_, backdropOpacity_);
         }
     }
+
     void ModalSystem::update(NodeTree &nodeTree, float dt) noexcept
     {
         backdropTargetOpacity_ = modals_.empty() ? 0.0f : 1.0f;
@@ -114,16 +122,19 @@ namespace ui
             else if (backdropOpacity_ > backdropTargetOpacity_)
                 backdropOpacity_ = std::max(backdropTargetOpacity_, backdropOpacity_ - step);
         }
+
         if (!modals_.empty())
             ensureBackdrop(nodeTree);
         else if (backdropOpacity_ <= 0.0f)
             removeBackdrop(nodeTree);
+
         if (backdropNode_)
         {
             backdropNode_->setViewport(viewportSize_);
             backdropNode_->setBackdrop(backdropColor_, backdropOpacity_);
         }
     }
+
     void ModalSystem::clear(NodeTree &nodeTree, InputSystem &input) noexcept
     {
         modals_.clear();
