@@ -12,11 +12,15 @@
 
 namespace
 {
-    struct TestFailure { std::string message; };
+    struct TestFailure
+    {
+        std::string message;
+    };
 
     void expect(bool condition, const char *message)
     {
-        if (!condition) throw TestFailure{message};
+        if (!condition)
+            throw TestFailure{message};
     }
 
     struct Fixture
@@ -71,8 +75,10 @@ namespace
         Fixture f;
         int enters = 0;
         int leaves = 0;
-        f.root->on<ui::MouseEnterEvent>([&](ui::MouseEnterEvent &, ui::Node &) { ++enters; });
-        f.root->on<ui::MouseLeaveEvent>([&](ui::MouseLeaveEvent &, ui::Node &) { ++leaves; });
+        f.root->on<ui::MouseEnterEvent>([&](ui::MouseEnterEvent &, ui::Node &)
+                                        { ++enters; });
+        f.root->on<ui::MouseLeaveEvent>([&](ui::MouseLeaveEvent &, ui::Node &)
+                                        { ++leaves; });
 
         f.input.processEvent(mouseMotion(10.0f, 10.0f), f.tree, nullptr);
         expect(enters == 1, "hover enter must be dispatched once");
@@ -90,9 +96,12 @@ namespace
         int clicks = 0;
         f.root->setFocusable(true);
         f.root->setCapturable(true);
-        f.root->on<ui::MouseDownEvent>([&](ui::MouseDownEvent &, ui::Node &) { ++downs; });
-        f.root->on<ui::MouseUpEvent>([&](ui::MouseUpEvent &, ui::Node &) { ++ups; });
-        f.root->on<ui::MouseClickEvent>([&](ui::MouseClickEvent &, ui::Node &) { ++clicks; });
+        f.root->on<ui::MouseDownEvent>([&](ui::MouseDownEvent &, ui::Node &)
+                                       { ++downs; });
+        f.root->on<ui::MouseUpEvent>([&](ui::MouseUpEvent &, ui::Node &)
+                                     { ++ups; });
+        f.root->on<ui::MouseClickEvent>([&](ui::MouseClickEvent &, ui::Node &)
+                                        { ++clicks; });
 
         f.input.processEvent(mouseDown(10.0f, 10.0f), f.tree, nullptr);
         expect(downs == 1, "MouseDown must reach hit target");
@@ -140,9 +149,7 @@ namespace
         f.root->setCapturable(true);
         bool callbackCaptureSucceeded = false;
         f.root->on<ui::MouseDownEvent>([&](ui::MouseDownEvent &, ui::Node &node)
-        {
-            callbackCaptureSucceeded = f.input.capture(f.tree, node);
-        });
+                                       { callbackCaptureSucceeded = f.input.capture(f.tree, node); });
 
         f.input.processEvent(mouseDown(10.0f, 10.0f), f.tree, nullptr);
 
@@ -156,12 +163,18 @@ namespace
         Fixture f;
         f.root->setCapturable(true);
         std::vector<std::string> events;
-        f.root->on<ui::MouseDownEvent>([&](ui::MouseDownEvent &, ui::Node &) { events.push_back("down"); });
-        f.root->on<ui::MouseMoveEvent>([&](ui::MouseMoveEvent &, ui::Node &) { events.push_back("move"); });
-        f.root->on<ui::MouseDragBeginEvent>([&](ui::MouseDragBeginEvent &, ui::Node &) { events.push_back("drag_begin"); });
-        f.root->on<ui::MouseDragEvent>([&](ui::MouseDragEvent &, ui::Node &) { events.push_back("drag"); });
-        f.root->on<ui::MouseUpEvent>([&](ui::MouseUpEvent &, ui::Node &) { events.push_back("up"); });
-        f.root->on<ui::MouseDragEndEvent>([&](ui::MouseDragEndEvent &, ui::Node &) { events.push_back("drag_end"); });
+        f.root->on<ui::MouseDownEvent>([&](ui::MouseDownEvent &, ui::Node &)
+                                       { events.push_back("down"); });
+        f.root->on<ui::MouseMoveEvent>([&](ui::MouseMoveEvent &, ui::Node &)
+                                       { events.push_back("move"); });
+        f.root->on<ui::MouseDragBeginEvent>([&](ui::MouseDragBeginEvent &, ui::Node &)
+                                            { events.push_back("drag_begin"); });
+        f.root->on<ui::MouseDragEvent>([&](ui::MouseDragEvent &, ui::Node &)
+                                       { events.push_back("drag"); });
+        f.root->on<ui::MouseUpEvent>([&](ui::MouseUpEvent &, ui::Node &)
+                                     { events.push_back("up"); });
+        f.root->on<ui::MouseDragEndEvent>([&](ui::MouseDragEndEvent &, ui::Node &)
+                                          { events.push_back("drag_end"); });
 
         f.input.processEvent(mouseDown(10.0f, 10.0f), f.tree, nullptr);
         expect(!f.input.isDragging(), "MouseDown must not start drag");
@@ -191,8 +204,10 @@ namespace
         f.root->setCapturable(true);
         int clicks = 0;
         int dragEnds = 0;
-        f.root->on<ui::MouseClickEvent>([&](ui::MouseClickEvent &, ui::Node &) { ++clicks; });
-        f.root->on<ui::MouseDragEndEvent>([&](ui::MouseDragEndEvent &, ui::Node &) { ++dragEnds; });
+        f.root->on<ui::MouseClickEvent>([&](ui::MouseClickEvent &, ui::Node &)
+                                        { ++clicks; });
+        f.root->on<ui::MouseDragEndEvent>([&](ui::MouseDragEndEvent &, ui::Node &)
+                                          { ++dragEnds; });
 
         f.input.processEvent(mouseDown(10.0f, 10.0f), f.tree, nullptr);
         f.input.processEvent(mouseMotion(30.0f, 10.0f), f.tree, nullptr);
@@ -210,12 +225,18 @@ namespace
         ui::KeyCode receivedDown = ui::KeyCode::UNKNOWN;
         ui::KeyCode receivedUp = ui::KeyCode::UNKNOWN;
         f.root->setFocusable(true);
-        f.root->on<ui::KeyDownEvent>([&](ui::KeyDownEvent &event, ui::Node &) { ++downs; receivedDown = event.key; });
-        f.root->on<ui::KeyUpEvent>([&](ui::KeyUpEvent &event, ui::Node &) { ++ups; receivedUp = event.key; });
+        f.root->on<ui::KeyDownEvent>([&](ui::KeyDownEvent &event, ui::Node &)
+                                     { ++downs; receivedDown = event.key; });
+        f.root->on<ui::KeyUpEvent>([&](ui::KeyUpEvent &event, ui::Node &)
+                                   { ++ups; receivedUp = event.key; });
 
         expect(f.input.focus(f.tree, *f.root), "focus must succeed for focusable node");
-        f.input.processEvent(([]{ SDL_Event event{}; event.type = SDL_EVENT_KEY_DOWN; event.key.key = SDLK_RETURN; return event; })(), f.tree, nullptr);
-        f.input.processEvent(([]{ SDL_Event event{}; event.type = SDL_EVENT_KEY_UP; event.key.key = SDLK_RETURN; return event; })(), f.tree, nullptr);
+        f.input.processEvent(([]
+                              { SDL_Event event{}; event.type = SDL_EVENT_KEY_DOWN; event.key.key = SDLK_RETURN; return event; })(),
+                             f.tree, nullptr);
+        f.input.processEvent(([]
+                              { SDL_Event event{}; event.type = SDL_EVENT_KEY_UP; event.key.key = SDLK_RETURN; return event; })(),
+                             f.tree, nullptr);
 
         expect(downs == 1, "KeyDown must reach focused node");
         expect(ups == 1, "KeyUp must reach focused node");
@@ -228,7 +249,8 @@ namespace
         Fixture f;
         int moves = 0;
         f.root->setCapturable(true);
-        f.root->on<ui::MouseMoveEvent>([&](ui::MouseMoveEvent &, ui::Node &) { ++moves; });
+        f.root->on<ui::MouseMoveEvent>([&](ui::MouseMoveEvent &, ui::Node &)
+                                       { ++moves; });
 
         expect(f.input.capture(f.tree, *f.root, ui::MousePosition{10.0f, 10.0f}), "capture must succeed");
         f.input.processEvent(mouseMotion(150.0f, 150.0f), f.tree, nullptr);
@@ -260,12 +282,12 @@ namespace
         f.layout.requestFullLayout(f.tree);
         f.layout.processLayoutQueue(f.tree);
         f.root->setFocusable(true);
-        f.root->on<ui::FocusLostEvent>([&](ui::FocusLostEvent &, ui::Node &) {
+        f.root->on<ui::FocusLostEvent>([&](ui::FocusLostEvent &, ui::Node &)
+                                       {
             std::cerr << "    [10 callback] before nested focus\n";
             const bool result = f.input.focus(f.tree, *secondPtr);
             std::cerr << "    [10 callback] nested focus returned: " << result << '\n';
-            std::cerr << "    [10 callback] focused == second: " << (f.input.focusedNode() == secondPtr) << '\n';
-        });
+            std::cerr << "    [10 callback] focused == second: " << (f.input.focusedNode() == secondPtr) << '\n'; });
 
         std::cerr << "    [10] before initial focus\n";
         expect(f.input.focus(f.tree, *f.root), "initial focus must succeed");
