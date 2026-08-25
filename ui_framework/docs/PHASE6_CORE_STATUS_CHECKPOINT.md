@@ -1,22 +1,32 @@
 # Phase 6 — Core Development Status Checkpoint
 
-This document records the exact development point reached after the Phase 5 component work and the initial Phase 6 modality and scrolling work.
-
-It is intentionally separate from `ARCHITECTURE.md`. It is a working checkpoint for continuing development and for knowing when the framework core is ready for real compilation/runtime validation.
+This document records the current framework-core development point and is the continuation map for the next work.
 
 ## 1. Current development point
 
-The repository is currently in:
-
 ```text
 Phase 6 — Framework Core / Subsystem Development
+        |
+        v
+Validation / Stabilization boundary
 ```
 
-Phase 5 is considered complete as a component-development phase.
+Phase 5 is complete as a component-development phase.
+
+The framework now has working core foundations for:
+
+- layout
+- input/focus/capture routing
+- modality
+- scrolling
+- logical text layout/rendering
+- the current standard component set
+
+The latest framework/client build has been validated successfully after recovery of the full `NodeTree` implementation and small include/API corrections.
 
 ## 2. Phase 5 result
 
-The active standard component set established during Phase 5 is:
+The active standard component set is:
 
 ```text
 Button
@@ -31,27 +41,24 @@ Slider
 Dropdown
 ```
 
-The following remain deferred or are not framework components at this stage:
+Deferred/not standard at this point:
 
 ```text
-TextField / Input    → deferred to text-input infrastructure
-Image                → deferred to resource/texture infrastructure
-Scroll               → framework-level scrolling behavior is now core infrastructure; a public Scroll / ScrollArea component remains deferred
-Modal                → currently not required as a standalone component
+TextField / Input    → text-input infrastructure still required
+Image                → minimal resource/texture infrastructure still required
+Scroll               → behavior is core infrastructure; public Scroll / ScrollArea remains deferred
+Modal                → service infrastructure exists; standalone public component not required yet
 Paper                → not a framework component
-Label                → covered by text primitives / text nodes
 Card                 → client-side composition/style pattern
 ```
 
-Phase 5 also removed the old `Widget` / `ControlNode` direction from the active source architecture.
+The old `Widget` / `ControlNode` direction is not part of the active architecture.
 
 ## 3. Phase 6 subsystem status
 
-### Modality — completed as core infrastructure
+### Modality — implemented core infrastructure
 
-The current framework has a service-level modality foundation through `ModalManager`.
-
-Implemented responsibilities:
+`ModalManager` provides:
 
 ```text
 modal registration
@@ -67,11 +74,11 @@ backdrop visual layer
 backdrop fade state
 backdrop lifecycle
 nested modal focus restoration
-direct modal invalidation / removal cleanup
+modal invalidation/removal cleanup
 deferred-mutation-safe backdrop ownership
 ```
 
-The current policy model is:
+Current backdrop policy:
 
 ```text
 BackdropClickBehavior
@@ -79,15 +86,11 @@ BackdropClickBehavior
     Close
 ```
 
-The backdrop itself is an internal framework overlay node, not a public standard UI component.
+The backdrop is an internal framework overlay node, not a public standard component.
 
-A separate `Modal` component is intentionally not required yet. A client may use ordinary framework nodes/panels as modal content through the modality service.
+### Scrolling — implemented core behavior
 
-### Scrolling — core behavior implemented; public component deferred
-
-Scrolling is now implemented as framework-level behavior through `ScrollManager`, without introducing a standalone `Scroll` / `ScrollArea` component.
-
-Implemented responsibilities:
+`ScrollManager` provides:
 
 ```text
 scroll state
@@ -97,13 +100,13 @@ SDL wheel routing
 nested scroll chaining with residual delta
 presentation coordinate transform
 hit-testing through transformed content
-existing Overflow::HIDDEN clipping integration
+Overflow::HIDDEN clipping integration
 layout-derived viewport/content extent
 nested scroll container boundaries
 scroll-state lifecycle cleanup
 ```
 
-The current ownership model is:
+Ownership remains:
 
 ```text
 ScrollManager → scroll state and input routing
@@ -112,17 +115,41 @@ NodeTree → traversal, clipping and hit-test integration
 LayoutManager → layout geometry; scroll does not mutate layout positions
 ```
 
-Layout positions remain unchanged by scrolling. Scroll offset is stored separately from layout state.
-
-A standard `Scroll` / `ScrollArea` component and scrollbar visuals remain intentionally deferred until the framework-level contract is validated by compilation/runtime behavior.
+Layout positions remain unchanged by scrolling. Scroll offset is separate state.
 
 Reference: `SCROLL_ARCHITECTURE.md`.
 
-### Text input / editing — not implemented yet
+### Text — implementation complete; runtime validation next
 
-`TextField / Input` remains blocked on a proper framework-level text-input/editing contract.
+The text architecture is now:
 
-Expected infrastructure:
+```text
+Typography / text-bearing controls
+              |
+              v
+         TextContent
+          /       \
+         v         v
+    TextLayout   TextRenderer
+         |            |
+ TextLayoutResult   SDL_ttf
+```
+
+Important decisions:
+
+- `TextPrimitive` is removed from the architecture.
+- `TextNode` / `TextRuntime` are removed from the active text architecture/build graph.
+- `TextLayout` owns logical measurement and wrapping.
+- `TextRenderer` is internal and renderer-only.
+- Text-bearing controls own `TextContent` directly.
+- Components do not expose SDL_ttf or renderer-cache state.
+- The source `TTF_Font*` remains client-owned; derived text resources are framework-owned.
+
+Reference: `TEXT_ARCHITECTURE_CHECKPOINT.md` and `TEXT_RESOURCE_LIFETIME.md`.
+
+### Text input / editing — not implemented
+
+Still requires a proper reusable contract for:
 
 ```text
 text input events
@@ -132,111 +159,93 @@ selection
 editing commands
 clipboard
 keyboard navigation
-repeat/backspace/delete behavior
+repeat/backspace/delete
 focus integration
 text-input lifecycle
 ```
 
-### Image / resource infrastructure — not implemented yet
+### Image / resource infrastructure — not implemented
 
-`Image` remains blocked on a minimal reusable renderer/resource ownership model.
-
-The goal is not a generic resource manager. The required abstraction should be limited to stable texture/resource ownership, lifetime and presentation needs.
-
-`primitives` remain a low-level drawing layer and are not a resource system.
+Still requires a minimal reusable texture/resource ownership contract. Do not create a broad ResourceManager without concrete requirements.
 
 ### Generic overlay / popup infrastructure — deferred
 
-Do not create a separate overlay subsystem merely because `Dropdown` exists.
+Do not add a second overlay architecture merely because `Dropdown` exists. Introduce one only if concrete requirements demonstrate the need for root-level placement, clipping escape, global ordering, outside-click coordination across unrelated subtrees, or collision policy.
 
-Introduce one only if a concrete requirement appears for:
+## 4. Recovery / build-validation checkpoint
 
-```text
-escaping parent clipping
-root-level popup placement
-global popup ordering
-outside-click handling across unrelated subtrees
-collision/placement policy
-```
-
-Modality currently uses the existing overlay mechanism and does not require a second overlay architecture.
-
-## 4. What remains before core development is considered complete
-
-The remaining core-development work is:
+The current recovery branch is:
 
 ```text
-1. Text input / editing infrastructure
-2. Image / minimal resource ownership infrastructure
-3. Re-evaluate generic overlay/popup infrastructure only if evidence requires it
-4. Final subsystem integration review
-5. Source-tree consistency review
-6. Documentation checkpoint for completed Phase 6 core work
+recovery-before-node-tree-break
 ```
 
-Scrolling is no longer on the implementation queue; it is now at the validation/stabilization boundary for core behavior.
+A successful framework/client build has been reached after restoring the full `node_tree.cpp` implementation and correcting the small `Node` constness / `MeasureContext` callback mismatch encountered during validation.
 
-Not every deferred component is guaranteed to become a framework component. Infrastructure is implemented only when a concrete reusable framework contract exists.
+Recovery rule:
 
-## 5. Validation boundary
+- Do not replace the full `node_tree.cpp` implementation with a simplified/truncated version.
+- Do not automate changes to `node_tree.cpp` or `input_system.cpp` unless the exact intended diff is known.
+- Small compiler fixes should be made directly when they are local and unambiguous.
 
-Scroll and modality are now treated as implemented core infrastructure. The project should move to validation/stabilization rather than adding scrollbar visuals or a public Scroll component first.
-
-The following work is required before declaring the current core boundary fully validated:
+## 5. What remains before declaring the current core fully validated
 
 ```text
-full compilation
-accumulated build validation
-runtime smoke tests
-component interaction tests
-NodeTree/input/layout/render integration tests
-modal interaction tests
-scroll interaction tests
-memory/lifetime checks
-source/include consistency checks
+1. Runtime smoke tests
+2. Typography/text rendering tests
+3. Component interaction tests
+4. NodeTree/input/layout/render integration tests
+5. Modal interaction tests
+6. Scroll interaction tests
+7. Memory/lifetime checks
+8. Source/include consistency review
+9. Final documentation checkpoint
 ```
 
-The project should then use real build/runtime behavior to expose integration defects that static/source inspection cannot reliably prove.
+The next implementation priority is **not** another architecture rewrite. It is validation and stabilization of what is already implemented.
 
-## 6. Current operating rule
+## 6. After core validation
 
-Until the remaining core-development boundary:
+Once the current core is stable:
 
 ```text
-Do not optimize for build cleanliness.
-Do not expand the framework's component catalog unnecessarily.
-Do not create application-specific chess functionality.
-Do not add infrastructure without a concrete reusable responsibility.
-Do not add a public Scroll / ScrollArea component before validation of the core behavior.
+Stop adding framework capabilities temporarily.
+Document the validated core boundary.
+Then implement only the next infrastructure that has a concrete reusable requirement:
+
+1. Text input / editing
+2. Minimal image/resource ownership
+3. Overlay/popup infrastructure only if evidence requires it
 ```
 
-At the core-complete boundary:
+A public Scroll / ScrollArea component and scrollbar visuals remain optional and should not be added before the core scroll behavior is validated in runtime use.
+
+## 7. Working rule
 
 ```text
-Stop adding new framework capabilities.
-Run the full build.
-Run the accumulated tests.
-Fix integration defects.
-Only then decide whether additional Phase 6 work is justified.
+Prefer small local fixes over broad refactors.
+If a compiler error is small and unambiguous, fix it locally.
+If a proposed change touches NodeTree architecture, stop and verify first.
+Do not expand the component catalog without a concrete reusable need.
+Do not add application-specific chess functionality while framework core is being stabilized.
 ```
 
-## 7. Immediate next step
-
-The immediate next step is:
+## 8. Immediate next step
 
 ```text
-Validation / stabilization of the implemented framework core,
-starting with compilation and source/include consistency.
+Runtime validation / stabilization of the currently working framework.
 ```
 
-Modality and scrolling should be treated as completed infrastructure unless new evidence appears during validation.
-
-Reference set:
+Start with a small smoke test that exercises:
 
 ```text
-PHASE6_SCOPE_CANDIDATES.md
-PHASE6_MODALITY_REQUIREMENTS.md
-SCROLL_ARCHITECTURE.md
-PRIMITIVES_ROLE.md
-COMPONENT_DESIGN_GUIDE.md
+NodeTree
+  -> layout
+  -> text measurement/rendering
+  -> input dispatch
+  -> focus/capture
+  -> scrolling
+  -> modality
 ```
+
+Then record the actual runtime results here before beginning the next infrastructure phase.
