@@ -1,96 +1,24 @@
-# Phase 5 — Source Audit
+# Phase 5 — Source Audit (Historical Boundary)
 
-This document records the final Phase 5 source cleanup and the current source-level boundary entering Phase 6.
+This document records the final Phase 5 source cleanup and the boundary that was carried into Phase 6. It is historical context, not a current implementation checklist.
 
-## Removed / obsolete
+## Removed / obsolete at the Phase 5 boundary
 
-The following obsolete abstractions and orphan implementations are not part of the active source architecture:
+The following legacy abstractions were removed from the active architecture:
 
 ```text
 components/component.hpp
-components/paper.hpp
-components/paper.cpp
-components/label.hpp
-components/label.cpp
-components/flex_panel.hpp
-components/flex_panel.cpp
-core/controlnode.hpp
-core/controlnode.cpp
-src/components/flex_panel.cpp
-src/components/label.cpp
-src/core/controlnode.cpp
-src/core/gridnode.cpp
+components/paper.hpp / paper.cpp
+components/label.hpp / label.cpp
+components/flex_panel.hpp / flex_panel.cpp
+core/controlnode.hpp / controlnode.cpp
+core/gridnode.cpp
 include/ui_framework/components/modal.hpp
 ```
 
-Historical implementations may be kept only when they are explicitly useful as reference material for an unresolved design question.
+The old `Widget` / `ControlNode` direction is not part of the active framework architecture.
 
-## Active framework infrastructure
-
-```text
-UIManager
-NodeTree
-InputManager
-EventDispatcher
-EventHandlerStorage
-LayoutManager
-RenderingState
-ModalManager
-ScrollManager
-```
-
-Current responsibilities remain separated: UIManager coordinates frame/event flow; NodeTree owns live-node structure, traversal and mutation safety; InputManager owns transient input and SDL-to-framework input processing; EventDispatcher owns event propagation; LayoutManager owns measure/arrange; RenderingState owns renderer-state preservation; ModalManager owns modality; ScrollManager owns scroll state and wheel routing.
-
-## Modality
-
-`ModalManager` is active Phase 6 infrastructure, not merely preparation.
-
-The active source contains modal stack handling, modal-root filtering, focus/capture restrictions, Escape routing, backdrop interaction, focus restoration and modal-session cleanup.
-
-The legacy `Modal` component is removed from the active source tree. A standalone public `Modal` component remains intentionally deferred.
-
-## Scrolling
-
-`ScrollManager` is active Phase 6 core infrastructure.
-
-The current source provides:
-
-```text
-scroll state
-viewport/content extent relationship
-offset / maximum offset
-clamping
-accumulated ancestor offsets
-wheel routing
-nested residual-delta chaining
-layout-derived content extent
-```
-
-`UIManager` applies the accumulated scroll offset as a coordinate transform during input and render traversal. Stored layout positions remain unchanged.
-
-The active implementation is still **source-level only** until full compilation and runtime validation are performed.
-
-A standalone `Scroll` / `ScrollArea` component and scrollbar visuals remain deferred.
-
-## Retained primitives
-
-### `core/primitives.*`
-
-Retained as the low-level SDL drawing helper layer. It provides reusable stateless drawing operations and does not own component semantics or resource ownership.
-
-Its role is documented in `PRIMITIVES_ROLE.md`.
-
-### `core/text_primitive.*`
-
-Retained as the internal text measurement/rendering implementation.
-
-### `core/textnode.*`
-
-Retained as the NodeTree-facing text component that adapts text primitives to node geometry and lifecycle.
-
-## Active standard components
-
-The active Phase 5 component layer contains:
+## Phase 5 standard component set
 
 ```text
 Button
@@ -105,47 +33,69 @@ Slider
 Dropdown
 ```
 
-The `components` layer is active and supported. It is not deprecated.
+The `components` layer remains an active supported framework layer.
 
-## Deferred components
+## Framework infrastructure extracted from component requirements
+
+Two responsibilities were deliberately moved below the component layer during the subsequent core work:
 
 ```text
-TextField / Input
-Image
-List
-IconButton
+Modality  → ModalManager
+Scrolling → ScrollManager + UIManager/NodeTree integration
 ```
 
-`TextField / Input` remains blocked on framework text-input/editing infrastructure.
+A standalone public `Modal` or `Scroll/ScrollArea` component is not currently required.
 
-`Image` remains blocked on a stable resource/texture ownership contract.
+## Current text architecture
 
-`List` remains deferred because no distinct generic contract has yet justified a standalone abstraction.
-
-`IconButton` remains deferred until a stable graphics/icon/resource contract exists.
-
-## Cancelled standalone concepts
+The historical Phase 5 text implementation is no longer authoritative. The current text path is documented in `TEXT_ARCHITECTURE_CHECKPOINT.md`:
 
 ```text
-Paper
-Label
-Card
+Typography / text-bearing controls
+              ↓
+         TextContent
+          ↙       ↘
+   TextLayout   TextRenderer
 ```
 
-These are currently treated as styling/composition patterns rather than independent framework components.
+`TextPrimitive`, `TextNode`, and `TextRuntime` are not part of the active text architecture/build graph.
 
-## Source-audit status
-
-There are no currently accepted active references to the removed `Widget` / `ControlNode` model or the removed active Modal header.
-
-The remaining important source-level work is integration validation rather than another Phase 5 component sweep:
+## Current ownership boundary
 
 ```text
-full compilation
-runtime smoke tests
-modal interaction tests
-scroll interaction tests
-render/input/layout integration tests
-memory/lifetime checks
-source/include consistency checks
+UIManager       → public facade / frame orchestration
+NodeTree        → live tree, ownership, traversal, mutation safety
+InputSystem     → input state and routing
+EventDispatcher → event propagation
+LayoutSystem    → Measure / Arrange execution
+ModalSystem     → modality infrastructure
+ScrollManager   → scroll state / wheel routing
+TextLayout      → logical text measurement and wrapping
+TextContent     → component-facing text state and layout bridge
+TextRenderer    → internal SDL_ttf rendering/backend state
+```
+
+## Deferred capabilities
+
+These remain deferred because they require concrete reusable infrastructure beyond the current core:
+
+```text
+TextField / Input → text editing / IME / caret / selection infrastructure
+Image             → stable resource / texture ownership
+List              → distinct generic contract not yet demonstrated
+IconButton        → stable graphics/icon/resource contract
+```
+
+## Historical completion state
+
+Phase 5 is complete. The project has moved beyond component-catalog work into framework-core validation/stabilization.
+
+For current work, use:
+
+```text
+CURRENT_REFACTOR_DIRECTION.md
+LAYOUT_REFACTOR_CHECKPOINT.md
+TEXT_ARCHITECTURE_CHECKPOINT.md
+ROADMAP.md
+SCROLL_ARCHITECTURE.md
 ```
