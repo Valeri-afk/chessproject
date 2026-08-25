@@ -8,17 +8,19 @@ This document defines the planned development order of the framework. The source
 
 **Phase 6 — Framework Core / Subsystem Development**
 
-The repository is now consolidated on `main`. Phase 5 component development produced the current standard component set and the framework-level requirements that were carried into Phase 6.
+The framework core is now at the **validation/stabilization boundary** on the recovery branch. The major runtime, layout, event, rendering, modality, scrolling, and logical text work relevant to the current boundary is implemented and has been visually/runtime validated in the chess client.
 
 ### Current branch
 
 ```text
-main
+recovery-before-node-tree-break
 ```
+
+The recovery branch is the current working baseline for continued framework development. It preserves the working `NodeTree` implementation and the validated core behavior.
 
 ### Phase 5 result
 
-Phase 5 remains historically the component-development phase. Its final component scope was:
+Phase 5 component development produced the current standard component set:
 
 ```text
 Button
@@ -45,7 +47,7 @@ Modal was not promoted as the primary API surface. Modality is implemented throu
 
 Scroll is likewise treated as framework-level behavior/infrastructure rather than as a mandatory standalone Scroll component.
 
-### Current Phase 6 source-level status
+### Current Phase 6 source/runtime status
 
 The current source contains framework-level implementations for:
 
@@ -59,27 +61,34 @@ wheel-to-scroll routing
 nested scroll chaining
 content/viewport extent calculation
 hover refresh after scroll
+Measure → Arrange layout execution
+layout invalidation and root-based coalescing
+TextLayout / TextContent / TextRenderer integration
 ```
 
-These are **source-level implementations**, not yet runtime-validated releases.
-
-The project is now at the **validation/stabilization boundary** for this core work. New subsystem expansion should not precede source/documentation consistency review and later runtime validation.
+These have now reached the validation/stabilization boundary rather than being merely planned architecture.
 
 ## Phase 1 — Runtime
 
-Completed at source level and accepted as the runtime baseline.
+Completed and accepted as the runtime baseline.
 
 ## Phase 2 — Layout
 
-Completed at source level. Current layout responsibilities include flow layout, measurement, constraints, padding, border, position, alignment, gap, visibility and absolute-child separation.
+Completed. Current layout responsibilities include flow layout, measurement, constraints, padding, border, position, alignment, gap, visibility and absolute-child separation.
+
+The Measure → Arrange contract and explicit layout invalidation model are considered complete for the current architecture.
 
 ## Phase 3 — Input / Events
 
 Completed at source level. Current source includes mouse input, hit-test, hover/click generation, capture, focus, keyboard routing, event propagation and modal-root filtering.
 
+Event handlers are registered through the framework event system; component/client code supplies the custom behavior at the registration boundary.
+
 ## Phase 4 — Rendering / Backend
 
-Completed at source level. Current source uses SDL3 rendering, layout final geometry, renderer state isolation and clipping.
+Completed. Current source uses SDL3 rendering, logical presentation, layout final geometry, renderer state isolation and clipping.
+
+The chess client uses SDL logical presentation with `SDL_LOGICAL_PRESENTATION_LETTERBOX` and a 1920×1080 logical UI coordinate space.
 
 ## Phase 5 — Component Development
 
@@ -91,9 +100,9 @@ Its important architectural result is that components do not redefine ownership,
 
 ### Current status
 
-**Core implementation at validation/stabilization boundary.**
+**Validation / stabilization boundary.**
 
-Phase 6 is where framework-level infrastructure discovered during Phase 5 is implemented and validated. The current core behavior for modality, scrolling, viewport handling and input-coordinate conversion is implemented at source level.
+The current core implementation is working in the real chess client. The next step is documentation/source consistency review and targeted validation, not another large architecture rewrite.
 
 ### Current subsystem work
 
@@ -107,7 +116,7 @@ A separate public Modal component is not currently required.
 
 #### Scrolling
 
-`ScrollManager` now owns scroll state and provides:
+`ScrollManager` owns scroll state and provides:
 
 ```text
 viewport extent
@@ -126,15 +135,21 @@ A standalone `Scroll` / `ScrollArea` component and scrollbar presentation remain
 
 #### Viewport
 
-The framework viewport is the SDL logical presentation size when logical presentation is configured. The framework obtains it directly from the renderer rather than requiring a client-side `UIManager::setViewportSize()` call.
+The framework viewport is the SDL logical presentation size when logical presentation is configured. The framework obtains it directly from the renderer rather than requiring a client-side `UIManager::setViewportSize()` source of truth.
 
 If logical presentation is unavailable, the renderer output size is used as fallback.
+
+#### Text
+
+Logical text layout and rendering are now implemented through the current `Typography` / `TextContent` / `TextLayout` / `TextRenderer` direction.
+
+The old `TextPrimitive` / `TextNode` architecture is no longer the active target.
 
 ### Remaining framework work before broader feature expansion
 
 ```text
 Source/documentation consistency review
-Validation/stabilization of existing core behavior
+Targeted validation/stabilization
 Text input / editing
 Image / resource ownership
 Overlay/popup infrastructure only if concretely required
@@ -144,17 +159,18 @@ Not every candidate must become a subsystem. Each must be justified by an actual
 
 ## Validation and Completion
 
-The final Phase 6 completion procedure is:
+The current completion procedure is:
 
-1. Audit all active source files.
-2. Verify public APIs against actual subsystem responsibilities.
-3. Verify render/input/layout integration in runtime.
-4. Run full compilation and tests.
+1. Audit active source and public APIs.
+2. Review all living `.md` documents against the resulting source.
+3. Run full compilation and tests.
+4. Perform targeted runtime validation for layout, events, rendering, modality, scrolling and text.
 5. Perform source/include/dead-file cleanup.
-6. Review all living `.md` documents against the resulting source.
-7. Manually review `ARCHITECTURE.md` for any architectural decisions that should be incorporated.
+6. Manually review `ARCHITECTURE.md` for architectural decisions that should be incorporated.
 
 `ARCHITECTURE.md` remains a separately maintained architectural document and should not be mechanically rewritten by routine implementation work.
+
+`UI_FRAMEWORK_ARCHITECTURE_CONTEXT.md` is likewise a large reference document: read and use it as architectural context, but do not mechanically rewrite it during routine cleanup.
 
 ## Development Order
 
