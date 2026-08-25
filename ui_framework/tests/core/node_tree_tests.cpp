@@ -1,7 +1,7 @@
 #include "layout_system.hpp"
 #include "node_tree.hpp"
-#include "panel_node.hpp"
-#include "stack_panel_node.hpp"
+#include "ui_framework/panel_node.hpp"
+#include "ui_framework/stack_panel_node.hpp"
 
 #include <cstdlib>
 #include <iostream>
