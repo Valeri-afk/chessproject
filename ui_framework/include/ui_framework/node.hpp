@@ -13,7 +13,7 @@
 
 #include <SDL3/SDL.h>
 
-#include "ui_framework/event_types.hpp"
+#include "ui_framework/events.hpp"
 #include "ui_framework/layout_context.hpp"
 #include "ui_framework/types.hpp"
 
