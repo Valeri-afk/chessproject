@@ -260,11 +260,20 @@ namespace
         f.layout.requestFullLayout(f.tree);
         f.layout.processLayoutQueue(f.tree);
         f.root->setFocusable(true);
-        f.root->on<ui::FocusLostEvent>([&](ui::FocusLostEvent &, ui::Node &) { f.input.focus(f.tree, *secondPtr); });
+        f.root->on<ui::FocusLostEvent>([&](ui::FocusLostEvent &, ui::Node &) {
+            std::cerr << "    [10 callback] before nested focus\n";
+            const bool result = f.input.focus(f.tree, *secondPtr);
+            std::cerr << "    [10 callback] nested focus returned: " << result << '\n';
+            std::cerr << "    [10 callback] focused == second: " << (f.input.focusedNode() == secondPtr) << '\n';
+        });
 
+        std::cerr << "    [10] before initial focus\n";
         expect(f.input.focus(f.tree, *f.root), "initial focus must succeed");
+        std::cerr << "    [10] before clearFocus\n";
         f.input.clearFocus(f.tree);
+        std::cerr << "    [10] after clearFocus\n";
         expect(f.input.focusedNode() == secondPtr, "focus requested during FocusLost must be applied");
+        std::cerr << "    [10] final assertion passed\n";
     }
 }
 
@@ -272,16 +281,36 @@ int main()
 {
     try
     {
+        std::cerr << "[1] hover_enter_leave\n";
         test_hover_enter_leave();
+        std::cerr << "[1] PASS\n";
+        std::cerr << "[2] click_sequence_and_automatic_focus_capture\n";
         test_click_sequence_and_automatic_focus_capture();
+        std::cerr << "[2] PASS\n";
+        std::cerr << "[3] click_focus_moves_to_second_focusable_target\n";
         test_click_focus_moves_to_second_focusable_target();
+        std::cerr << "[3] PASS\n";
+        std::cerr << "[4] mouse_down_callback_can_override_capture\n";
         test_mouse_down_callback_can_override_capture();
+        std::cerr << "[4] PASS\n";
+        std::cerr << "[5] drag_lifecycle_and_threshold\n";
         test_drag_lifecycle_and_threshold();
+        std::cerr << "[5] PASS\n";
+        std::cerr << "[6] click_is_suppressed_after_drag\n";
         test_click_is_suppressed_after_drag();
+        std::cerr << "[6] PASS\n";
+        std::cerr << "[7] keyboard_routes_to_focused_node\n";
         test_keyboard_routes_to_focused_node();
+        std::cerr << "[7] PASS\n";
+        std::cerr << "[8] capture_survives_pointer_leaving_target\n";
         test_capture_survives_pointer_leaving_target();
+        std::cerr << "[8] PASS\n";
+        std::cerr << "[9] removed_captured_node_is_reconciled\n";
         test_removed_captured_node_is_reconciled();
+        std::cerr << "[9] PASS\n";
+        std::cerr << "[10] focus_callback_can_request_another_focus\n";
         test_focus_callback_can_request_another_focus();
+        std::cerr << "[10] PASS\n";
     }
     catch (const TestFailure &failure)
     {
