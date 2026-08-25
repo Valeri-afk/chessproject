@@ -67,9 +67,9 @@ int main()
 
     SDL_Window *window = SDL_CreateWindow(
         "ChessClient - UI Framework Visual Validation",
-        1600,
-        900,
-        SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+        logicalWidth,
+        logicalHeight,
+        SDL_WINDOW_FULLSCREEN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (!window)
     {
         TTF_Quit();
@@ -114,8 +114,9 @@ int main()
         root->setGap(14.0f);
 
         root->addChild(makeTypography(
-            "UI Framework Visual Validation — 1920x1080 logical / LETTERBOX",
-            ui::Typography::Variant::H2, font), root->getChildCount());
+                           "UI Framework Visual Validation — 1920x1080 logical / LETTERBOX",
+                           ui::Typography::Variant::H2, font),
+                       root->getChildCount());
 
         auto scaleNote = makeTypography(
             "F11 toggles fullscreen. The logical 1920x1080 canvas is letterboxed on every display aspect ratio.",
@@ -252,7 +253,8 @@ int main()
         closeModal->setFont(font);
         configureButton(*closeModal, ui::Colors::gray);
         closeModal->setSize(ui::LayoutSizeValue::fixed(260.0f, 70.0f));
-        closeModal->setOnActivate([&uiManager](ui::Button &) { uiManager.closeModal(); });
+        closeModal->setOnActivate([&uiManager](ui::Button &)
+                                  { uiManager.closeModal(); });
         modal->addChild(std::move(closeModal), modal->getChildCount());
 
         ui::Node *modalNode = uiManager.addOverlay(std::move(modal));
@@ -263,10 +265,10 @@ int main()
         configureButton(*launcher, ui::Colors::red);
         launcher->setPosition({1440.0f, 940.0f});
         launcher->setSize(ui::LayoutSizeValue::fixed(320.0f, 76.0f));
-        launcher->setOnActivate([&uiManager, modalNode](ui::Button &) {
+        launcher->setOnActivate([&uiManager, modalNode](ui::Button &)
+                                {
             if (modalNode)
-                uiManager.showModal(*modalNode, ui::BackdropClickBehavior::Close);
-        });
+                uiManager.showModal(*modalNode, ui::BackdropClickBehavior::Close); });
         uiManager.addRoot(std::move(launcher));
 
         bool running = true;
@@ -276,7 +278,7 @@ int main()
             SDL_Event event;
             while (SDL_PollEvent(&event))
             {
-                if (event.type == SDL_EVENT_QUIT)
+                if (event.type == SDL_EVENT_QUIT || (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_ESCAPE))
                     running = false;
                 else if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_F11)
                 {
