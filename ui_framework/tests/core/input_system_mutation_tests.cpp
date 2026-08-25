@@ -11,11 +11,15 @@
 
 namespace
 {
-    struct TestFailure { std::string message; };
+    struct TestFailure
+    {
+        std::string message;
+    };
 
     void expect(bool condition, const char *message)
     {
-        if (!condition) throw TestFailure{message};
+        if (!condition)
+            throw TestFailure{message};
     }
 
     struct Fixture
@@ -81,10 +85,9 @@ namespace
         bool callbackCalled = false;
 
         f.root->on<ui::MouseDownEvent>([&](ui::MouseDownEvent &, ui::Node &node)
-        {
+                                       {
             callbackCalled = true;
-            f.tree.removeRoot(&node);
-        });
+            f.tree.removeRoot(&node); });
 
         f.input.processEvent(mouseDown(10.0f, 10.0f), f.tree, nullptr);
 
@@ -105,10 +108,9 @@ namespace
 
         bool callbackCalled = false;
         f.root->on<ui::MouseUpEvent>([&](ui::MouseUpEvent &, ui::Node &node)
-        {
+                                     {
             callbackCalled = true;
-            f.tree.removeRoot(&node);
-        });
+            f.tree.removeRoot(&node); });
 
         f.input.processEvent(mouseUp(10.0f, 10.0f), f.tree, nullptr);
 
@@ -127,16 +129,121 @@ namespace
 
         bool callbackCalled = false;
         f.root->on<ui::KeyDownEvent>([&](ui::KeyDownEvent &, ui::Node &node)
-        {
+                                     {
             callbackCalled = true;
-            f.tree.removeRoot(&node);
-        });
+            f.tree.removeRoot(&node); });
 
         f.input.processEvent(keyDown(), f.tree, nullptr);
 
         expect(callbackCalled, "KeyDown callback must run before queued removal");
         expect(f.tree.rootsCount() == 0, "focused target removal must be flushed");
         expect(f.input.focusedNode() == nullptr, "removed focused node must clear focus");
+    }
+
+    void test_focus_lost_callback_can_request_another_focus()
+    {
+        Fixture f;
+
+        f.root->setFocusable(true);
+
+        auto second = std::make_unique<ui::Node>();
+        second->setPosition({0.0f, 0.0f});
+        second->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
+        second->setFocusable(true);
+
+        ui::Node *secondPtr =
+            f.tree.attachRoot(1, std::move(second));
+
+        expect(f.input.focus(f.tree, *f.root),
+               "initial focus setup must succeed");
+
+        bool callbackCalled = false;
+        bool nestedFocusReturned = false;
+
+        f.root->on<ui::FocusLostEvent>(
+            [&](ui::FocusLostEvent &, ui::Node &)
+            {
+                callbackCalled = true;
+                nestedFocusReturned =
+                    f.input.focus(f.tree, *secondPtr);
+            });
+
+        expect(f.input.focus(f.tree, *secondPtr),
+               "focus transition must succeed");
+
+        expect(callbackCalled,
+               "FocusLost callback must run");
+
+        expect(nestedFocusReturned,
+               "nested focus request must be accepted");
+
+        expect(f.input.focusedNode() == secondPtr,
+               "second node must remain focused after reentrant focus");
+    }
+
+    void test_focus_lost_removes_old_target()
+    {
+        Fixture f;
+
+        f.root->setFocusable(true);
+
+        auto second = std::make_unique<ui::Node>();
+        second->setPosition({0.0f, 0.0f});
+        second->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
+        second->setFocusable(true);
+
+        ui::Node *secondPtr =
+            f.tree.attachRoot(1, std::move(second));
+
+        const ui::Node::Id firstId = f.root->getId();
+
+        expect(f.input.focus(f.tree, *f.root),
+               "initial focus setup must succeed");
+
+        bool callbackCalled = false;
+
+        f.root->on<ui::FocusLostEvent>(
+            [&](ui::FocusLostEvent &, ui::Node &node)
+            {
+                callbackCalled = true;
+                f.tree.removeRoot(&node);
+            });
+
+        expect(f.input.focus(f.tree, *secondPtr),
+               "focus must move to second node");
+
+        expect(callbackCalled,
+               "FocusLost callback must run before queued removal");
+        expect(f.tree.findNode(firstId) == nullptr,
+               "old focused node must be removed");
+        expect(f.input.focusedNode() == secondPtr,
+               "second node must remain focused");
+    }
+
+    void test_focus_gained_removes_focused_target()
+    {
+        Fixture f;
+        f.root->setFocusable(true);
+
+        bool callbackCalled = false;
+
+        f.root->on<ui::FocusGainedEvent>(
+            [&](ui::FocusGainedEvent &, ui::Node &node)
+            {
+                callbackCalled = true;
+                f.tree.removeRoot(&node);
+            });
+
+        const bool result = f.input.focus(f.tree, *f.root);
+
+        expect(callbackCalled,
+               "FocusGained callback must run before queued removal");
+        expect(f.tree.rootsCount() == 0,
+               "FocusGained target removal must be flushed");
+        expect(f.input.focusedNode() == nullptr,
+               "removed FocusGained target must clear focus");
+        expect(!result,
+               "focus must fail when the requested node is removed during FocusGained");
     }
 
     void test_drag_end_callback_can_replace_capture()
@@ -152,10 +259,9 @@ namespace
 
         bool dragEndCalled = false;
         f.root->on<ui::MouseDragEndEvent>([&](ui::MouseDragEndEvent &, ui::Node &)
-        {
+                                          {
             dragEndCalled = true;
-            f.input.capture(f.tree, *replacementPtr, ui::MousePosition{20.0f, 20.0f});
-        });
+            f.input.capture(f.tree, *replacementPtr, ui::MousePosition{20.0f, 20.0f}); });
 
         f.input.processEvent(mouseDown(10.0f, 10.0f), f.tree, nullptr);
         f.input.processEvent(mouseMotion(30.0f, 10.0f), f.tree, nullptr);
@@ -169,6 +275,33 @@ namespace
     }
 }
 
+void test_focus_gained_callback_can_clear_focus()
+{
+    Fixture f;
+
+    f.root->setFocusable(true);
+
+    bool callbackCalled = false;
+
+    f.root->on<ui::FocusGainedEvent>(
+        [&](ui::FocusGainedEvent &, ui::Node &)
+        {
+            callbackCalled = true;
+            f.input.clearFocus(f.tree);
+        });
+
+    const bool result = f.input.focus(f.tree, *f.root);
+
+    expect(callbackCalled,
+           "FocusGained callback must run");
+
+    expect(f.input.focusedNode() == nullptr,
+           "clearFocus requested from FocusGained must clear focus");
+
+    expect(!result,
+           "focus must report failure when FocusGained immediately clears focus");
+}
+
 int main()
 {
     try
@@ -177,6 +310,11 @@ int main()
         test_mouse_up_removes_captured_target();
         test_key_down_removes_focused_target();
         test_drag_end_callback_can_replace_capture();
+
+        test_focus_gained_removes_focused_target();
+        test_focus_lost_removes_old_target();
+        test_focus_lost_callback_can_request_another_focus();
+        test_focus_gained_callback_can_clear_focus();
     }
     catch (const TestFailure &failure)
     {
