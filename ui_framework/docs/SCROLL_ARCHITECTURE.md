@@ -4,9 +4,9 @@ Scroll is a framework-level behavior/infrastructure concern. A standalone public
 
 ## Current implementation status
 
-The source already contains `ScrollManager` and `UIManager` integration.
+The source contains `ScrollManager` and `UIManager` integration, and the chess client builds and runs with the current rendering/layout stack.
 
-Current source-level responsibilities include:
+Current responsibilities include:
 
 ```text
 ScrollManager
@@ -26,7 +26,7 @@ UIManager
 └── synchronizes scroll state during frame preparation
 ```
 
-The implementation is source-level only until full build and runtime validation are performed.
+The basic application/rendering integration is working. Dedicated behavioral validation of scrolling itself remains separate work.
 
 ## Coordinate model
 
@@ -44,7 +44,7 @@ effective render/input position
 
 For nested scroll containers, ancestor offsets accumulate.
 
-The stored layout geometry therefore remains stable while scrolling changes the effective coordinate used by rendering and input.
+Stored layout geometry remains stable while scrolling changes the effective coordinate used by rendering and input.
 
 ## Range model
 
@@ -66,21 +66,9 @@ Viewport and content extent are derived from the framework's layout geometry dur
 
 ## Border and padding
 
-The scroll viewport must use the framework's existing layout box model.
+The scroll viewport uses the framework's existing layout box model.
 
-The current implementation derives the usable client size by subtracting positive border and padding from the node's actual size.
-
-Do not introduce a separate Scroll-specific box model.
-
-Conceptually:
-
-```text
-actual border box
-      ↓ subtract border
-padding area
-      ↓ account for padding/content origin
-scroll viewport/content relationship
-```
+The usable client size is derived by accounting for the node's border and padding. Do not introduce a separate Scroll-specific box model.
 
 ## Input
 
@@ -104,19 +92,17 @@ apply available delta
 clamp
 ```
 
-The implementation allows remaining wheel delta to propagate to outer scroll containers when an inner scroll container reaches its limit.
+Remaining wheel delta may propagate to outer scroll containers when an inner container reaches its limit.
 
-If no scroll container consumes the wheel event, normal input processing continues.
-
-Pointer events are converted by SDL to the renderer/logical coordinate space before they enter the framework input pipeline. Scroll presentation is then applied separately through the framework coordinate transform.
+Pointer events are converted to renderer/logical coordinates before entering the framework input pipeline. Scroll presentation is applied separately through the framework coordinate transform.
 
 ## Rendering and clipping
 
-Scroll should reuse the existing NodeTree clipping semantics based on `Overflow::HIDDEN` rather than creating a second clipping architecture.
+Scroll reuses the existing NodeTree clipping semantics based on `Overflow::HIDDEN` rather than introducing a second clipping architecture.
 
-The current `UIManager` applies the scroll coordinate transform during the render traversal.
+`UIManager` applies the scroll coordinate transform during render traversal.
 
-The remaining validation work is to verify that the resulting transform and the existing clipping/hit-test traversal produce correct behavior for nested scroll containers and clipped content.
+Dedicated validation still needs to confirm clipped content, nested scrolling and the exact interaction between transformed coordinates and hit testing.
 
 ## Hit testing
 
@@ -124,7 +110,7 @@ Input traversal runs under the same scroll coordinate transform used by the fram
 
 After a wheel operation changes scroll offset, `InputManager::refreshHover()` re-evaluates the node under the current pointer position using the same transformed coordinate space. This refresh generates only the required hover transitions; it does not synthesize a mouse-move event or alter pointer capture/drag state.
 
-The validation target is therefore:
+Validation target:
 
 ```text
 pointer coordinates
@@ -142,11 +128,9 @@ hover transition / event target
 
 ## Content extent
 
-`ScrollManager::sync()` currently derives content extent from the actual geometry of visible descendants while respecting nested registered scroll containers.
+`ScrollManager::sync()` derives content extent from the actual geometry of visible descendants while respecting nested registered scroll containers.
 
-This should be validated against the framework's layout semantics before being considered final.
-
-If a future component requires virtualization or a custom content extent, that requirement should be added deliberately rather than turning `ScrollManager` into an arbitrary measurement engine.
+This behavior should be covered by the dedicated scroll validation pass.
 
 ## Scrollbar presentation
 
@@ -160,17 +144,11 @@ A scroll container must remain useful without a visible scrollbar.
 
 Do not create a standalone `Scroll` / `ScrollArea` component merely because `ScrollManager` exists.
 
-First validate the framework behavior.
-
 Only introduce a public component if repeated application-level usage demonstrates that a component API provides a real reusable abstraction beyond the service/infrastructure already available.
 
 ## Remaining work
 
 ```text
-source integration review
-    ↓
-full build
-    ↓
 runtime wheel tests
     ↓
 render/clipping validation
