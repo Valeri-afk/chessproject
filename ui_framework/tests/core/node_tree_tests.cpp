@@ -36,6 +36,29 @@ namespace
         return panel;
     }
 
+    class ReentrantUnmountNode final : public ui::Node
+    {
+    public:
+        ReentrantUnmountNode(ui::PanelNode *parent, int *unmountCount) noexcept
+            : parent_(parent), unmountCount_(unmountCount)
+        {
+        }
+
+    protected:
+        void onUnmount() override
+        {
+            if (unmountCount_)
+                ++(*unmountCount_);
+
+            if (parent_)
+                parent_->removeChild(*this);
+        }
+
+    private:
+        ui::PanelNode *parent_ = nullptr;
+        int *unmountCount_ = nullptr;
+    };
+
     struct LayoutFixture
     {
         ui::NodeTree tree;
@@ -339,6 +362,26 @@ namespace
         expect(queuedRoots[0] == root->getId(), "coalesced layout root must be the containing root");
     }
 
+    void test_reentrant_remove_child_during_unmount_is_safe()
+    {
+        ui::NodeTree tree;
+        auto parent = makePanel();
+        ui::PanelNode *parentPtr = parent.get();
+        tree.attachRoot(0, std::move(parent));
+
+        int unmountCount = 0;
+        auto child = std::make_unique<ReentrantUnmountNode>(parentPtr, &unmountCount);
+        ReentrantUnmountNode *childPtr = child.get();
+        const ui::Node::Id childId = childPtr->getId();
+
+        tree.attachChild(*parentPtr, std::move(child), 0);
+        tree.removeChild(*parentPtr, *childPtr);
+
+        expect(unmountCount == 1, "reentrant removal must not invoke onUnmount twice");
+        expect(parentPtr->getChildCount() == 0, "child must remain detached after reentrant removal");
+        expect(tree.findNode(childId) == nullptr, "reentrantly removed child must be unregistered");
+    }
+
     void test_hit_test_prefers_deepest_and_topmost_visible_node()
     {
         LayoutFixture f;
@@ -394,6 +437,7 @@ int main()
         test_layout_invalidation_is_deduplicated_per_root();
         test_layout_invalidation_is_requeued_after_previous_layout_pass();
         test_deferred_multiple_child_mutations_coalesce_layout_root();
+        test_reentrant_remove_child_during_unmount_is_safe();
         test_hit_test_prefers_deepest_and_topmost_visible_node();
     }
     catch (const TestFailure &failure)
