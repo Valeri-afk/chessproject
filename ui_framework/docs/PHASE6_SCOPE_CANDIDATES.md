@@ -1,8 +1,8 @@
 # Phase 6 — Scope and Status
 
-This document is the current Phase 6 scope derived from Phase 5 component requirements. It is a living scope/status document, not a replacement for `ARCHITECTURE.md`.
+This is the living Phase 6 scope/status document. It describes the current framework-core boundary and should be preferred over older phase planning notes.
 
-## 1. Modality — implemented at source level
+## 1. Modality — implemented and runtime-validated
 
 `ModalManager` provides framework-level modality infrastructure.
 
@@ -11,25 +11,23 @@ Current responsibilities include:
 ```text
 active modal registration
 modal stack/order
-modal-root hit-testing restrictions
+modal-root hit-test restrictions
 input routing restrictions
 focus/capture policy
 Escape routing
 background interaction blocking
-focus restoration after close
+focus restoration
 backdrop interaction policy
 modal rendering/presentation order
 ```
 
-The old standalone `Modal` component is deprecated/inactive. A public Modal component remains deferred unless the service-level API later proves insufficient.
+The old standalone `Modal` component is deprecated/inactive. A public Modal component remains unnecessary unless the service-level API later proves insufficient.
 
-Reference: `PHASE6_MODALITY_REQUIREMENTS.md`.
-
-## 2. Scrolling — implemented at source level
+## 2. Scrolling — implemented, pending dedicated behavioral validation
 
 `ScrollManager` is active framework infrastructure.
 
-Current source-level responsibilities include:
+Current responsibilities include:
 
 ```text
 viewport/content extent derived from layout
@@ -44,11 +42,61 @@ hover refresh after handled scroll
 
 Pointer input is normalized into renderer/logical coordinates before entering the framework input pipeline. Scroll presentation is then applied separately through the framework coordinate transform.
 
-The implementation still requires build/runtime validation. A standalone `Scroll` / `ScrollArea` component is not currently required.
+The core integration is present and the application is running correctly, but dedicated scroll behavior should still be validated before declaring the subsystem completely closed.
+
+A standalone `Scroll` / `ScrollArea` component is not currently required. Scrollbar visuals are deferred.
 
 Reference: `SCROLL_ARCHITECTURE.md`.
 
-## 3. Text input / editing — pending
+## 3. Layout / invalidation — implemented
+
+The framework now has the intended two-phase layout execution:
+
+```text
+measure
+  ↓
+arrange
+  ↓
+final geometry
+```
+
+Layout invalidation is explicit. A normal setter does not automatically invalidate layout merely because it changes state. A component may invalidate internally when a semantic operation necessarily changes layout, while client code can also invalidate explicitly when required.
+
+The important runtime rule is:
+
+```text
+layout change
+   +
+no invalidation
+   ↓
+no required re-measure/re-arrange
+
+layout change
+   +
+invalidation
+   ↓
+layout is recomputed on the next layout pass
+```
+
+Current layout/invalidation details are documented in `LAYOUT_REFACTOR_CHECKPOINT.md`.
+
+## 4. Text layout — implemented
+
+The text architecture is now based on explicit content/layout/render responsibilities:
+
+```text
+Typography / text-bearing controls
+              ↓
+         TextContent
+          ↙       ↘
+   TextLayout   TextRenderer
+```
+
+Text measurement and wrapping are no longer treated as an ad-hoc component-local concern.
+
+Current details are documented in `TEXT_ARCHITECTURE_CHECKPOINT.md`.
+
+## 5. Text input / editing — pending
 
 `TextField / Input` remains blocked on a proper framework text-input/editing contract.
 
@@ -67,9 +115,9 @@ focus integration
 text-input lifecycle
 ```
 
-Do not implement a full TextField component by extending the existing `KeyDown/KeyUp` path alone.
+Do not implement a full TextField component by extending the existing key-event path alone.
 
-## 4. Image / resource infrastructure — pending
+## 6. Image / resource infrastructure — pending
 
 `Image` remains blocked on a stable resource/texture ownership model.
 
@@ -89,9 +137,7 @@ presentation lifecycle
 
 Keep this separate from `primitives`.
 
-Reference: `PRIMITIVES_ROLE.md`.
-
-## 5. Overlay / popup infrastructure — conditional
+## 7. Overlay / popup infrastructure — conditional
 
 `Dropdown` currently works as a local composite using existing tree/layout mechanisms.
 
@@ -105,27 +151,24 @@ outside-click dismissal across unrelated subtrees
 popup collision/placement policy
 ```
 
-## 6. Validation and stabilization — current boundary
+## 8. Current validation boundary
 
-The currently implemented Phase 6 infrastructure is at the validation/stabilization boundary.
-
-The validation set is:
+The next work is validation/stabilization, not another architectural rewrite:
 
 ```text
-full compilation
+full build
 runtime smoke tests
-automated component tests
-modal interaction tests
 scroll interaction tests
+nested scroll tests
 NodeTree/input/layout/render integration tests
 lifetime/memory checks
 source/include consistency checks
 documentation consistency checks
 ```
 
-No additional scrolling or modality subsystem should be introduced before this boundary is validated.
+The current chess client already provides a useful visual/runtime validation target for rendering, logical presentation, components, callbacks and modal behavior.
 
-## 7. Explicit non-goals unless new evidence appears
+## 9. Explicit non-goals unless new evidence appears
 
 ```text
 full theme system
@@ -137,12 +180,12 @@ large widget catalog
 application-specific chess components
 ```
 
-## 8. Scope decision rule
+## 10. Promotion rule
 
-Phase 6 infrastructure should be promoted only when there is:
+New framework infrastructure should be added only when there is:
 
 ```text
-concrete component requirement
+concrete component/application requirement
         +
 framework-level responsibility
         +
@@ -151,4 +194,4 @@ reusable contract
 clear ownership boundary
 ```
 
-The purpose of Phase 6 is to implement missing reusable infrastructure and validate it in the real framework, not to absorb every deferred component automatically.
+Phase 6 exists to complete reusable framework infrastructure and validate it in the real application, not to absorb every possible UI feature.
