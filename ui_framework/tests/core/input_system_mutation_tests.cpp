@@ -2031,7 +2031,8 @@ void test_capture_target_removed_before_next_input()
         f.tree.findNode(firstId) == nullptr,
         "captured node must be removed from tree");
 
-    // InputSystem reconciles its state when processing input.
+    // Важно: между удалением Node и следующим обращением
+    // к InputSystem ничего не вызываем.
     f.input.processEvent(
         mouseMotion(20.0f, 20.0f),
         f.tree,
@@ -2047,27 +2048,7 @@ void test_capture_target_removed_before_next_input()
 
     expect(
         !f.input.isDragging(),
-        "removed capture must clear drag state");
-
-    auto replacement = std::make_unique<ui::Node>();
-    replacement->setPosition({0.0f, 0.0f});
-    replacement->setSize(
-        ui::LayoutSizeValue::fixed(100.0f, 100.0f));
-    replacement->setCapturable(true);
-
-    ui::Node *replacementPtr =
-        f.tree.attachRoot(1, std::move(replacement));
-
-    expect(
-        f.input.capture(
-            f.tree,
-            *replacementPtr,
-            ui::MousePosition{20.0f, 20.0f}),
-        "capture after removed target must succeed");
-
-    expect(
-        f.input.capturedNode() == replacementPtr,
-        "replacement node must become captured");
+        "removed capture must clear drag state on next input");
 }
 void test_capture_sets_pressed_node_to_target()
 {
@@ -2161,7 +2142,6 @@ void test_capture_rejects_node_not_in_tree()
         "detached node must not become pressed");
 }
 
-/*
 void test_capture_target_removed_before_next_capture()
 {
     Fixture f;
@@ -2195,59 +2175,6 @@ void test_capture_target_removed_before_next_capture()
     expect(
         f.tree.findNode(capturedId) == nullptr,
         "old captured node must be removed");
-
-    expect(
-        f.input.capturedNode() == replacementPtr,
-        "replacement node must become captured");
-}
-
-*/
-
-void test_capture_target_removed_before_next_capture()
-{
-    Fixture f;
-
-    f.root->setCapturable(true);
-
-    expect(
-        f.input.capture(
-            f.tree,
-            *f.root,
-            ui::MousePosition{10.0f, 10.0f}),
-        "initial capture must succeed");
-
-    const ui::Node::Id firstId = f.root->getId();
-
-    f.tree.removeRoot(f.root);
-    f.tree.flushMutationQueue();
-
-    expect(
-        f.tree.findNode(firstId) == nullptr,
-        "captured node must be removed from tree");
-
-    expect(
-        f.input.capturedNode() == nullptr,
-        "removed capture must be reconciled");
-
-    expect(
-        f.input.pressedNode() == nullptr,
-        "removed pressed node must be reconciled");
-
-    auto replacement = std::make_unique<ui::Node>();
-    replacement->setPosition({0.0f, 0.0f});
-    replacement->setSize(
-        ui::LayoutSizeValue::fixed(100.0f, 100.0f));
-    replacement->setCapturable(true);
-
-    ui::Node *replacementPtr =
-        f.tree.attachRoot(1, std::move(replacement));
-
-    expect(
-        f.input.capture(
-            f.tree,
-            *replacementPtr,
-            ui::MousePosition{20.0f, 20.0f}),
-        "capture after removed target must succeed");
 
     expect(
         f.input.capturedNode() == replacementPtr,
