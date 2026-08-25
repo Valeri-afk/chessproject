@@ -18,7 +18,7 @@ namespace ui
         // Measures the child using the supplied content constraints and returns
         // the framework-resolved desired size. The framework owns recursive
         // traversal and the interpretation of its own layout properties.
-        std::function<LayoutSize(const Node &, const LayoutSize &)> measureChild;
+        std::function<LayoutSize(Node&, const LayoutSize&)> measureChild;
     };
 
     struct ArrangeContext
