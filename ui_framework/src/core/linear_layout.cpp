@@ -68,7 +68,7 @@ namespace ui::internal
 
         for (std::size_t i = 0; i < panel.getChildCount(); ++i)
         {
-            Node *child = panel.getChild(i);
+            const Node *child = panel.getChild(i);
             if (!child || !child->isVisible())
                 continue;
 
