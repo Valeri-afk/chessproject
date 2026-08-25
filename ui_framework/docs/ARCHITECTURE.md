@@ -7,7 +7,7 @@ The source code is the authoritative source of truth.
 This document describes current responsibilities, ownership, lifecycle,
 dependencies, invariants and existing architectural boundaries.
 
-Architectural Overview
+1. Architectural Overview
 The framework is currently organized around a central NodeTree.
 
 NodeTree owns the live UI hierarchy and is responsible for node ownership,
@@ -24,30 +24,29 @@ are intentionally centralized there.
 The current high-level structure is:
 
 text
-UIManager
-|
-+--------------------+--------------------+
-| | |
-NodeTree InputSystem LayoutSystem
-| | |
-| EventDispatcher StackPanelNode
-|
-+------ Node
-+------ PanelNode
-+------ lifecycle
-+------ traversal
-+------ mutation
-+------ update
-+------ layout invalidation
-+------ hit-testing
-+------ rendering
-+------ overlays
+                         UIManager
+                             |
+        +--------------------+--------------------+
+        |                    |                    |
+    NodeTree            InputSystem         LayoutSystem
+        |                    |                    |
+        |              EventDispatcher      StackPanelNode
+        |
+        +------ Node
+        +------ PanelNode
+        +------ lifecycle
+        +------ traversal
+        +------ mutation
+        +------ update
+        +------ layout invalidation
+        +------ hit-testing
+        +------ rendering
+        +------ overlays
 
-ModalSystem
-|
-+------ NodeTree
-+------ InputSystem
-
+    ModalSystem
+        |
+        +------ NodeTree
+        +------ InputSystem
 This diagram is intentionally high-level.
 
 Actual source-level dependencies are more tightly coupled than this diagram
@@ -57,32 +56,19 @@ In particular:
 
 InputSystem depends directly on NodeTree, EventDispatcher, SDL3 input
 types and modal state.
+
 LayoutSystem operates directly on NodeTree and Node.
+
 ModalSystem coordinates directly with NodeTree and InputSystem.
+
 rendering is currently SDL3-specific;
+
 NodeTree contains several responsibilities beyond pure tree ownership.
 
 These are properties of the current implementation.
 
 2. Repository Scope
-2.1 Active Core
-The active framework core is primarily located in:
-
-include/ui_framework/
-types.hpp
-event_types.hpp
-core/
-node.hpp
-panelnode.hpp
-ui_manager.hpp
-stackpanelnode.hpp
-event_handler_storage.hpp
-event_handler_storage.inl
-
-The exact public/private header placement is a repository organization detail;
-the runtime implementation also uses internal headers from src/core.
-
-2.2 Standard Components
+2.1 Standard Components
 The components/ directories are an active framework layer.
 
 They contain the current standard UI component set:
@@ -113,10 +99,11 @@ component hierarchy or a requirement to reproduce a complete widget toolkit.
 Legacy Widget-based implementations and removed experimental component files
 are not part of the active component architecture.
 
-2.3 Primitive Rendering Support
+2.2 Primitive Rendering Support
 The following files are retained as low-level rendering support:
 
 primitives.hpp
+
 primitives.cpp
 
 They provide primitive drawing functionality such as borders, rounded corners
@@ -146,7 +133,7 @@ Primitives are the preferred mechanism for simple geometric presentation of
 standard components. They are not a texture/resource ownership system and are
 not intended to replace a future Image/resource layer.
 
-2.4 SDL3 Backend
+2.3 SDL3 Backend
 SDL3 is the current platform, input and rendering backend.
 
 SDL3 itself is not vendored into this repository.
@@ -173,7 +160,8 @@ architectural direction rather than a current architectural layer.
 3. Node
 Source:
 
-include/ui_framework/core/node.hpp
+include/ui_framework/node.hpp
+
 src/core/node.cpp
 
 Node is the base object representing an element of the UI hierarchy.
@@ -231,8 +219,9 @@ onUnmount()
 
 hitTest()
 
-Layout measurement and arrangement are framework-owned by LayoutSystem.
-Node does not expose the legacy measure()/arrange() lifecycle to clients.
+LayoutSystem owns execution and orchestration of Measure / Arrange.
+Node provides the framework layout hooks used by concrete components and
+layout containers; clients do not invoke the layout pipeline directly.
 
 Therefore Node currently combines several responsibilities:
 
@@ -298,11 +287,12 @@ cpp
 findNode(node.id()) == &node
 for every live node.
 
-PanelNode
+4. PanelNode
 Source:
 
-include/ui_framework/core/panelnode.hpp
-src/core/panelnode.cpp
+include/ui_framework/panel_node.hpp
+
+src/core/panel_node.cpp
 
 PanelNode derives from Node and is the current generic child-container node.
 
@@ -335,9 +325,9 @@ Its current role is:
 
 text
 Node
-+
+  +
 structural child ownership
-+
+  +
 child/layout composition capability
 PanelNode is selected when a concrete component genuinely requires
 owned child Nodes, child geometry management, layout flow or structural
@@ -356,10 +346,11 @@ the attachment would create a hierarchy cycle.
 When a PanelNode belongs to a tree, structural child mutation is coordinated
 with NodeTree.
 
-NodeTree
+5. NodeTree
 Source:
 
 src/core/nodetree.hpp
+
 src/core/nodetree.cpp
 
 NodeTree is the central runtime structure.
@@ -430,30 +421,30 @@ cpp
 findNode(node.id()) == &node
 for every live node.
 
-Ownership and Lifecycle
+6. Ownership and Lifecycle
 The current lifecycle can be summarized as:
 
 text
 Detached Node
-|
-| attach
-v
+     |
+     | attach
+     v
 Owned by NodeTree
-|
-| register subtree
-v
+     |
+     | register subtree
+     v
 Live Node
-|
-| mount
-v
+     |
+     | mount
+     v
 Mounted Node
-|
-| detach
-v
+     |
+     | detach
+     v
 Unmount
-|
-| unregister
-v
+     |
+     | unregister
+     v
 Detached Node
 The exact attachment path depends on whether the node is:
 
@@ -468,7 +459,7 @@ recursively for the subtree.
 
 Mount/unmount callbacks are executed through subtree traversal.
 
-Mutation Model
+7. Mutation Model
 The framework uses deferred structural mutation to protect traversal and
 callback execution from changes to the hierarchy.
 
@@ -499,7 +490,7 @@ their current implementation.
 
 Deferred mutation is therefore one of the fundamental runtime invariants.
 
-Traversal
+8. Traversal
 NodeTree provides internal pre-order and post-order traversal.
 
 Traversal supports:
@@ -529,30 +520,30 @@ Top-level roots and overlays can also be traversed in forward or reverse order.
 Traversal operates together with mutation guards and live-node validation where
 required by the operation.
 
-Update
+9. Update
 The normal update path is:
 
 text
 UIManager
-|
-v
+    |
+    v
 NodeTree::update()
-|
-+-- roots
-|
-+-- overlays
-|
-v
-pre-order traversal
-|
-v
-Node::update(dt)
+    |
+    +-- roots
+    |
+    +-- overlays
+           |
+           v
+      pre-order traversal
+           |
+           v
+      Node::update(dt)
 Invisible or disabled nodes are skipped together with their descendants.
 
 Structural mutations generated during update are deferred and processed after
 the traversal according to the mutation model.
 
-Layout
+10. Layout
 LayoutSystem currently owns the orchestration of the Measure / Arrange
 process.
 
@@ -560,13 +551,13 @@ The current layout system is recursive.
 
 text
 NodeTree layout queue
-|
-v
+        |
+        v
 LayoutSystem
-|
-+-- measureRecursive()
-|
-+-- arrangeRecursive()
+        |
+        +-- measureRecursive()
+        |
+        +-- arrangeRecursive()
 Layout is currently invalidated at the root level.
 
 When a node requires layout, NodeTree walks from that node toward its root and
@@ -582,17 +573,17 @@ The current invalidation granularity is therefore:
 
 text
 affected node
-|
-v
+      |
+      v
 nearest tree root
-|
-v
+      |
+      v
 full root layout
 LayoutSystem is the framework-owned authority for measurement and arrangement.
 Layout containers participate through the internal layout pipeline; clients do
 not implement or invoke Measure / Arrange lifecycle methods.
 
-Measure
+11. Measure
 MeasureContext provides:
 
 availableSize
@@ -613,18 +604,18 @@ The recursive process is approximately:
 
 text
 measure parent
-|
-+-- measure child
-| |
-| +-- measure descendants
-|
-+-- calculate desired size
+    |
+    +-- measure child
+    |      |
+    |      +-- measure descendants
+    |
+    +-- calculate desired size
 The resulting desired size is stored on Node.
 
 Fixed sizes and min/max constraints are applied by the current layout
 implementation.
 
-Arrange
+12. Arrange
 ArrangeContext provides:
 
 contentPosition
@@ -644,11 +635,12 @@ to child nodes.
 Child sizes are clamped against their min/max constraints before being
 committed.
 
-StackPanelNode
+13. StackPanelNode
 Source:
 
-include/ui_framework/core/stackpanelnode.hpp
-src/core/stackpanelnode.cpp
+include/ui_framework/stack_panel_node.hpp
+
+src/core/stack_panel_node.cpp
 
 StackPanelNode derives from:
 
@@ -681,7 +673,7 @@ StackPanelNode is therefore an existing framework-owned layout container.
 Its current behavior is part of the completed one-dimensional layout
 scope. More advanced flex/grid behavior remains outside.
 
-Positioning
+14. Positioning
 Node currently exposes:
 
 PositionMode::Layout
@@ -694,7 +686,7 @@ pipeline.
 
 Advanced positioning semantics beyond the current scope are not implied.
 
-InputSystem
+15. InputSystem
 InputSystem converts SDL input into framework-level interaction state and
 events.
 
@@ -737,7 +729,7 @@ optional<Node::Id>
 
 This allows cached pointers to be validated against the current NodeTree.
 
-Hit Testing
+16. Hit Testing
 Hit testing is currently initiated by NodeTree.
 
 Hit-testing follows effective paint order.
@@ -750,7 +742,7 @@ the deepest valid descendant is selected.
 
 Overflow::HIDDEN acts as an ancestor clipping boundary during hit-testing.
 
-Focus
+17. Focus
 Focus is managed by InputSystem.
 
 A node must satisfy the relevant state requirements before receiving focus.
@@ -775,11 +767,11 @@ validation:
 
 cpp
 syncState()
-→ repairs references to nodes that are no longer live.
+    → repairs references to nodes that are no longer live.
 
 validateInputState()
-→ validates live focused nodes against visibility, enabled state,
-focusability and the active modal boundary.
+    → validates live focused nodes against visibility, enabled state,
+      focusability and the active modal boundary.
 When a live focused node becomes invalid, InputSystem performs the semantic
 focus transition through clearFocus(), which dispatches FocusLostEvent.
 
@@ -795,7 +787,7 @@ Focus transitions are reentrancy-safe. A focus request or clear operation made
 during FocusLostEvent or FocusGainedEvent is reconciled by InputSystem before
 the enclosing transition completes.
 
-Pointer Capture
+18. Pointer Capture
 Pointer capture is managed by InputSystem.
 
 The captured node becomes the primary target for pointer movement and release
@@ -830,12 +822,12 @@ the newly established capture is preserved.
 A captured node that is no longer live or no longer satisfies the active input
 state or modal boundary is invalidated by InputSystem.
 
-Event System
+19. Event System
 The event system consists of:
 
-event_types.hpp
+events.hpp
 
-EventHandlerStorage
+Node event handler registration/storage
 
 Node::dispatchEvent()
 
@@ -873,29 +865,18 @@ FocusGained
 
 FocusLost
 
-EventHandlerStorage
-EventHandlerStorage stores handlers by event type.
+Event handlers are registered directly on Node using the template method:
 
-Handlers receive:
+cpp
+Node::on<EventType>(callback)
+Each registration returns an EventHandlerId that can be used to remove or
+clear handlers:
 
-Event&
-
-Node&
-
-Handlers receive a HandlerToken when registered.
-
-Handlers can be:
-
-added;
-
-removed;
-
-cleared.
-
-The storage uses event-type-indexed tables.
-
-During dispatch, EventHandlerStorage creates a snapshot of the current handler
-entries and invokes handlers from that snapshot.
+cpp
+Node::removeEventHandler(handlerId)
+Node::clearEventHandlers()
+During dispatch, Node::dispatchEvent() creates a snapshot of the current
+handler entries and invokes handlers from that snapshot.
 
 Therefore mutation of the live handler table during callback does not invalidate
 the current iteration.
@@ -906,7 +887,7 @@ snapshot.
 Handlers removed or cleared during the current dispatch remain part of the
 current snapshot and therefore do not alter the already-started iteration.
 
-EventDispatcher
+20. EventDispatcher
 Source:
 
 src/core/event_dispatcher.hpp
@@ -944,13 +925,13 @@ The current event model uses:
 
 cpp
 event.target
-→ original dispatch target
+    → original dispatch target
 
 event.currentTarget
-→ node currently receiving the event
+    → node currently receiving the event
 
 event.phase
-→ TUNNELING, TARGET or BUBBLING
+    → TUNNELING, TARGET or BUBBLING
 Event propagation can be stopped with:
 
 cpp
@@ -960,7 +941,7 @@ propagation nodes or phases.
 
 EventDispatcher does not own Node lifetime, mutation queues or input state.
 
-ModalSystem
+21. ModalSystem
 ModalSystem maintains a stack of active modal sessions.
 
 A modal must:
@@ -983,18 +964,18 @@ Conceptually:
 
 text
 overlay nodes
-|
-v
+      |
+      v
 ModalSystem
-|
-v
+      |
+      v
 modal stack
-|
-v
+      |
+      v
 top modal
 Only the top modal defines the current modal interaction boundary.
 
-Modal Input Boundary
+22. Modal Input Boundary
 When a modal is active, InputSystem receives the top modal as its modal
 root.
 
@@ -1004,10 +985,10 @@ The resulting interaction boundary is:
 
 text
 Top Modal
-|
-+-- descendants can receive pointer input
-|
-+-- outside nodes cannot be targeted
+   |
+   +-- descendants can receive pointer input
+   |
+   +-- outside nodes cannot be targeted
 The modal input boundary therefore depends directly on:
 
 NodeTree hit testing;
@@ -1018,7 +999,7 @@ overlay ownership;
 
 ModalSystem.
 
-Modal Focus
+23. Modal Focus
 When a modal opens:
 
 current focus is remembered;
@@ -1055,7 +1036,7 @@ current stage. If a concrete reusable presentation contract later proves that
 a component API is useful, it should be built on top of the existing modality
 service rather than reimplementing modality behavior.
 
-Rendering
+24. Rendering
 SDL3 is the current and only concrete backend.
 The application owns SDL runtime lifetime.
 The framework consumes SDL3 types and the supplied renderer.
@@ -1067,11 +1048,11 @@ The current order is approximately:
 
 text
 roots
-|
-v
+  |
+  v
 non-top overlays
-|
-v
+  |
+  v
 top modal
 This ensures that the top modal is rendered last among the overlay layer.
 
@@ -1087,11 +1068,11 @@ recursively renders panel children.
 
 Renderer state is temporarily saved/restored around subtree rendering.
 
-25.1 Animation
+24.1 Animation
 Animation is not a current global rendering subsystem. It is a mechanism
 for changing semantic/visual state through normal framework semantics.
 
-Clipping
+25. Clipping
 Overflow::HIDDEN defines a subtree clipping/interaction boundary.
 
 Clipping is a framework-level mechanism implemented during rendering traversal.
@@ -1106,7 +1087,7 @@ Scrolling is a separate framework-level concern implemented through
 ScrollManager. The framework does not model scrolling as a simple
 Overflow::SCROLL property.
 
-Scrolling
+26. Scrolling
 Scrolling is a framework-level behavior rather than a required standalone UI
 component.
 
@@ -1142,7 +1123,7 @@ primitive and is not itself equivalent to a complete scrolling subsystem.
 A standalone Scroll / ScrollArea component and scrollbar presentation are
 not currently required.
 
-Component System
+27. Component System
 The component system is intentionally responsibility-driven rather than based
 on a universal inheritance hierarchy.
 
@@ -1158,51 +1139,51 @@ Components own semantic state and presentation. Generic framework mechanics such
 as ownership, lifecycle, layout orchestration, hit-testing, event propagation,
 render traversal, clipping, modality and scrolling remain framework-owned.
 
-Runtime Frame Flow
+28. Runtime Frame Flow
 The public runtime facade is UIManager.
 
 The normal frame flow is approximately:
 
 text
 UIManager::runFrame()
-|
-+-- synchronize viewport
-|
-+-- prepare for tree operation
-|
-+-- NodeTree::update()
-|
-+-- LayoutSystem::processLayoutQueue()
-|
-+-- synchronize input/modal state
-|
-+-- NodeTree::draw()
-|
-+-- synchronize state
+        |
+        +-- synchronize viewport
+        |
+        +-- prepare for tree operation
+        |
+        +-- NodeTree::update()
+        |
+        +-- LayoutSystem::processLayoutQueue()
+        |
+        +-- synchronize input/modal state
+        |
+        +-- NodeTree::draw()
+        |
+        +-- synchronize state
 Input events follow a separate path:
 
 text
 SDL_Event
-|
-v
+    |
+    v
 UIManager::processEvent()
-|
-v
+    |
+    v
 InputSystem
-|
-+-- hit-test
-+-- focus/capture state
-+-- event generation
-|
-v
+    |
+    +-- hit-test
+    +-- focus/capture state
+    +-- event generation
+    |
+    v
 EventDispatcher
-|
-v
+    |
+    v
 Node handlers
 Tree mutations may be deferred during these operations and flushed before the
 runtime proceeds to the next stable state.
 
-UIManager
+29. UIManager
 UIManager is the main public runtime facade.
 
 It currently exposes operations including:
@@ -1237,7 +1218,7 @@ It also synchronizes renderer-derived viewport state before frame processing.
 
 The individual managers remain separate implementation subsystems.
 
-Framework Viewport
+30. Framework Viewport
 The framework viewport is the current logical UI coordinate space.
 
 When SDL logical presentation is configured, the framework obtains its viewport
@@ -1253,80 +1234,80 @@ provided to the framework by the SDL renderer.
 If logical presentation is unavailable, the renderer output size is used as the
 compatibility fallback.
 
-Dependency Structure
+31. Dependency Structure
 The current architecture can be summarized as:
 
 text
-UIManager
-|
-+------------------+------------------+
-| | |
-v v v
-NodeTree InputSystem LayoutSystem
-| | |
-| v v
-| EventDispatcher StackPanelNode
-|
-+------ Node
-|
-+------ PanelNode
-|
-+------ lifecycle
-|
-+------ traversal
-|
-+------ mutation
-|
-+------ update
-|
-+------ layout invalidation
-|
-+------ hit-testing
-|
-+------ rendering
-|
-+------ overlays
-|
-v
-ModalSystem
-|
-v
-ScrollManager
+                         UIManager
+                             |
+          +------------------+------------------+
+          |                  |                  |
+          v                  v                  v
+      NodeTree          InputSystem      LayoutSystem
+          |                  |                  |
+          |                  v                  v
+          |            EventDispatcher    StackPanelNode
+          |
+          +------ Node
+          |
+          +------ PanelNode
+          |
+          +------ lifecycle
+          |
+          +------ traversal
+          |
+          +------ mutation
+          |
+          +------ update
+          |
+          +------ layout invalidation
+          |
+          +------ hit-testing
+          |
+          +------ rendering
+          |
+          +------ overlays
+                         |
+                         v
+                    ModalSystem
+                         |
+                         v
+                    ScrollManager
 Important direct dependencies include:
 
 cpp
 UIManager
--> NodeTree
--> InputSystem
--> LayoutSystem
--> ModalSystem
--> ScrollManager
+  -> NodeTree
+  -> InputSystem
+  -> LayoutSystem
+  -> ModalSystem
+  -> ScrollManager
 
 InputSystem
--> NodeTree
--> EventDispatcher
--> ModalSystem state
--> SDL3
+  -> NodeTree
+  -> EventDispatcher
+  -> ModalSystem state
+  -> SDL3
 
 LayoutSystem
--> NodeTree
--> Node
+  -> NodeTree
+  -> Node
 
 ModalSystem
--> NodeTree
--> InputSystem
+  -> NodeTree
+  -> InputSystem
 
 NodeTree
--> Node
--> PanelNode
--> SDL3 rendering
+  -> Node
+  -> PanelNode
+  -> SDL3 rendering
 This is a description of the current dependency structure, not a target
 layered architecture.
 
-Core Invariants
+32. Core Invariants
 The following invariants are fundamental to the current implementation.
 
-33.1 Node Lifetime
+32.1 Node Lifetime
 A live node must be registered in NodeTree.
 
 For a live node:
@@ -1335,41 +1316,46 @@ cpp
 findNode(node.id()) == &node
 must hold.
 
-33.2 Ownership
+32.2 Ownership
 A node attached to a tree has:
 
 cpp
 owner_ == that NodeTree
 for the complete owned subtree.
 
-33.3 Parent Relationship
+32.3 Parent Relationship
 A child attached to a PanelNode has that panel as its parent.
 
-33.4 Mutation Safety
+32.4 Mutation Safety
 Structural mutations performed during guarded traversal are deferred.
 
-33.5 Detached State
+32.5 Detached State
 A detached subtree must no longer belong to the previous NodeTree.
 
 Its live-node registrations must also be removed from that tree.
 
-33.6 Traversal Safety
+32.6 Traversal Safety
 Traversal must tolerate structural changes initiated by callbacks according to
 the current deferred-mutation and live-node validation mechanisms.
 
-33.7 Layout Invalidation
-A layout-affecting mutation currently queues the containing root for layout
-processing.
+32.7 Layout Invalidation
+Layout invalidation is explicit.
 
-33.8 Input Safety
+A change to layout-related state does not automatically imply a layout pass.
+When a framework/client operation knows that derived geometry is stale, it
+must explicitly request layout invalidation. NodeTree coalesces the request at
+the containing root and LayoutSystem processes the queued root on the next
+layout phase.
+
+32.8 Input Safety
 InputSystem must not continue using invalid node references after the
 corresponding node has been removed from the live tree.
 
-33.9 Modal Boundary
+32.9 Modal Boundary
 When a modal is active, pointer targeting must remain inside the top modal
 subtree.
 
-Current Architectural Boundaries
+33. Current Architectural Boundaries
 The current implementation establishes the following responsibility
 boundaries.
 
@@ -1393,7 +1379,12 @@ Individual layout containers provide layout-specific behavior through that
 pipeline. They do not own or expose the Measure / Arrange lifecycle.
 
 Resource boundary
-Renderer-bound resources are owned by the Node/component that needs them.
+Renderer-bound derived resources are owned by the framework subsystem that
+creates them.
+
+Client-owned source resources, such as TTF_Font*, remain non-owning inputs to
+the framework and must outlive their consumers.
+
 There is no generic ResourceManager in the current architecture.
 Semantic resources and backend-bound representations remain conceptually
 separate, but no additional generic resource subsystem is required yet.
@@ -1405,7 +1396,7 @@ input events.
 Events
 EventDispatcher owns event propagation mechanics.
 
-EventHandlerStorage owns handler registration and storage.
+Node owns event handler registration and storage.
 
 Modal
 ModalSystem owns modal stack semantics and coordinates modal-related focus
@@ -1458,7 +1449,7 @@ future text-input infrastructure
 
 future resource ownership infrastructure
 
-Areas Outside Current Runtime Stabilization
+34. Areas Outside Current Runtime Stabilization
 The following areas exist in the repository or are represented by current
 types, but are not currently stabilized architectural layers:
 
@@ -1498,45 +1489,45 @@ container. Its behavior is considered complete at source level.
 These areas are not necessarily architectural problems.
 They are simply not part of the currently stabilized runtime foundation.
 
-Current Architecture Summary
+35. Current Architecture Summary
 The current framework should be understood as a centralized runtime architecture
 built around NodeTree:
 
 text
-UIManager
-|
-+------------------+------------------+
-| | |
-NodeTree InputSystem LayoutSystem
-| | |
-| v |
-| EventDispatcher |
-| |
-+------ Node / PanelNode StackPanelNode
-|
-+------ ownership
-|
-+------ lifecycle
-|
-+------ mutation
-|
-+------ traversal
-|
-+------ update
-|
-+------ layout invalidation
-|
-+------ hit-testing
-|
-+------ rendering
-|
-+------ overlays
-|
-v
-ModalSystem
-|
-v
-ScrollManager
+                         UIManager
+                             |
+          +------------------+------------------+
+          |                  |                  |
+      NodeTree          InputSystem      LayoutSystem
+          |                  |                  |
+          |                  v                  |
+          |            EventDispatcher          |
+          |                                     |
+          +------ Node / PanelNode       StackPanelNode
+          |
+          +------ ownership
+          |
+          +------ lifecycle
+          |
+          +------ mutation
+          |
+          +------ traversal
+          |
+          +------ update
+          |
+          +------ layout invalidation
+          |
+          +------ hit-testing
+          |
+          +------ rendering
+          |
+          +------ overlays
+                         |
+                         v
+                    ModalSystem
+                         |
+                         v
+                    ScrollManager
 The important architectural characteristic is that NodeTree is currently
 the central runtime authority rather than a narrowly scoped tree container.
 
@@ -1549,7 +1540,6 @@ symmetry.
 The current source code remains the authoritative definition of all behavior.
 
 Component architecture cross-reference
-
 Component architecture is documented separately in
 docs/PHASE5_COMPONENT_ARCHITECTURE.md.
 
