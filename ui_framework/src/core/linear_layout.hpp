@@ -13,7 +13,7 @@ namespace ui
         struct LinearMeasureContext
         {
             LayoutSize availableSize{};
-            std::function<LayoutSize(const Node &, const LayoutSize &)> measureChild;
+            std::function<LayoutSize(const Node &, LayoutSize &)> measureChild;
         };
 
         struct LinearArrangeContext
