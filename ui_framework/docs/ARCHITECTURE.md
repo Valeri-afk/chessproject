@@ -1267,12 +1267,7 @@ text
           +------ rendering
           |
           +------ overlays
-                         |
-                         v
-                    ModalSystem
-                         |
-                         v
-                    ScrollManager
+
 Important direct dependencies include:
 
 cpp
@@ -1449,7 +1444,7 @@ future text-input infrastructure
 
 future resource ownership infrastructure
 
-34. Areas Outside Current Runtime Stabilization
+34. Deferred / Not Currently Required
 The following areas exist in the repository or are represented by current
 types, but are not currently stabilized architectural layers:
 
@@ -1522,12 +1517,7 @@ text
           +------ rendering
           |
           +------ overlays
-                         |
-                         v
-                    ModalSystem
-                         |
-                         v
-                    ScrollManager
+
 The important architectural characteristic is that NodeTree is currently
 the central runtime authority rather than a narrowly scoped tree container.
 
