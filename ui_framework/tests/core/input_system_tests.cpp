@@ -8,6 +8,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -62,24 +63,6 @@ namespace
         event.button.x = x;
         event.button.y = y;
         event.button.button = button;
-        return event;
-    }
-
-    SDL_Event keyDown(SDL_Keycode key, bool repeat = false)
-    {
-        SDL_Event event{};
-        event.type = SDL_EVENT_KEY_DOWN;
-        event.key.key = key;
-        event.key.repeat = repeat;
-        return event;
-    }
-
-    SDL_Event keyUp(SDL_Keycode key, bool repeat = false)
-    {
-        SDL_Event event{};
-        event.type = SDL_EVENT_KEY_UP;
-        event.key.key = key;
-        event.key.repeat = repeat;
         return event;
     }
 
@@ -168,6 +151,57 @@ namespace
                "explicit capture must survive automatic capture reconciliation");
     }
 
+    void test_drag_lifecycle_and_threshold()
+    {
+        Fixture f;
+        f.root->setCapturable(true);
+        std::vector<std::string> events;
+        f.root->on<ui::MouseDownEvent>([&](ui::MouseDownEvent &, ui::Node &) { events.push_back("down"); });
+        f.root->on<ui::MouseMoveEvent>([&](ui::MouseMoveEvent &, ui::Node &) { events.push_back("move"); });
+        f.root->on<ui::MouseDragBeginEvent>([&](ui::MouseDragBeginEvent &, ui::Node &) { events.push_back("drag_begin"); });
+        f.root->on<ui::MouseDragEvent>([&](ui::MouseDragEvent &, ui::Node &) { events.push_back("drag"); });
+        f.root->on<ui::MouseUpEvent>([&](ui::MouseUpEvent &, ui::Node &) { events.push_back("up"); });
+        f.root->on<ui::MouseDragEndEvent>([&](ui::MouseDragEndEvent &, ui::Node &) { events.push_back("drag_end"); });
+
+        f.input.processEvent(mouseDown(10.0f, 10.0f), f.tree, nullptr);
+        expect(!f.input.isDragging(), "MouseDown must not start drag");
+
+        f.input.processEvent(mouseMotion(10.0f + 1.0f, 10.0f), f.tree, nullptr);
+        expect(!f.input.isDragging(), "movement below threshold must not start drag");
+
+        f.input.processEvent(mouseMotion(10.0f + 10.0f, 10.0f), f.tree, nullptr);
+        expect(f.input.isDragging(), "movement beyond threshold must start drag");
+
+        f.input.processEvent(mouseUp(20.0f, 10.0f), f.tree, nullptr);
+        expect(f.input.capturedNode() == nullptr, "MouseUp must release capture after drag");
+        expect(f.input.pressedNode() == nullptr, "MouseUp must clear pressed state after drag");
+        expect(!f.input.isDragging(), "MouseUp must end drag state");
+
+        const std::vector<std::string> expectedPrefix{"down", "move", "drag_begin", "drag"};
+        expect(events.size() >= expectedPrefix.size(), "drag sequence must emit expected initial events");
+        for (std::size_t i = 0; i < expectedPrefix.size(); ++i)
+            expect(events[i] == expectedPrefix[i], "drag event order must be stable");
+        expect(events[events.size() - 2] == "up", "MouseUp must precede DragEnd");
+        expect(events.back() == "drag_end", "DragEnd must be the final drag lifecycle event");
+    }
+
+    void test_click_is_suppressed_after_drag()
+    {
+        Fixture f;
+        f.root->setCapturable(true);
+        int clicks = 0;
+        int dragEnds = 0;
+        f.root->on<ui::MouseClickEvent>([&](ui::MouseClickEvent &, ui::Node &) { ++clicks; });
+        f.root->on<ui::MouseDragEndEvent>([&](ui::MouseDragEndEvent &, ui::Node &) { ++dragEnds; });
+
+        f.input.processEvent(mouseDown(10.0f, 10.0f), f.tree, nullptr);
+        f.input.processEvent(mouseMotion(30.0f, 10.0f), f.tree, nullptr);
+        f.input.processEvent(mouseUp(30.0f, 10.0f), f.tree, nullptr);
+
+        expect(clicks == 0, "dragging must suppress Click");
+        expect(dragEnds == 1, "dragging must emit DragEnd exactly once");
+    }
+
     void test_keyboard_routes_to_focused_node()
     {
         Fixture f;
@@ -180,8 +214,8 @@ namespace
         f.root->on<ui::KeyUpEvent>([&](ui::KeyUpEvent &event, ui::Node &) { ++ups; receivedUp = event.key; });
 
         expect(f.input.focus(f.tree, *f.root), "focus must succeed for focusable node");
-        f.input.processEvent(keyDown(SDLK_RETURN), f.tree, nullptr);
-        f.input.processEvent(keyUp(SDLK_RETURN), f.tree, nullptr);
+        f.input.processEvent(([]{ SDL_Event event{}; event.type = SDL_EVENT_KEY_DOWN; event.key.key = SDLK_RETURN; return event; })(), f.tree, nullptr);
+        f.input.processEvent(([]{ SDL_Event event{}; event.type = SDL_EVENT_KEY_UP; event.key.key = SDLK_RETURN; return event; })(), f.tree, nullptr);
 
         expect(downs == 1, "KeyDown must reach focused node");
         expect(ups == 1, "KeyUp must reach focused node");
@@ -242,6 +276,8 @@ int main()
         test_click_sequence_and_automatic_focus_capture();
         test_click_focus_moves_to_second_focusable_target();
         test_mouse_down_callback_can_override_capture();
+        test_drag_lifecycle_and_threshold();
+        test_click_is_suppressed_after_drag();
         test_keyboard_routes_to_focused_node();
         test_capture_survives_pointer_leaving_target();
         test_removed_captured_node_is_reconciled();
