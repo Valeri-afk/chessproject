@@ -1,6 +1,6 @@
 #include "ui_framework/components/menu_item.hpp"
 #include "ui_framework/primitives.hpp"
-#include "ui_framework/event_types.hpp"
+#include "ui_framework/events.hpp"
 #include "../core/text_content.hpp"
 #include <algorithm>
 #include <utility>
