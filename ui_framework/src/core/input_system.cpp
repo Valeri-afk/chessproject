@@ -432,6 +432,7 @@ namespace ui
         pendingFocusNodeId_.reset();
         pendingClearFocus_ = false;
         focusTransitionInProgress_ = false;
+        dragEndDispatchInProgress_ = false;
     }
 
     void InputSystem::refreshHover(
@@ -553,12 +554,33 @@ namespace ui
         };
 
         Node *oldFocused = input_.focusedNode;
-
+        
         if (oldFocused == &node)
         {
             pendingFocusNodeId_.reset();
+        
+            FocusGainedEvent event;
+        
+            if (!dispatchEvent(
+                    nodeTree,
+                    &node,
+                    event,
+                    false,
+                    false))
+            {
+                syncState(nodeTree);
+                finishTransition();
+                return false;
+            }
+        
+            syncState(nodeTree);
+        
+            const bool success =
+                input_.focusedNode == &node;
+        
             finishTransition();
-            return true;
+        
+            return success;
         }
 
         if (oldFocused)
@@ -951,18 +973,21 @@ namespace ui
     {
         if (!node || !input_.isDragging)
             return true;
-
+    
+        if (dragEndDispatchInProgress_)
+            return true;
+    
         const Node::Id nodeId = node->getId();
-
+    
         MousePosition pos = position.value_or(MousePosition{});
-
+    
         MouseDragEndEvent event;
         event.position = pos;
-
+    
         if (input_.pressPosition_)
         {
             const MousePosition pressed = *input_.pressPosition_;
-
+    
             event.delta = {
                 pos.x - pressed.x,
                 pos.y - pressed.y};
@@ -971,24 +996,31 @@ namespace ui
         {
             event.delta = {};
         }
-
-        if (!dispatchEvent(
+    
+        dragEndDispatchInProgress_ = true;
+    
+        const bool dispatched =
+            dispatchEvent(
                 nodeTree,
                 node,
                 event,
                 false,
-                false))
+                false);
+    
+        dragEndDispatchInProgress_ = false;
+    
+        if (!dispatched)
         {
             syncState(nodeTree);
             return false;
         }
-
+    
         if (!nodeTree.findNode(nodeId))
         {
             syncState(nodeTree);
             return false;
         }
-
+    
         return true;
     }
 
@@ -1319,11 +1351,21 @@ namespace ui
             capture(nodeTree, *liveNode, event.position);
         }
 
-        if (!hadFocusBefore &&
-            !input.focusedNode &&
-            liveNode->isFocusable())
+        if (liveNode->isFocusable())
         {
-            focus(nodeTree, *liveNode);
+            if (!focus(nodeTree, *liveNode))
+            {
+                syncState(nodeTree);
+                return;
+            }
+        
+            liveNode = nodeTree.findNode(liveNode->getId());
+        
+            if (!liveNode)
+            {
+                syncState(nodeTree);
+                return;
+            }
         }
 
         syncState(nodeTree);
