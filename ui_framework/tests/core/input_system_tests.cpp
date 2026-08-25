@@ -124,6 +124,50 @@ namespace
         expect(f.input.pressedNode() == nullptr, "pressed state must be cleared after MouseUp");
     }
 
+    void test_click_focus_moves_to_second_focusable_target()
+    {
+        Fixture f;
+        f.root->setSize(ui::LayoutSizeValue::fixed(50.0f, 100.0f));
+        f.root->setFocusable(true);
+        f.root->setCapturable(true);
+
+        auto second = std::make_unique<ui::Node>();
+        second->setPosition({50.0f, 0.0f});
+        second->setSize(ui::LayoutSizeValue::fixed(50.0f, 100.0f));
+        second->setFocusable(true);
+        second->setCapturable(true);
+        ui::Node *secondPtr = f.tree.attachRoot(1, std::move(second));
+
+        f.layout.setViewportSize({100.0f, 100.0f});
+        f.layout.requestFullLayout(f.tree);
+        f.layout.processLayoutQueue(f.tree);
+
+        expect(f.input.focus(f.tree, *f.root), "first target must accept focus");
+        expect(f.input.focusedNode() == f.root, "first target must be focused initially");
+
+        f.input.processEvent(mouseDown(75.0f, 50.0f), f.tree, nullptr);
+
+        expect(f.input.focusedNode() == secondPtr,
+               "MouseDown on another focusable target must move focus to that target");
+    }
+
+    void test_mouse_down_callback_can_override_capture()
+    {
+        Fixture f;
+        f.root->setCapturable(true);
+        bool callbackCaptureSucceeded = false;
+        f.root->on<ui::MouseDownEvent>([&](ui::MouseDownEvent &, ui::Node &node)
+        {
+            callbackCaptureSucceeded = f.input.capture(f.tree, node);
+        });
+
+        f.input.processEvent(mouseDown(10.0f, 10.0f), f.tree, nullptr);
+
+        expect(callbackCaptureSucceeded, "MouseDown callback must be able to capture explicitly");
+        expect(f.input.capturedNode() == f.root,
+               "explicit capture must survive automatic capture reconciliation");
+    }
+
     void test_keyboard_routes_to_focused_node()
     {
         Fixture f;
@@ -164,6 +208,7 @@ namespace
         f.root->setCapturable(true);
         expect(f.input.capture(f.tree, *f.root, ui::MousePosition{10.0f, 10.0f}), "capture must succeed");
         f.tree.removeRoot(f.root);
+        f.tree.flushMutationQueue();
         f.input.syncState(f.tree);
         expect(f.input.capturedNode() == nullptr, "removed captured node must not remain tracked");
         expect(f.input.pressedNode() == nullptr, "removed captured node must clear pressed state");
@@ -174,6 +219,7 @@ namespace
     {
         Fixture f;
         auto second = std::make_unique<ui::Node>();
+        second->setPosition({0.0f, 100.0f});
         second->setSize(ui::LayoutSizeValue::fixed(20.0f, 20.0f));
         ui::Node *secondPtr = f.tree.attachRoot(1, std::move(second));
         secondPtr->setFocusable(true);
@@ -194,6 +240,8 @@ int main()
     {
         test_hover_enter_leave();
         test_click_sequence_and_automatic_focus_capture();
+        test_click_focus_moves_to_second_focusable_target();
+        test_mouse_down_callback_can_override_capture();
         test_keyboard_routes_to_focused_node();
         test_capture_survives_pointer_leaving_target();
         test_removed_captured_node_is_reconciled();
