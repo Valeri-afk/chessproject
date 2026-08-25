@@ -1440,7 +1440,11 @@ modality
 
 scroll mechanics
 
-future text-input infrastructure
+Text
+Typography and text-bearing components use TextContent.
+TextContent bridges component state to TextLayout for logical measurement/
+arrangement and to the internal TextRenderer for SDL_ttf rendering.
+TextRenderer does not form part of the public component API.
 
 future resource ownership infrastructure
 
