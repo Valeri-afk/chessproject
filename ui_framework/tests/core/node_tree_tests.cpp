@@ -59,6 +59,128 @@ namespace
         int *unmountCount_ = nullptr;
     };
 
+    class MountMutationNode final : public ui::Node
+    {
+    public:
+        MountMutationNode(ui::PanelNode *parent, int *mountCount, bool removeSelf) noexcept
+            : parent_(parent), mountCount_(mountCount), removeSelf_(removeSelf)
+        {
+        }
+
+    protected:
+        void onMount() override
+        {
+            if (mountCount_)
+                ++(*mountCount_);
+
+            if (!parent_ || !removeSelf_)
+                return;
+
+            parent_->removeChild(*this);
+        }
+
+    private:
+        ui::PanelNode *parent_ = nullptr;
+        int *mountCount_ = nullptr;
+        bool removeSelf_ = false;
+    };
+
+    class ParentUnmountNode final : public ui::PanelNode
+    {
+    public:
+        explicit ParentUnmountNode(int *unmountCount) noexcept
+            : unmountCount_(unmountCount)
+        {
+        }
+
+        void setChildToRemove(ui::Node *child) noexcept
+        {
+            child_ = child;
+        }
+
+    protected:
+        void onUnmount() override
+        {
+            if (unmountCount_)
+                ++(*unmountCount_);
+
+            if (child_)
+                removeChild(*child_);
+        }
+
+    private:
+        int *unmountCount_ = nullptr;
+        ui::Node *child_ = nullptr;
+    };
+
+    class UpdateMutationNode final : public ui::Node
+    {
+    public:
+        enum class Action
+        {
+            None,
+            RemoveSelf,
+            AddRoot
+        };
+
+        UpdateMutationNode(
+            ui::NodeTree *tree,
+            int *updateCount,
+            Action action = Action::None,
+            int *addedNodeUpdateCount = nullptr) noexcept
+            : tree_(tree),
+              updateCount_(updateCount),
+              action_(action),
+              addedNodeUpdateCount_(addedNodeUpdateCount)
+        {
+        }
+
+        ui::Node::Id addedNodeId() const noexcept
+        {
+            return addedNodeId_;
+        }
+
+    protected:
+        void update(float) override
+        {
+            if (updateCount_)
+                ++(*updateCount_);
+
+            if (!tree_)
+                return;
+
+            switch (action_)
+            {
+            case Action::RemoveSelf:
+                tree_->removeRoot(this);
+                break;
+
+            case Action::AddRoot:
+            {
+                if (addedNodeId_ != 0)
+                    break;
+
+                auto added = std::make_unique<UpdateMutationNode>(
+                    tree_,
+                    addedNodeUpdateCount_);
+                addedNodeId_ = added->getId();
+                tree_->attachRoot(1, std::move(added));
+                break;
+            }
+
+            case Action::None:
+                break;
+            }
+        }
+
+    private:
+        ui::NodeTree *tree_ = nullptr;
+        int *updateCount_ = nullptr;
+        Action action_ = Action::None;
+        int *addedNodeUpdateCount_ = nullptr;
+        ui::Node::Id addedNodeId_ = 0;
+    };
+
     struct LayoutFixture
     {
         ui::NodeTree tree;
@@ -382,6 +504,91 @@ namespace
         expect(tree.findNode(childId) == nullptr, "reentrantly removed child must be unregistered");
     }
 
+    void test_on_mount_self_removal_is_safe()
+    {
+        ui::NodeTree tree;
+        auto parent = makePanel();
+        ui::PanelNode *parentPtr = parent.get();
+        tree.attachRoot(0, std::move(parent));
+
+        int mountCount = 0;
+        auto child = std::make_unique<MountMutationNode>(parentPtr, &mountCount, true);
+        MountMutationNode *childPtr = child.get();
+        const ui::Node::Id childId = childPtr->getId();
+
+        tree.attachChild(*parentPtr, std::move(child), 0);
+
+        expect(mountCount == 1, "self-removing node must mount exactly once");
+        expect(parentPtr->getChildCount() == 0, "self-removing node must be detached after mount flush");
+        expect(tree.findNode(childId) == nullptr, "self-removing node must be unregistered after mount");
+    }
+
+    void test_parent_unmount_does_not_unmount_already_unmounted_child_twice()
+    {
+        ui::NodeTree tree;
+        auto parent = std::make_unique<ParentUnmountNode>(new int(0));
+        ParentUnmountNode *parentPtr = parent.get();
+        tree.attachRoot(0, std::move(parent));
+
+        int childUnmountCount = 0;
+        auto child = std::make_unique<ReentrantUnmountNode>(parentPtr, &childUnmountCount);
+        ReentrantUnmountNode *childPtr = child.get();
+        parentPtr->setChildToRemove(childPtr);
+        tree.attachChild(*parentPtr, std::move(child), 0);
+
+        tree.removeRoot(parentPtr);
+
+        expect(childUnmountCount == 1,
+               "post-order unmount must not allow parent cleanup to unmount the child twice");
+    }
+
+    void test_update_self_removal_is_safe()
+    {
+        ui::NodeTree tree;
+        int updateCount = 0;
+        auto node = std::make_unique<UpdateMutationNode>(
+            &tree,
+            &updateCount,
+            UpdateMutationNode::Action::RemoveSelf);
+        const ui::Node::Id id = node->getId();
+        tree.attachRoot(0, std::move(node));
+
+        tree.update(1.0f / 60.0f);
+
+        expect(updateCount == 1, "self-removing root must update exactly once");
+        expect(tree.findNode(id) == nullptr, "self-removing root must be gone after update flush");
+        expect(tree.rootsCount() == 0, "self-removing root must be removed after update");
+    }
+
+    void test_update_added_root_starts_next_frame()
+    {
+        ui::NodeTree tree;
+        int firstUpdateCount = 0;
+        int addedUpdateCount = 0;
+
+        auto node = std::make_unique<UpdateMutationNode>(
+            &tree,
+            &firstUpdateCount,
+            UpdateMutationNode::Action::AddRoot,
+            &addedUpdateCount);
+        UpdateMutationNode *nodePtr = node.get();
+        tree.attachRoot(0, std::move(node));
+
+        tree.update(1.0f / 60.0f);
+
+        expect(firstUpdateCount == 1, "existing root must update in the current frame");
+        expect(addedUpdateCount == 0, "root added during update must not update in the current frame");
+        expect(tree.rootsCount() == 2, "deferred root must exist after update flush");
+        expect(nodePtr->addedNodeId() != 0, "adder node must record the deferred root id");
+        expect(tree.findNode(nodePtr->addedNodeId()) != nullptr,
+               "deferred root must be live after the update flush");
+
+        tree.update(1.0f / 60.0f);
+
+        expect(firstUpdateCount == 2, "existing root must continue updating on the next frame");
+        expect(addedUpdateCount == 1, "deferred root must start updating on the next frame");
+    }
+
     void test_hit_test_prefers_deepest_and_topmost_visible_node()
     {
         LayoutFixture f;
@@ -438,6 +645,10 @@ int main()
         test_layout_invalidation_is_requeued_after_previous_layout_pass();
         test_deferred_multiple_child_mutations_coalesce_layout_root();
         test_reentrant_remove_child_during_unmount_is_safe();
+        test_on_mount_self_removal_is_safe();
+        test_parent_unmount_does_not_unmount_already_unmounted_child_twice();
+        test_update_self_removal_is_safe();
+        test_update_added_root_starts_next_frame();
         test_hit_test_prefers_deepest_and_topmost_visible_node();
     }
     catch (const TestFailure &failure)
