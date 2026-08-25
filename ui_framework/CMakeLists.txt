@@ -58,3 +58,24 @@ target_link_libraries(ui_framework
         SDL3_image::SDL3_image
         SDL3_ttf::SDL3_ttf
 )
+
+option(UI_FRAMEWORK_BUILD_TESTS "Build ui_framework tests" OFF)
+
+if(UI_FRAMEWORK_BUILD_TESTS)
+    enable_testing()
+
+    add_executable(ui_framework_input_tests
+        tests/core/input_system_tests.cpp
+        tests/core/input_system_mutation_tests.cpp
+    )
+
+    target_include_directories(ui_framework_input_tests
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+    )
+
+    target_link_libraries(ui_framework_input_tests
+        PRIVATE ui_framework
+    )
+
+    add_test(NAME ui_framework_input_tests COMMAND ui_framework_input_tests)
+endif()
