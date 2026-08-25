@@ -73,11 +73,15 @@ if(UI_FRAMEWORK_BUILD_TESTS)
     )
 
     target_include_directories(ui_framework_input_tests
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/core
     )
 
     target_include_directories(ui_framework_input_mutation_tests
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/core
     )
 
     target_link_libraries(ui_framework_input_tests
