@@ -1,5 +1,5 @@
 #include "ui_framework/components/typography.hpp"
-#include "text_content.hpp"
+#include "../core/text_content.hpp"
 
 #include <algorithm>
 #include <utility>
