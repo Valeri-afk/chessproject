@@ -66,10 +66,7 @@ namespace ui
         static void syncTrackedNode(Node *&node, std::optional<Node::Id> &id, NodeTree &nodeTree, bool requireEnabled, bool requireFocusable = false, bool requireCapturable = false);
         void validateInputState(NodeTree &nodeTree);
         void setModalRootId(const Node *modalRoot) noexcept;
-        bool InputSystem::dispatchDragEndIfNeeded(
-        NodeTree &nodeTree,
-        Node *node,
-        std::optional<MousePosition> position)
+        bool dispatchDragEndIfNeeded(NodeTree &nodeTree, Node *node, std::optional<MousePosition> position);
         bool dispatchMouseLeaveIfNeeded(NodeTree &nodeTree, Node *node, std::optional<MousePosition> position);
         void clearDragState() noexcept;
         void clearPointerTracking() noexcept;
