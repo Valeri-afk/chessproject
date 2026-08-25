@@ -1,5 +1,6 @@
 #include "node_tree.hpp"
 #include "rendering_state.hpp"
+#include <unordered_set>
 
 #include <algorithm>
 #include <optional>
@@ -19,6 +20,8 @@ namespace
 
         return std::nullopt;
     }
+
+    thread_local std::unordered_set<ui::Node::Id> unmountingNodeIds;
 }
 
 namespace ui
@@ -410,6 +413,9 @@ namespace ui
             enqueueMutation(
                 [this, parentId, childId]()
                 {
+                    if (unmountingNodeIds.contains(childId))
+                        return;
+            
                     if (PanelNode *panelParent = resolveLivePanelNode(parentId))
                     {
                         if (Node *liveChild = findNode(childId))
@@ -830,9 +836,24 @@ namespace ui
 
     void NodeTree::unmountSubtree(Node &root)
     {
+        std::vector<NodeId> unmountingIds;
+    
+        traversePreOrder(
+            root,
+            [&unmountingIds](Node &node)
+            {
+                unmountingIds.push_back(node.getId());
+                return TraversalResult::Continue;
+            });
+    
+        for (NodeId id : unmountingIds)
+        {
+            unmountingNodeIds.insert(id);
+        }
+    
         {
             ScopedMutationGuard guard(*this);
-
+    
             traversePostOrder(
                 root,
                 [](Node &node)
@@ -841,7 +862,12 @@ namespace ui
                     return TraversalResult::Continue;
                 });
         }
-
+    
+        for (NodeId id : unmountingIds)
+        {
+            unmountingNodeIds.erase(id);
+        }
+    
         flushMutationQueue();
     }
 
