@@ -19,6 +19,37 @@ scroll coordination
 
 Components should express semantic/visual state while infrastructure supplies coordinated mechanisms they cannot reasonably implement themselves.
 
+## Developer vs framework responsibility
+
+The component/client controls semantic meaning and component-specific state. The framework controls execution and runtime invariants.
+
+```text
+Developer/component:
+    local semantic state
+    visual properties
+    semantic actions/callbacks
+    custom Measure/Arrange/Draw behavior
+    explicit notifications when derived framework state must be recomputed
+
+Framework:
+    lifecycle
+    ownership / live-node state
+    tree integration
+    traversal
+    scheduling
+    layout execution
+    hit-testing
+    input routing
+    event dispatch
+    focus/capture
+    render traversal
+    clipping
+    modality
+    scroll mechanics
+```
+
+The imperative component API therefore does not mean that components control runtime phase ordering. Components participate in framework-owned phases through stable hooks and registration APIs.
+
 ## Node vs PanelNode
 
 Use `Node` by default.
@@ -159,9 +190,24 @@ The client registers custom behavior at the same event/semantic callback boundar
 
 ## Setter and invalidation philosophy
 
-The current direction does not require ordinary setters to silently invalidate layout. Component/client code is responsible for reporting changes whose consequences must be recomputed, using the current explicit invalidation contract.
+Ordinary setters do not universally imply automatic layout invalidation. The framework deliberately does not observe arbitrary component fields or maintain a global dependency graph.
 
-A semantic method may call invalidation internally when that is intrinsic to its implementation, but this is a component design choice rather than a universal setter rule.
+When a change has framework-derived consequences that must be recomputed, the responsible component/client must use the explicit invalidation contract. A semantic method may call invalidation internally when that consequence is intrinsic to the method's implementation, but this is a deliberate component behavior rather than a universal setter rule.
+
+## No universal property/dependency system
+
+Do not introduce a generic system merely to make every property observable:
+
+```text
+universal property registration
+property metadata/dependency graph
+dynamic property maps
+automatic observation of arbitrary fields
+global change tracking
+reconciliation/diffing
+```
+
+The current design keeps component-owned state local and makes framework participation explicit. A more general property/dependency abstraction requires a concrete reusable requirement that cannot be expressed cleanly with the existing contracts.
 
 ## Implementation style
 
