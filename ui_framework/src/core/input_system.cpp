@@ -620,27 +620,30 @@ namespace ui
             {
                 const Node::Id pendingId = *pendingFocusNodeId_;
                 pendingFocusNodeId_.reset();
-
+            
                 Node *pendingNode = nodeTree.findNode(pendingId);
-
+            
                 if (pendingNode)
                 {
+                    // The old node has already received FocusLost.
+                    // Remove it from the tracked focus state before
+                    // starting the pending transition. Otherwise a nested
+                    // focus() would dispatch FocusLost on the same node again.
+                    if (input_.focusedNode == oldFocused)
+                    {
+                        clearTrackedNode(
+                            input_.focusedNode,
+                            input_.focusedNodeId);
+                    }
+            
                     focusTransitionInProgress_ = false;
                     return focus(nodeTree, *pendingNode);
                 }
-
+            
                 syncState(nodeTree);
                 finishTransition();
                 return false;
             }
-
-            if (!nodeTree.findNode(oldFocusedId))
-            {
-                syncState(nodeTree);
-                finishTransition();
-                return false;
-            }
-        }
 
         setTrackedNode(
             input_.focusedNode,
@@ -679,9 +682,9 @@ namespace ui
         {
             const Node::Id pendingId = *pendingFocusNodeId_;
             pendingFocusNodeId_.reset();
-
+        
             Node *pendingNode = nodeTree.findNode(pendingId);
-
+        
             if (pendingNode &&
                 pendingNode != input_.focusedNode)
             {
