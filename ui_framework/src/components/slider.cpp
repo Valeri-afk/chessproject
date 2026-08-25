@@ -1,7 +1,7 @@
 #include "ui_framework/components/slider.hpp"
 
 #include "ui_framework/primitives.hpp"
-#include "ui_framework/event_types.hpp"
+#include "ui_framework/events.hpp"
 
 #include <algorithm>
 #include <cmath>
