@@ -1,6 +1,7 @@
 #include "layout_system.hpp"
 #include "node_tree.hpp"
 #include "panel_node.hpp"
+#include "stack_panel_node.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -265,17 +266,19 @@ namespace
     {
         LayoutFixture f;
 
-        auto parent = makePanel();
-        parent->setPosition({0.0f, 0.0f});
-        ui::PanelNode *parentPtr = parent.get();
+        auto parent = std::make_unique<ui::StackPanelNode>();
+        parent->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
+        ui::StackPanelNode *parentPtr = parent.get();
         f.tree.attachRoot(0, std::move(parent));
 
         auto firstChild = makeNode(60.0f, 60.0f);
         firstChild->setPosition({10.0f, 10.0f});
+        firstChild->setPositionMode(ui::PositionMode::Absolute);
         ui::Node *firstChildPtr = f.tree.attachChild(*parentPtr, std::move(firstChild), 0);
 
         auto secondChild = makeNode(60.0f, 60.0f);
         secondChild->setPosition({20.0f, 20.0f});
+        secondChild->setPositionMode(ui::PositionMode::Absolute);
         ui::Node *secondChildPtr = f.tree.attachChild(*parentPtr, std::move(secondChild), 1);
 
         f.processLayout();
