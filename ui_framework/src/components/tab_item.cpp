@@ -1,6 +1,6 @@
 #include "ui_framework/components/tab_item.hpp"
 #include "ui_framework/primitives.hpp"
-#include "text_content.hpp"
+#include "../core/text_content.hpp"
 #include <utility>
 namespace ui
 {
