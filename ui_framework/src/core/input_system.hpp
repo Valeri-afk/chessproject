@@ -16,7 +16,6 @@ namespace ui
     {
     public:
         InputSystem();
-
         InputSystem(const InputSystem &) = delete;
         InputSystem &operator=(const InputSystem &) = delete;
 
@@ -26,6 +25,7 @@ namespace ui
         void refreshHover(NodeTree &nodeTree, float x, float y, const Node *modalRoot);
         bool focus(NodeTree &nodeTree, Node &node);
         void clearFocus(NodeTree &nodeTree);
+        bool capture(NodeTree &node, std::optional<MousePosition> pressPosition = std::nullopt);
         bool capture(NodeTree &nodeTree, Node &node, std::optional<MousePosition> pressPosition = std::nullopt);
         void releaseCapture(NodeTree &nodeTree, std::optional<MousePosition> position = std::nullopt);
         void cancelPointerInteraction(NodeTree &nodeTree, std::optional<MousePosition> position = std::nullopt);
@@ -58,6 +58,7 @@ namespace ui
         std::optional<Node::Id> pendingFocusNodeId_;
         bool pendingClearFocus_ = false;
         bool focusTransitionInProgress_ = false;
+        bool dragEndDispatchInProgress_ = false;
 
         static void rememberNode(Node *&node, std::optional<Node::Id> &id) noexcept;
         static void clearTrackedNode(Node *&node, std::optional<Node::Id> &id) noexcept;
