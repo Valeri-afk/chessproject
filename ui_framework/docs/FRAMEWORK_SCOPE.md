@@ -26,6 +26,60 @@ The framework provides generic infrastructure for:
 
 It is intentionally narrower than Qt, WPF or a universal application toolkit.
 
+## Runtime model
+
+The framework combines three properties that should be preserved together:
+
+```text
+imperative C++ API
+        +
+declarative semantics
+        +
+framework-owned execution
+```
+
+Application code may mutate retained objects directly:
+
+```cpp
+button->setVisible(false);
+panel->addChild(...);
+button->setPadding(...);
+```
+
+These operations describe changes to retained semantic state or structure. They do not give client code control over framework phase ordering. `UIManager`, `NodeTree` and the internal subsystems remain responsible for lifecycle, mutation safety, scheduling, layout execution, input routing and rendering traversal.
+
+This distinction is intentional: imperative syntax does not imply an imperative runtime.
+
+## Developer vs framework responsibility
+
+The framework owns:
+
+```text
+lifecycle
+runtime invariants
+ownership / live-node state
+tree integration
+traversal
+scheduling
+layout execution
+input routing
+event propagation
+render traversal
+service coordination
+```
+
+A component/client owns:
+
+```text
+component-specific state
+application-specific meaning
+custom Measure/Arrange/Draw behavior
+semantic actions/callbacks
+explicit notifications when framework-derived state may be stale
+```
+
+The developer should be able to describe semantic state and provide component behavior without taking over the runtime control mechanisms.
+
 ## Application boundary
 
 ```text
@@ -103,7 +157,7 @@ The framework remains intentionally minimal. `Paper`, `Label` and `Card` are com
 
 ## Infrastructure vs component
 
-Before adding a component, determine whether the required behavior is infrastructure:
+Before adding a component, determine whether the required behavior is actually infrastructure:
 
 ```text
 layout calculation
@@ -169,17 +223,24 @@ Reparenting is a future capability, not a current requirement. It should only be
 6. Components do not reimplement global runtime mechanisms.
 7. The source code is authoritative for current behavior.
 8. Documentation describes stable contracts and intentional future boundaries, not historical phase checkpoints.
+9. Do not introduce a universal property or dependency system unless concrete requirements demonstrate that the existing explicit contracts are insufficient.
 
-## Non-goals
+## Why there is no universal property/dependency system
 
-- chess rules or engine logic;
-- application-specific business logic;
-- universal arbitrary-content composition;
-- CSS/Flex/Grid feature parity;
-- a universal property-registration/dependency system;
-- a second event system;
-- mandatory generic component base classes;
-- feature parity with larger UI toolkits.
+The framework intentionally does not observe arbitrary component fields or infer a global dependency graph.
+
+It does not currently introduce:
+
+```text
+universal property registration
+property metadata/dependency graph
+dynamic property maps
+automatic observation of arbitrary fields
+signals/change tracking as a global requirement
+tree diffing/reconciliation
+```
+
+The reason is architectural simplicity: framework-known state is handled by framework contracts, while component-owned state remains local and participates through explicit hooks and notifications. A more general change-tracking model should only be added when a concrete reusable requirement cannot be expressed cleanly with those contracts.
 
 ## Future capability rule
 
@@ -198,3 +259,13 @@ standalone Modal component
 ```
 
 These are requirements to evaluate, not commitments to implement blindly.
+
+## Documentation roles
+
+`FRAMEWORK_SCOPE.md` defines why the framework exists, what belongs in it, and the intended developer/framework boundary.
+
+`INSTRUCTIONS.md` defines repository-analysis, implementation-safety and documentation workflow rules.
+
+`ARCHITECTURE.md` remains the large current-architecture document.
+
+`README.md` is the entry point to the focused subsystem contracts.
