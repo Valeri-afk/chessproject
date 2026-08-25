@@ -66,6 +66,9 @@ if(UI_FRAMEWORK_BUILD_TESTS)
 
     add_executable(ui_framework_input_tests
         tests/core/input_system_tests.cpp
+    )
+
+    add_executable(ui_framework_input_mutation_tests
         tests/core/input_system_mutation_tests.cpp
     )
 
@@ -73,9 +76,18 @@ if(UI_FRAMEWORK_BUILD_TESTS)
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
     )
 
+    target_include_directories(ui_framework_input_mutation_tests
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+    )
+
     target_link_libraries(ui_framework_input_tests
         PRIVATE ui_framework
     )
 
+    target_link_libraries(ui_framework_input_mutation_tests
+        PRIVATE ui_framework
+    )
+
     add_test(NAME ui_framework_input_tests COMMAND ui_framework_input_tests)
+    add_test(NAME ui_framework_input_mutation_tests COMMAND ui_framework_input_mutation_tests)
 endif()
