@@ -1,7 +1,7 @@
 # Text architecture checkpoint
 
-> Branch: `fix/sharp-logical-text`
-> Status: implementation checkpoint before build validation
+> Branch: `recovery-before-node-tree-break`
+> Status: **build-validated; runtime validation remains**
 
 ## Current boundary
 
@@ -20,6 +20,19 @@ Typography / Button / MenuItem / TabItem
 ```
 
 `TextContent` is an internal, lightweight text object. It owns logical text state and the Measure/Arrange/Draw bridge. Components do not receive `TextLayoutResult`, `TextRenderState`, SDL_ttf objects, or renderer cache state.
+
+## What is completed
+
+The following text-architecture work is complete and has reached build validation:
+
+- `Typography` is the single public typography component; separate `Paragraph` / `Heading` components are not used.
+- `Button`, `MenuItem`, and `TabItem` use internal `TextContent` directly.
+- `TextLayout` owns logical measurement, wrapping, desired size, and line metrics.
+- `TextContent::arrange()` resolves the text against the actual allocated logical size and alignment.
+- `TextRenderer` owns SDL_ttf rendering and derived physical resources.
+- `TextPrimitive`, `TextNode`, and `TextRuntime` are removed from the active architecture/build graph.
+- Legacy `TextRenderState` and unused internal layout state have been removed.
+- Component/public APIs do not expose renderer/backend state.
 
 ## Layout responsibility
 
@@ -89,8 +102,6 @@ The complete provisional ownership contract is documented in `TEXT_RESOURCE_LIFE
 
 ## Component policy
 
-There is one standalone public typography component rather than separate public Paragraph/Heading classes. Variants provide a compact baseline vocabulary; the component remains thin.
-
 Text-bearing controls use `TextContent` directly instead of creating a child Typography node solely for a label.
 
 ```text
@@ -110,18 +121,33 @@ TabItem
 
 `TextRenderer` must not become public API. If the final implementation can be simplified further without a persistent renderer object, it may be folded into the text subsystem later.
 
-## Remaining work before build
+## Build validation checkpoint
 
-1. Verify all text-bearing components use `TextContent`.
-2. Remove stale `TextPrimitive` includes/files from the build graph.
-3. Verify `text_renderer.cpp` and its header are consistent.
-4. Verify no component exposes `TextLayoutResult` or `TextRenderState`.
-5. Remove obsolete `TextNode` role only after repository-wide usage is confirmed absent.
-6. Compile framework and client.
-7. Fix compiler/API mismatches.
-8. Run focused logical-scale and renderer-state tests.
+The framework and client now compile successfully after the current source/include cleanup and the manual restoration of the full `node_tree.cpp` implementation.
 
-## Explicit non-goals at this checkpoint
+Important recovery note:
+
+- `node_tree.cpp` is intentionally **not modified by automation** and must remain the manually restored full implementation.
+- `input_system.cpp` is intentionally **not modified by automation** and requires the small manual include fix documented during recovery (`node_tree.hpp` and `event_dispatcher.hpp`).
+- These manual edits are part of the intended working state even if they are not yet represented by this documentation commit.
+
+## Next work
+
+The next stage is **runtime validation / stabilization**, not another text architecture redesign.
+
+Required checks:
+
+1. Typography render smoke test.
+2. Button/MenuItem/TabItem text rendering and alignment.
+3. Wrapping and logical-size behavior.
+4. Font replacement and text replacement resource refresh.
+5. SDL renderer-state restoration.
+6. Source-font lifetime boundary: client owns `TTF_Font*`; framework owns derived resources.
+7. NodeTree/input/layout/render integration smoke tests.
+8. Modal and scroll interaction tests.
+9. Update this checkpoint after runtime validation with the actual tested scenarios.
+
+## Explicit non-goals
 
 - no general font ResourceManager
 - no public TextRenderer API
