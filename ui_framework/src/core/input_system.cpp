@@ -1,4 +1,6 @@
 #include "input_system.hpp"
+#include "node_tree.hpp"
+#include "event_dispatcher.hpp"
 
 #include <algorithm>
 
