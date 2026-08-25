@@ -262,6 +262,83 @@ namespace
         expect(tree.getRoot(0) != nullptr, "queued replacement root must be live after flush");
     }
 
+    void test_layout_invalidation_is_deduplicated_per_root()
+    {
+        ui::NodeTree tree;
+        ui::Node *root = tree.attachRoot(0, makePanel());
+
+        tree.forEachLayoutQueue([](ui::Node &) {});
+
+        auto first = makeNode();
+        auto second = makeNode();
+        tree.attachChild(*static_cast<ui::PanelNode *>(root), std::move(first), 0);
+        tree.attachChild(*static_cast<ui::PanelNode *>(root), std::move(second), 1);
+
+        std::vector<ui::Node::Id> queuedRoots;
+        tree.forEachLayoutQueue([&](ui::Node &node)
+        {
+            queuedRoots.push_back(node.getId());
+        });
+
+        expect(queuedRoots.size() == 1, "multiple child mutations must queue the containing root once");
+        expect(queuedRoots[0] == root->getId(), "layout queue must contain the containing root");
+    }
+
+    void test_layout_invalidation_is_requeued_after_previous_layout_pass()
+    {
+        LayoutFixture f;
+        auto parent = makePanel();
+        ui::PanelNode *parentPtr = parent.get();
+        ui::Node *root = f.tree.attachRoot(0, std::move(parent));
+        auto child = makeNode();
+        ui::Node *childPtr = f.tree.attachChild(*parentPtr, std::move(child), 0);
+
+        f.processLayout();
+
+        parentPtr->removeChild(*childPtr);
+
+        std::vector<ui::Node::Id> queuedRoots;
+        f.tree.forEachLayoutQueue([&](ui::Node &node)
+        {
+            queuedRoots.push_back(node.getId());
+        });
+
+        expect(queuedRoots.size() == 1, "removing a child after a layout pass must requeue one root");
+        expect(queuedRoots[0] == root->getId(), "removed-child invalidation must target the containing root");
+    }
+
+    void test_deferred_multiple_child_mutations_coalesce_layout_root()
+    {
+        ui::NodeTree tree;
+        auto parent = makePanel();
+        ui::PanelNode *parentPtr = parent.get();
+        ui::Node *root = tree.attachRoot(0, std::move(parent));
+
+        tree.forEachLayoutQueue([](ui::Node &) {});
+
+        {
+            ui::NodeTree::ScopedMutationGuard guard(tree);
+            tree.attachChild(*parentPtr, makeNode(), 0);
+            tree.attachChild(*parentPtr, makeNode(), 1);
+            tree.attachChild(*parentPtr, makeNode(), 2);
+        }
+
+        expect(parentPtr->getChildCount() == 0, "queued child mutations must remain deferred until flush");
+
+        tree.flushMutationQueue();
+
+        expect(parentPtr->getChildCount() == 3, "all deferred child mutations must be applied");
+
+        std::vector<ui::Node::Id> queuedRoots;
+        tree.forEachLayoutQueue([&](ui::Node &node)
+        {
+            queuedRoots.push_back(node.getId());
+        });
+
+        expect(queuedRoots.size() == 1, "deferred child mutations must coalesce to one layout root");
+        expect(queuedRoots[0] == root->getId(), "coalesced layout root must be the containing root");
+    }
+
     void test_hit_test_prefers_deepest_and_topmost_visible_node()
     {
         LayoutFixture f;
@@ -314,6 +391,9 @@ int main()
         test_attach_during_root_traversal_is_deferred_and_flushed();
         test_reverse_root_traversal_uses_reverse_snapshot();
         test_nested_mutation_scope_does_not_flush_early();
+        test_layout_invalidation_is_deduplicated_per_root();
+        test_layout_invalidation_is_requeued_after_previous_layout_pass();
+        test_deferred_multiple_child_mutations_coalesce_layout_root();
         test_hit_test_prefers_deepest_and_topmost_visible_node();
     }
     catch (const TestFailure &failure)
