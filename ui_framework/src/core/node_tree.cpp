@@ -414,7 +414,10 @@ namespace ui
                     {
                         if (Node *liveChild = findNode(childId))
                         {
-                            removeChildInternal(*panelParent, *liveChild);
+                            if (liveChild->getParent() == panelParent)
+                            {
+                                removeChildInternal(*panelParent, *liveChild);
+                            }
                         }
                     }
                 });
