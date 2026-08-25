@@ -589,16 +589,21 @@ namespace ui
 
             FocusLostEvent event;
 
-            if (!dispatchEvent(
+            // ИСПРАВЛЕНИЕ 1: Сохраняем результат dispatchEvent,
+            // а не интерпретируем false как ошибку
+            const bool oldFocusedSurvived =
+                dispatchEvent(
                     nodeTree,
                     oldFocused,
                     event,
                     false,
-                    false))
+                    false);
+
+            if (!oldFocusedSurvived)
             {
+                // FocusLost callback может удалить старый узел.
+                // Переход фокуса должен продолжаться к запрошенному узлу.
                 syncState(nodeTree);
-                finishTransition();
-                return false;
             }
 
             if (pendingClearFocus_)
@@ -645,11 +650,17 @@ namespace ui
                 return false;
             }
 
+            // ИСПРАВЛЕНИЕ 2: Удаление старого узла - не ошибка,
+            // а нормальный сценарий. Продолжаем фокусировку на запрошенном узле.
             if (!nodeTree.findNode(oldFocusedId))
             {
+                // Старый узел был удален во время FocusLost.
+                // Продолжаем фокусировку на запрошенном узле.
+                clearTrackedNode(
+                    input_.focusedNode,
+                    input_.focusedNodeId);
+
                 syncState(nodeTree);
-                finishTransition();
-                return false;
             }
         }
 
@@ -683,7 +694,8 @@ namespace ui
 
             syncState(nodeTree);
             finishTransition();
-            return input_.focusedNode == nullptr;
+
+            return false;
         }
 
         if (pendingFocusNodeId_)
