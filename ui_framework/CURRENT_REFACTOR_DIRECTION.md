@@ -1,8 +1,8 @@
 # Current Refactor Direction
 
 > **Status:** current working direction / not an ADR  
-> **Branch:** `fix/sharp-logical-text`  
-> **Purpose:** record the architecture currently chosen after the investigation of imperative/declarative UI models, `TextNode`, framework properties, invalidation, custom layout, structural composition, batching, and the existing layout queue.
+> **Branch:** `recovery-before-node-tree-break`  
+> **Purpose:** record the architecture currently chosen after the investigation of imperative/declarative UI models, framework properties, invalidation, custom layout, structural composition, batching, layout scheduling, and the current text architecture.
 
 ---
 
@@ -79,7 +79,7 @@ The framework remains responsible for when Measure/Arrange execute, traversal, s
 
 # 3. Existing border-box semantics are retained
 
-The historical full Measure/Arrange implementation in `Valeri-afk/ui-framework` and the current `fix/sharp-logical-text` implementation both establish the same important semantics:
+The historical full Measure/Arrange implementation and the current recovery implementation establish the same important semantics:
 
 ```text
 outer Node geometry = border box
@@ -550,7 +550,26 @@ This keeps `Auto` parent/layout-policy semantics framework-owned and prevents th
 
 ---
 
-# 19. What is intentionally rejected for this stage
+# 19. Current text architecture
+
+The active text path is:
+
+```text
+Typography / text-bearing controls
+        ↓
+   TextContent
+      ↙   ↘
+TextLayout  TextRenderer
+    ↓          ↓
+logical     SDL_ttf
+measurement/rendering
+```
+
+`TextPrimitive`, `TextNode`, and `TextRuntime` are not part of the active text architecture/build graph. `TextLayout` owns logical measurement and wrapping; `TextRenderer` owns renderer/backend details. Source `TTF_Font*` ownership remains with the client while derived rendering resources are framework-owned.
+
+---
+
+# 20. What is intentionally rejected for this stage
 
 The refactor does not currently introduce:
 
