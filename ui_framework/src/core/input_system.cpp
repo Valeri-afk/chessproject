@@ -554,13 +554,13 @@ namespace ui
         };
 
         Node *oldFocused = input_.focusedNode;
-        
+
         if (oldFocused == &node)
         {
             pendingFocusNodeId_.reset();
-        
+
             FocusGainedEvent event;
-        
+
             if (!dispatchEvent(
                     nodeTree,
                     &node,
@@ -572,14 +572,14 @@ namespace ui
                 finishTransition();
                 return false;
             }
-        
+
             syncState(nodeTree);
-        
+
             const bool success =
                 input_.focusedNode == &node;
-        
+
             finishTransition();
-        
+
             return success;
         }
 
@@ -620,9 +620,9 @@ namespace ui
             {
                 const Node::Id pendingId = *pendingFocusNodeId_;
                 pendingFocusNodeId_.reset();
-            
+
                 Node *pendingNode = nodeTree.findNode(pendingId);
-            
+
                 if (pendingNode)
                 {
                     // The old node has already received FocusLost.
@@ -635,15 +635,23 @@ namespace ui
                             input_.focusedNode,
                             input_.focusedNodeId);
                     }
-            
+
                     focusTransitionInProgress_ = false;
                     return focus(nodeTree, *pendingNode);
                 }
-            
+
                 syncState(nodeTree);
                 finishTransition();
                 return false;
             }
+
+            if (!nodeTree.findNode(oldFocusedId))
+            {
+                syncState(nodeTree);
+                finishTransition();
+                return false;
+            }
+        }
 
         setTrackedNode(
             input_.focusedNode,
@@ -682,9 +690,9 @@ namespace ui
         {
             const Node::Id pendingId = *pendingFocusNodeId_;
             pendingFocusNodeId_.reset();
-        
+
             Node *pendingNode = nodeTree.findNode(pendingId);
-        
+
             if (pendingNode &&
                 pendingNode != input_.focusedNode)
             {
@@ -976,21 +984,21 @@ namespace ui
     {
         if (!node || !input_.isDragging)
             return true;
-    
+
         if (dragEndDispatchInProgress_)
             return true;
-    
+
         const Node::Id nodeId = node->getId();
-    
+
         MousePosition pos = position.value_or(MousePosition{});
-    
+
         MouseDragEndEvent event;
         event.position = pos;
-    
+
         if (input_.pressPosition_)
         {
             const MousePosition pressed = *input_.pressPosition_;
-    
+
             event.delta = {
                 pos.x - pressed.x,
                 pos.y - pressed.y};
@@ -999,9 +1007,9 @@ namespace ui
         {
             event.delta = {};
         }
-    
+
         dragEndDispatchInProgress_ = true;
-    
+
         const bool dispatched =
             dispatchEvent(
                 nodeTree,
@@ -1009,21 +1017,21 @@ namespace ui
                 event,
                 false,
                 false);
-    
+
         dragEndDispatchInProgress_ = false;
-    
+
         if (!dispatched)
         {
             syncState(nodeTree);
             return false;
         }
-    
+
         if (!nodeTree.findNode(nodeId))
         {
             syncState(nodeTree);
             return false;
         }
-    
+
         return true;
     }
 
@@ -1361,9 +1369,9 @@ namespace ui
                 syncState(nodeTree);
                 return;
             }
-        
+
             liveNode = nodeTree.findNode(liveNode->getId());
-        
+
             if (!liveNode)
             {
                 syncState(nodeTree);
