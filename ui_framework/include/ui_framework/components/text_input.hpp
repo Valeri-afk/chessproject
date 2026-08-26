@@ -6,11 +6,8 @@
 #include <string>
 #include <string_view>
 
-#include <SDL3_ttf/SDL_ttf.h>
-
 #include "ui_framework/events.hpp"
 #include "ui_framework/node.hpp"
-#include "ui_framework/types.hpp"
 
 namespace ui
 {
@@ -48,6 +45,11 @@ namespace ui
         void moveCaretHome(bool extendSelection = false) noexcept;
         void moveCaretEnd(bool extendSelection = false) noexcept;
         void setOnTextChanged(TextChangedCallback callback);
+
+    protected:
+        LayoutSize measureContent(const LayoutSize &availableContent) const override;
+        void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize) override;
+        void draw(SDL_Renderer *renderer) override;
 
     private:
         void handleFocusGained(FocusGainedEvent &event, Node &node);
