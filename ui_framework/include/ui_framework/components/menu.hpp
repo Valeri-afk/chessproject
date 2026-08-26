@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <functional>
 #include <memory>
 
 #include "ui_framework/components/menu_item.hpp"
@@ -9,10 +8,14 @@
 
 namespace ui
 {
+    struct MenuItemActivatedEvent : UIEvent
+    {
+        MenuItem *item = nullptr;
+    };
+
     class Menu : public StackPanelNode
     {
     public:
-        using ItemActivationCallback = std::function<void(MenuItem &)>;
         Menu();
         ~Menu() override = default;
         MenuItem *addItem(std::unique_ptr<MenuItem> item, size_t index = static_cast<size_t>(-1));
@@ -23,13 +26,11 @@ namespace ui
         MenuItem *getSelectedItem() const noexcept;
         void setItemSpacing(float spacing);
         float getItemSpacing() const noexcept;
-        void setOnItemActivate(ItemActivationCallback callback);
     private:
         void syncActiveItem(MenuItem *item) noexcept;
         void syncSelectedItem(MenuItem *item) noexcept;
         void handleItemActivation(MenuItem &item);
         MenuItem *activeItem_ = nullptr;
         MenuItem *selectedItem_ = nullptr;
-        ItemActivationCallback onItemActivate_;
     };
 }
