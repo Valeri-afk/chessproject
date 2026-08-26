@@ -2,62 +2,55 @@
 
 ## Status
 
-This is a **global checklist**, not a strict sequence of implementation phases.
-Items may be worked on independently when dependencies and current implementation state make that appropriate.
-
-The source code remains authoritative. The focused subsystem documents describe the current contracts for each area.
+This is a global checklist, not a strict implementation sequence. The source code is authoritative; focused subsystem documents describe current contracts.
 
 ## Core completion checklist
 
 ### Scroll system
 
-- [x] Complete and validate the scroll system behavior.
+- [x] Implement and validate scroll-container registration and state.
+- [x] Validate layout-derived content extent and offset clamping.
 - [x] Validate nested scrolling and remaining wheel-delta propagation.
-- [x] Validate scroll transforms together with clipping and hit testing.
-- [x] Decide whether the current service-oriented scroll model is sufficient or whether a reusable public scroll component is justified.
+- [x] Validate scroll transforms together with clipping, hit testing and hover refresh.
+- [x] Keep scrolling as internal `ScrollSystem` infrastructure exposed through `UIManager` rather than introducing a public scroll component.
 
 Reference: `SCROLL_SYSTEM.md`
 
 ### Text input
 
-- [x] Implement editable text fields/input controls.
-- [x] Integrate committed text and IME events with the existing `InputSystem` focus and keyboard routing.
-- [x] Build editing on top of `TextLayout` and `TextRenderer` without moving editing semantics into `Node` or the renderer.
-- [x] Implement the minimum required caret and selection behavior for the current single-line game-oriented input model.
-- [x] Add focused regression coverage for editing commands, Unicode text input, selection, focus lifecycle, mouse caret positioning and IME composition state.
-- [ ] Add clipboard support or richer IME/window integration only when a concrete game/client use case requires it.
-
-The current `TextInput` scope is intentionally game-oriented. It is not a desktop text editor: no undo/redo stack, word-wise navigation, multiline editing, text viewport/scrolling, or framework-owned SDL window lifecycle is required by the current contract.
+- [x] Implement single-line editable text input.
+- [x] Integrate committed text and IME events with existing `InputSystem` focus and keyboard routing.
+- [x] Build editing on top of `TextContent` / `TextLayout` / `TextRenderer` without moving editing semantics into `Node` or the renderer.
+- [x] Implement caret, selection, keyboard editing, mouse caret positioning and drag selection.
+- [x] Add focused regression coverage for text editing, Unicode text input, selection, focus lifecycle and IME composition.
+- [ ] Add clipboard support, richer IME/window integration, multiline editing, undo/redo, word-wise navigation or a text viewport only when a concrete reusable requirement exists.
 
 Reference: `TEXT_INPUT_SYSTEM.md`
 
 ### Modality
 
-- [x] Complete remaining modal behavior validation.
 - [x] Validate modal open/close sequencing.
 - [x] Validate focus restoration and fallback focus selection.
 - [x] Validate backdrop behavior and modal interaction boundaries.
-- [x] Validate nested modal sessions where supported.
-- [x] Reassess whether a standalone public `Modal` component is ever necessary; current architecture uses `ModalSystem` as framework infrastructure.
+- [x] Validate nested modal sessions and focus trapping where supported.
+- [x] Keep modality as `ModalSystem` infrastructure exposed through `UIManager`; no standalone public `Modal` component is currently required.
 
 Reference: `MODALITY_SYSTEM.md`
 
 ### Text architecture boundary
 
-- [x] Review the architecture of the text subsystem as a whole: `TextLayout`, `TextContent`, `TextRenderer`, font ownership, Measure/Arrange/Draw flow, and logical/physical boundaries.
-- [x] Keep logical text measurement/wrapping separate from backend SDL_ttf rendering.
-- [x] Do not expose implementation types merely for convenience; expose them only when a concrete reusable contract requires them.
-- [x] Keep `TextLayout` as a logical measurement layer while acknowledging its intentional current dependency on SDL_ttf font metrics; do not introduce a backend-independent typography abstraction without a concrete requirement.
+- [x] Keep `TextLayout`, `TextContent` and internal `TextRenderer` responsibilities separated.
+- [x] Keep logical text measurement/wrapping separate from backend rasterization while retaining the current SDL_ttf dependency.
+- [x] Keep editing state in `TextInput`/`TextEditState`, not in `Node` or `TextLayout`.
 
 Reference: `TEXT_SYSTEM.md`
 
 ### Base and standard components
 
-- [x] Finish and validate the base/standard component set required by the target application.
-- [x] Verify component event callback usage against the existing Node event-registration model.
-- [x] Avoid introducing component-specific callback mechanisms that bypass framework event registration unless a concrete requirement justifies them.
-- [x] Keep component-specific semantics in components while framework-wide lifecycle, traversal, layout and rendering remain framework-owned.
-- [x] Add a minimal image component with non-owning texture semantics; keep texture/resource lifetime outside the component.
+- [x] Maintain the current standard component set required by the target application.
+- [x] Use the existing Node event-registration model for component handlers.
+- [x] Keep component-specific semantics in components while lifecycle, traversal, layout, input, rendering, modality and scrolling remain framework-owned.
+- [x] Keep `Image` as a thin component with non-owning `SDL_Texture*` semantics.
 
 Reference: `COMPONENT_DESIGN.md`, `EVENT_DISPATCHING.md`
 
@@ -65,91 +58,84 @@ Reference: `COMPONENT_DESIGN.md`, `EVENT_DISPATCHING.md`
 
 ### Border-box model
 
-- [x] Complete and stabilize the border-box model across the framework.
-- [x] Verify content-box ↔ border-box conversions for padding and border.
-- [x] Verify desired size, arranged size and rendered geometry stay consistent.
+- [x] Stabilize border-box/content-box conversion.
+- [x] Verify desired size, arranged size and rendered geometry remain consistent.
 
 Reference: `LAYOUT_SYSTEM.md`
 
 ### Clipping
 
-- [x] Complete clipping semantics and validation.
-- [x] Verify nested clipping intersections.
-- [x] Verify clipping consistency between rendering and hit testing.
-- [x] Verify clipping together with scrolling transforms.
+- [x] Validate `Node::clipToBounds` semantics.
+- [x] Validate nested clipping intersections.
+- [x] Validate clipping consistency between rendering and hit testing.
+- [x] Validate clipping together with scrolling transforms.
 
 Reference: `RENDERING_SYSTEM.md`, `INPUT_SYSTEM.md`, `SCROLL_SYSTEM.md`
 
 ### Absolute positioning
 
-- [x] Verify `PositionMode::Absolute` behavior in all relevant container/layout scenarios.
-- [x] Verify absolute children are excluded from normal linear flow where intended.
-- [x] Verify their final geometry and interaction boundaries are correct.
+- [x] Verify `PositionMode::Absolute` behavior.
+- [x] Verify absolute children are excluded from normal linear flow.
+- [x] Verify their final geometry and interaction boundaries.
 
 Reference: `LAYOUT_SYSTEM.md`
 
 ### LayoutValue type
 
-- [x] Review the current `LayoutValue` model and verify all supported value types have clear semantics.
-- [x] Verify fixed / auto / min / max-related behavior against the final border-box and Measure/Arrange contracts.
-- [x] Remove or simplify any value variants that no longer represent a meaningful framework contract.
+- [x] Stabilize the current `Auto` / fixed `Value` model.
+- [x] Verify fixed, min and max behavior against Measure / Arrange contracts.
 
 Reference: `LAYOUT_SYSTEM.md`
 
 ### Non-rectangular geometry
 
-- [ ] Define and validate framework-wide semantics for rounded rectangles, circles and other non-rectangular interaction/rendering shapes.
-- [ ] Ensure layout semantics remain rectangular while hit testing and draw paths can evaluate the actual shape geometry.
-- [ ] Define how `border-radius`/rounded clipping participates in rendering, clipping and hit testing without leaking renderer-specific details into `NodeTree`.
-- [ ] Define the minimum supported shape set for gameplay UI before introducing a general-purpose geometry abstraction.
+- [ ] Define framework-wide semantics for rounded rectangles, circles and other non-rectangular interaction/rendering shapes.
+- [ ] Define shape-aware clipping and hit testing without leaking renderer-specific details into `NodeTree`.
+- [ ] Define the minimum reusable gameplay UI shape set before introducing a general geometry abstraction.
 
 Reference: `LAYOUT_SYSTEM.md`, `INPUT_SYSTEM.md`, `RENDERING_SYSTEM.md`
 
 ### Transform geometry
 
-- [ ] Decide whether scale/rotation belong in framework-wide geometry semantics or should remain component-local presentation behavior.
-- [ ] If transforms become framework-wide, define coordinate transforms for layout, hit testing, clipping and drawing consistently, including inverse transforms for input.
-- [ ] Define transform origin/pivot semantics and interaction with absolute positioning and scrolling.
-- [ ] Start with scale/rotation only if a concrete reusable gameplay UI requirement justifies framework support; do not add a general transform stack preemptively.
+- [ ] Decide whether scale/rotation belong in framework-wide geometry semantics.
+- [ ] If transforms become framework-wide, define consistent drawing, hit testing, clipping, inverse input transforms, origin/pivot and scroll ordering.
+- [ ] Do not turn the existing internal scroll coordinate-transform hook into a public general transform stack without a concrete requirement.
 
 Reference: `LAYOUT_SYSTEM.md`, `INPUT_SYSTEM.md`, `RENDERING_SYSTEM.md`, `ARCHITECTURE.md`
 
 ## NodeTree and component structure
 
-### NodeTree ownership reference
+### NodeTree ownership
 
-- [x] Reconsider whether `Node::owner_` is still necessary in the final architecture: keep it as the node's runtime membership and mutation-routing boundary.
-- [x] Preserve ownership/liveness invariants with `owner_` rather than replacing the mechanism.
-
-This is an architectural investigation, not a commitment to remove `owner_`.
+- [x] Keep `Node::owner_` as the node's runtime membership and mutation-routing reference.
+- [x] Preserve live-node registration and ownership invariants.
 
 Reference: `LIFETIME_AND_MUTATIONS.md`, `ARCHITECTURE.md`
 
 ### PanelNode / structural mutation boundary
 
-- [x] Review the current `PanelNode` structural API and its relationship with `NodeTree`.
-- [x] Use `PanelNode::addChild/removeChild` as the supported client/component mutation API; mounted nodes route mutations through `NodeTree` automatically.
-- [x] No explicit `notifyStructureChanged()` mechanism is required because mounted structural mutation already enters the authoritative `NodeTree` path.
-- [x] Custom components can attach/remove nested children through the existing `PanelNode` API without bypassing framework ownership and mutation safety.
-- [x] Preserve ownership, registration, lifecycle and deferred-mutation invariants across these operations.
+- [x] Use `PanelNode::addChild/removeChild` as the supported structural API.
+- [x] Route mounted structural mutation through `NodeTree`.
+- [x] Preserve ownership, registration, lifecycle and deferred-mutation invariants.
 
 Reference: `COMPONENT_DESIGN.md`, `LIFETIME_AND_MUTATIONS.md`, `DEFERRED_OPERATIONS.md`, `ARCHITECTURE.md`
 
 ## Cross-system validation
 
 - [x] Validate input/event behavior after structural changes.
-- [x] Validate modal restrictions together with focus, capture and overlays.
-- [x] Validate scroll behavior together with clipping and hit testing.
+- [x] Validate modal restrictions with focus, capture and overlays.
+- [x] Validate scroll behavior with clipping, hit testing and hover.
 - [x] Validate layout invalidation followed by the next layout pass.
 - [x] Validate rendering after geometry changes and logical-presentation resize.
 
 ## Architectural guardrails
 
-- [x] Keep `UIManager` as the public framework facade where that remains appropriate.
+- [x] Keep `UIManager` as the public framework facade.
 - [x] Keep `NodeTree` as the runtime authority for ownership, liveness, structural mutation and coordinated traversal.
+- [x] Keep `ScrollSystem` and `ModalSystem` as internal services.
 - [x] Do not introduce a universal property/dependency system without a concrete requirement.
 - [x] Do not introduce parallel input, event or rendering orchestration systems in components/client code.
-- [x] Avoid unnecessary framework abstractions until a repeated reusable requirement proves their value.
+- [x] Avoid unnecessary abstractions until a repeated reusable requirement proves their value.
 
 ## Large-file safety
 
