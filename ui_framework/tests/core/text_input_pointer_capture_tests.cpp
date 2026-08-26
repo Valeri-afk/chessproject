@@ -16,7 +16,19 @@ namespace
     {
         const std::filesystem::path filePath(__FILE__);
         const std::filesystem::path sourceRoot = filePath.parent_path().parent_path().parent_path();
-        return sourceRoot / "chess_client" / "fonts" / "Roboto-Medium.ttf";
+        const std::filesystem::path fromSource = sourceRoot / "chess_client" / "fonts" / "Roboto-Medium.ttf";
+        const std::filesystem::path fromWorkingDirectory =
+            std::filesystem::current_path() / ".." / "chess_client" / "fonts" / "Roboto-Medium.ttf";
+        const std::filesystem::path fromRepositoryRoot =
+            std::filesystem::current_path() / "chess_client" / "fonts" / "Roboto-Medium.ttf";
+
+        if (std::filesystem::exists(fromSource))
+            return fromSource;
+        if (std::filesystem::exists(fromWorkingDirectory))
+            return fromWorkingDirectory;
+        if (std::filesystem::exists(fromRepositoryRoot))
+            return fromRepositoryRoot;
+        return {};
     }
 }
 
@@ -24,7 +36,7 @@ int main()
 {
     assert(TTF_Init());
     const std::filesystem::path fontPath = findTestFont();
-    assert(std::filesystem::exists(fontPath));
+    assert(!fontPath.empty());
 
     TTF_Font *font = TTF_OpenFont(fontPath.string().c_str(), 24.0f);
     assert(font != nullptr);
