@@ -4,7 +4,6 @@
 #include "ui_framework/events.hpp"
 
 #include <algorithm>
-#include <utility>
 
 namespace ui
 {
@@ -13,7 +12,7 @@ namespace ui
         setFocusable(true);
         setCapturable(true);
         setSize(LayoutSizeValue::fixed(boxSize_, boxSize_));
-        addHandler<MouseClickEvent>([this](MouseClickEvent &event, Node &)
+        on<MouseClickEvent>([this](MouseClickEvent &event, Node &)
         {
             if (event.button == MouseButton::Left)
                 activate();
@@ -31,15 +30,14 @@ namespace ui
 
     float Checkbox::getBoxSize() const noexcept { return boxSize_; }
 
-    void Checkbox::setOnToggle(ToggleCallback callback) { onToggle_ = std::move(callback); }
-
     void Checkbox::toggle()
     {
         if (!isVisible() || !isEnabled())
             return;
         checked_ = !checked_;
-        if (onToggle_)
-            onToggle_(*this, checked_);
+        CheckboxToggledEvent event;
+        event.checked = checked_;
+        emit(event);
     }
 
     void Checkbox::activate() { toggle(); }
