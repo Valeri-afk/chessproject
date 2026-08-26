@@ -220,7 +220,7 @@ int main()
         scrollPanel->setSize(ui::LayoutSizeValue::fixed(1760.0f, 250.0f));
         scrollPanel->setPadding({18.0f, 18.0f, 18.0f, 18.0f});
         scrollPanel->setGap(10.0f);
-        scrollPanel->setOverflow(ui::Overflow::HIDDEN);
+        scrollPanel->setClipToBounds(true);
         for (int i = 0; i < 12; ++i)
         {
             auto item = std::make_unique<ui::Button>();
