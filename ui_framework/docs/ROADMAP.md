@@ -49,9 +49,9 @@ Reference: `TEXT_SYSTEM.md`
 ### Base and standard components
 
 - [ ] Finish and validate the base/standard component set required by the target application.
-- [ ] Verify component event callback usage against the existing Node event-registration model.
-- [ ] Avoid introducing component-specific callback mechanisms that bypass framework event registration unless a concrete requirement justifies them.
-- [ ] Keep component-specific semantics in components while framework-wide lifecycle, traversal, layout, input and rendering remain framework-owned.
+- [x] Verify component event callback usage against the existing Node event-registration model.
+- [x] Avoid introducing component-specific callback mechanisms that bypass framework event registration unless a concrete requirement justifies them.
+- [x] Keep component-specific semantics in components while framework-wide lifecycle, traversal, layout, input and rendering remain framework-owned.
 
 Reference: `COMPONENT_DESIGN.md`, `EVENT_DISPATCHING.md`
 
