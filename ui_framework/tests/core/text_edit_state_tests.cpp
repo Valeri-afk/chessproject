@@ -90,12 +90,12 @@ namespace
         assert(state.textLength() == 3);
         assert(state.caret() == 3);
 
-        state.moveLeft();
+        state.moveLeft(false);
         assert(state.caret() == 2);
-        state.moveLeft();
+        state.moveLeft(false);
         assert(state.caret() == 1);
 
-        state.moveRight();
+        state.moveRight(false);
         assert(state.caret() == 2);
 
         state.backspace();
