@@ -16,6 +16,7 @@ namespace ui
     {
         setFocusable(true);
         setCapturable(true);
+        text_->setWrapMode(WrapMode::NO_WRAP);
 
         on<FocusGainedEvent>([this](FocusGainedEvent &event, Node &node) { handleFocusGained(event, node); });
         on<FocusLostEvent>([this](FocusLostEvent &event, Node &node) { handleFocusLost(event, node); });
