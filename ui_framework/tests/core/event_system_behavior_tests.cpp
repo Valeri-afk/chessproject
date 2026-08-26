@@ -1,6 +1,7 @@
 #include "event_dispatcher.hpp"
 #include "node_tree.hpp"
 #include "panel_node.hpp"
+#include "ui_framework/components/checkbox.hpp"
 
 #include <cassert>
 #include <memory>
@@ -15,11 +16,6 @@ namespace
     class EventProbe final : public ui::PanelNode
     {
     public:
-        EventProbe()
-            : ui::PanelNode(ui::StackPanelNode::Orientation::Vertical)
-        {
-        }
-
         void fire(int value = 0)
         {
             TestEvent event;
