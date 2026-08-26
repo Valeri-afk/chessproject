@@ -125,7 +125,6 @@ namespace
 
         ui::Node *root = manager.addRoot(std::move(panel));
         expect(manager.enableScrolling(*root), "PanelNode must register as a scroll container");
-
         layoutAndSync(manager, *root);
 
         const ui::ScrollOffset maximum = manager.getMaximumScrollOffset(*root);
@@ -172,6 +171,7 @@ namespace
     {
         ui::UIManager manager;
         auto panel = makeVerticalPanel();
+        panel->setClipToBounds(true);
         auto child = std::make_unique<ui::Node>();
         child->setSize(ui::LayoutSizeValue::fixed(100.0f, 200.0f));
         ui::Node *childPtr = child.get();
@@ -199,6 +199,7 @@ namespace
     {
         ui::UIManager manager;
         auto panel = makeVerticalPanel();
+        panel->setClipToBounds(true);
         auto child = std::make_unique<ui::Node>();
         child->setSize(ui::LayoutSizeValue::fixed(100.0f, 200.0f));
         ui::Node *childPtr = child.get();
