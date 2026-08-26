@@ -17,22 +17,14 @@ namespace ui
         setFocusable(true);
         setCapturable(true);
 
-        addHandler<FocusGainedEvent>([this](FocusGainedEvent &event, Node &node)
-                                     { handleFocusGained(event, node); });
-        addHandler<FocusLostEvent>([this](FocusLostEvent &event, Node &node)
-                                   { handleFocusLost(event, node); });
-        addHandler<MouseDownEvent>([this](MouseDownEvent &event, Node &node)
-                                   { handleMouseDown(event, node); });
-        addHandler<MouseDragEvent>([this](MouseDragEvent &event, Node &node)
-                                   { handleMouseDrag(event, node); });
-        addHandler<MouseDragEndEvent>([this](MouseDragEndEvent &event, Node &node)
-                                      { handleMouseDragEnd(event, node); });
-        addHandler<KeyDownEvent>([this](KeyDownEvent &event, Node &node)
-                                 { handleKeyDown(event, node); });
-        addHandler<TextInputEvent>([this](TextInputEvent &event, Node &node)
-                                   { handleTextInput(event, node); });
-        addHandler<TextEditingEvent>([this](TextEditingEvent &event, Node &node)
-                                     { handleTextEditing(event, node); });
+        addHandler<FocusGainedEvent>([this](FocusGainedEvent &event, Node &node) { handleFocusGained(event, node); });
+        addHandler<FocusLostEvent>([this](FocusLostEvent &event, Node &node) { handleFocusLost(event, node); });
+        addHandler<MouseDownEvent>([this](MouseDownEvent &event, Node &node) { handleMouseDown(event, node); });
+        addHandler<MouseDragEvent>([this](MouseDragEvent &event, Node &node) { handleMouseDrag(event, node); });
+        addHandler<MouseDragEndEvent>([this](MouseDragEndEvent &event, Node &node) { handleMouseDragEnd(event, node); });
+        addHandler<KeyDownEvent>([this](KeyDownEvent &event, Node &node) { handleKeyDown(event, node); });
+        addHandler<TextInputEvent>([this](TextInputEvent &event, Node &node) { handleTextInput(event, node); });
+        addHandler<TextEditingEvent>([this](TextEditingEvent &event, Node &node) { handleTextEditing(event, node); });
     }
 
     TextInput::~TextInput() = default;
@@ -63,11 +55,6 @@ namespace ui
     void TextInput::setCaretPosition(std::size_t position) noexcept { editState_->setCaret(position); }
     void TextInput::selectAll() noexcept { editState_->selectAll(); }
     void TextInput::clearSelection() noexcept { editState_->collapseSelectionToCaret(); }
-
-    const std::string &TextInput::getCompositionText() const noexcept { return composition_; }
-    int TextInput::getCompositionCursor() const noexcept { return compositionCursor_; }
-    int TextInput::getCompositionSelectionLength() const noexcept { return compositionSelectionLength_; }
-    bool TextInput::hasComposition() const noexcept { return !composition_.empty(); }
 
     void TextInput::insertText(std::string_view text)
     {
