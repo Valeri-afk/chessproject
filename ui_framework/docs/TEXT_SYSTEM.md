@@ -11,11 +11,27 @@ Typography / text-bearing controls
       ↙     ↘
  TextLayout  TextRenderer
      ↓           ↓
-logical      SDL_ttf
-measurement
+font-backed    SDL_ttf
+measurement   rasterization/draw
 ```
 
-`TextContent` is an internal bridge owning logical text state and the Measure/Arrange/Draw connection. Components do not expose `TextLayoutResult`, renderer state, `TTF_Text`, or raster-font caches.
+`TextContent` is an internal bridge owning logical text presentation state and the Measure/Arrange/Draw connection. Components do not expose `TextLayoutResult`, renderer state, `TTF_Text`, or raster-font caches.
+
+The important architectural distinction is:
+
+```text
+TextLayout
+    = text state + logical measurement/wrapping
+      using font metrics
+
+TextContent
+    = component-facing orchestration/presentation state
+
+TextRenderer
+    = physical rasterization + SDL renderer integration
+```
+
+`TextLayout` is therefore a logical measurement layer, but it is **not a backend-independent typography engine**. Its current implementation obtains font metrics through SDL_ttf. This is intentional for the current framework and should not be mistaken for a future-proof typography abstraction.
 
 ## Typography
 
@@ -41,22 +57,51 @@ Variants are typography policy/semantic metadata, not independent layout algorit
 
 The same logical text contract should be reused by future text-bearing controls.
 
-## TextLayout
+## TextLayout architecture
 
-`TextLayout` owns logical text measurement and wrapping:
+`TextLayout` owns the retained text measurement state:
 
 ```text
+text
+source font (non-owning)
 logical font size
 logical line height
 wrap mode
-available logical width
-alignment-independent desired size
-line metrics needed by current Typography
 ```
 
-Measure resolves text against the available logical content width. Arrange resolves it again against the actual allocated logical size because wrapping width may change after parent allocation.
+Its public operation is measurement:
 
-The renderer is not the layout owner.
+```text
+available logical width
+        ↓
+SDL_ttf font metrics
+        ↓
+TextLayoutResult
+```
+
+The implementation may create a temporary copied font when the requested logical font size or line height differs from the source font. That copy belongs only to the measurement operation.
+
+This keeps font mutation local and prevents measurement from mutating the caller-owned source font.
+
+### Why TextLayout is more complex than LayoutSystem
+
+LayoutSystem operates on framework geometry primitives that it owns directly. Text measurement cannot determine its result without a font-metrics provider.
+
+The current implementation therefore has an intentional dependency:
+
+```text
+TextLayout → SDL_ttf metrics API
+TextRenderer → SDL_ttf rendering API
+```
+
+while still maintaining the higher-level separation:
+
+```text
+TextLayout  ≠ rasterization
+TextRenderer ≠ wrapping/desired-size policy
+```
+
+A future backend-independent typography layer would be a larger architectural change and should only be introduced when another text backend, richer text model, or a concrete testing/reusability requirement justifies it.
 
 ## TextLayoutResult
 
@@ -66,13 +111,16 @@ The internal layout result contains the currently required logical metadata such
 desiredSize
 lineHeight
 lineCount
+wrapWidth
 ```
 
 It is intentionally not a generic `Node` field and does not expose glyph runs, baselines, caret data or SDL text objects until concrete features require them.
 
+The result is currently deliberately small. It should not become a catch-all text state object.
+
 ## TextRenderer
 
-`TextRenderer` is internal/backend-only. It owns physical/rendering concerns:
+`TextRenderer` is internal/backend-oriented. It owns physical/rendering concerns:
 
 ```text
 TTF_TextEngine
@@ -86,11 +134,31 @@ actual SDL_ttf drawing
 
 It does not own wrapping, desired-size calculation, Measure, Arrange or semantic alignment policy.
 
+## Measure → Arrange → Draw
+
+The text pipeline follows the framework layout lifecycle:
+
+```text
+Measure(available width)
+        ↓
+desired logical size
+        ↓
+parent allocates content size
+        ↓
+Arrange(actual content position/size)
+        ↓
+remeasure using final width when wrapping requires it
+        ↓
+Draw(renderer)
+```
+
+This second measurement during Arrange is intentional: the parent's final allocation may differ from the width available during Measure.
+
 ## Logical → physical rendering
 
-The client uses a 1920×1080 logical UI space with SDL logical presentation and letterboxing.
+The client uses a logical UI space with SDL logical presentation.
 
-Text size is expressed in logical coordinates and converted to physical raster size before SDL_ttf rasterization:
+Text size is expressed in logical coordinates and converted to physical raster size before SDL_ttf rasterization when integer presentation scaling is active:
 
 ```text
 logical font size
@@ -123,7 +191,16 @@ If a source font mutation may change metrics, wrapping or desired size, the affe
 
 ## Wrapping
 
-Wrapping is a layout concern and must be consistently represented through Measure, Arrange and Draw. A future `WrapMode` may expose `WRAP` / `NO_WRAP` and later truncation/ellipsis policies, but these should only be added when the full contract is implemented.
+Wrapping is a layout concern and must be consistently represented through Measure, Arrange and Draw.
+
+The current supported policies are:
+
+```text
+WRAP
+NO_WRAP
+```
+
+Truncation/ellipsis and richer line-breaking policies are intentionally deferred until a concrete use case requires them.
 
 ## Deferred text input
 
@@ -154,4 +231,5 @@ editable text
 ellipsis
 advanced typography theme inheritance
 font-weight/style system without a concrete policy
+backend-independent typography abstraction without a concrete requirement
 ```
