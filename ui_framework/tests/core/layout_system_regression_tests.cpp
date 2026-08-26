@@ -88,27 +88,36 @@ namespace
                "child content position must account for border and padding");
     }
 
-    void test_min_and_max_apply_to_final_size_without_narrowing_intrinsic_measurement()
+    void test_min_and_max_have_distinct_measurement_semantics()
     {
         LayoutFixture f;
         auto panel = std::make_unique<ui::StackPanelNode>();
-        panel->setSize(ui::LayoutSizeValue::fixed(200.0f, 100.0f));
+        panel->setSize(ui::LayoutSizeValue::fixed(200.0f, 150.0f));
 
-        auto child = std::make_unique<MeasuringNode>(ui::LayoutSize{80.0f, 20.0f});
-        child->setMinSize({50.0f, 10.0f});
-        child->setMaxSize({60.0f, 40.0f});
-        MeasuringNode *childPtr = child.get();
-        panel->addChild(std::move(child), 0);
+        auto minNode = std::make_unique<MeasuringNode>(ui::LayoutSize{80.0f, 20.0f});
+        minNode->setMinSize({100.0f, 10.0f});
+        MeasuringNode *minPtr = minNode.get();
+        panel->addChild(std::move(minNode), 0);
+
+        auto maxNode = std::make_unique<MeasuringNode>(ui::LayoutSize{120.0f, 20.0f});
+        maxNode->setMaxSize({60.0f, 40.0f});
+        MeasuringNode *maxPtr = maxNode.get();
+        panel->addChild(std::move(maxNode), 1);
 
         f.tree.attachRoot(0, std::move(panel));
         f.process();
 
-        expect(childPtr->lastAvailable().width >= 80.0f,
+        expect(minPtr->lastAvailable().width >= 80.0f,
                "minimum size must not narrow intrinsic measurement proposal");
-        expect(near(childPtr->getDesiredSize().width, 60.0f),
-               "maximum size must clamp the committed desired width");
-        expect(near(childPtr->getActualSize().width, 60.0f),
-               "maximum size must clamp final arranged width");
+        expect(near(minPtr->getDesiredSize().width, 100.0f),
+               "minimum size must constrain the committed desired width");
+
+        expect(near(maxPtr->lastAvailable().width, 60.0f),
+               "maximum size may narrow the measurement proposal");
+        expect(near(maxPtr->getDesiredSize().width, 60.0f),
+               "maximum size must constrain the committed desired width");
+        expect(near(maxPtr->getActualSize().width, 60.0f),
+               "maximum size must constrain final arranged width");
     }
 
     void test_stack_panel_main_alignment_and_gap()
@@ -240,7 +249,7 @@ int main()
     try
     {
         test_border_box_padding_and_border_conversion();
-        test_min_and_max_apply_to_final_size_without_narrowing_intrinsic_measurement();
+        test_min_and_max_have_distinct_measurement_semantics();
         test_stack_panel_main_alignment_and_gap();
         test_cross_axis_stretch_respects_child_maximum();
         test_absolute_child_is_excluded_from_linear_flow();
