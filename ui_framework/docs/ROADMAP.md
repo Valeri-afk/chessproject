@@ -21,9 +21,10 @@ Reference: `SCROLL_SYSTEM.md`
 ### Text input
 
 - [ ] Implement editable text fields/input controls.
-- [ ] Integrate editing with the existing `InputSystem` focus and keyboard routing.
+- [ ] Integrate committed text and IME events with the existing `InputSystem` focus and keyboard routing.
 - [ ] Build editing on top of `TextLayout` and `TextRenderer` without moving editing semantics into `Node` or the renderer.
-- [ ] Determine the minimum required caret, selection, clipboard and IME contracts from concrete use cases.
+- [ ] Implement the minimum required caret, selection, clipboard and IME contracts defined by concrete use cases.
+- [ ] Add focused regression coverage for editing commands, Unicode text input, selection, focus lifecycle, mouse caret positioning and IME composition where supported.
 
 Reference: `TEXT_INPUT_SYSTEM.md`
 
