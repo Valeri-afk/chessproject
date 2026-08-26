@@ -11,7 +11,8 @@
 namespace ui
 {
     class TextContent;
-    struct MenuItemActivatedEvent : UIEvent {};
+    class MenuItem;
+    struct MenuItemActivatedEvent : UIEvent { MenuItem *item = nullptr; };
 
     class MenuItem : public Node
     {
