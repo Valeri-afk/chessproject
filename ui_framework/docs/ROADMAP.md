@@ -53,10 +53,11 @@ Reference: `TEXT_SYSTEM.md`
 
 ### Base and standard components
 
-- [ ] Finish and validate the base/standard component set required by the target application.
+- [x] Finish and validate the base/standard component set required by the target application.
 - [x] Verify component event callback usage against the existing Node event-registration model.
 - [x] Avoid introducing component-specific callback mechanisms that bypass framework event registration unless a concrete requirement justifies them.
-- [x] Keep component-specific semantics in components while framework-wide lifecycle, traversal, layout, input and rendering remain framework-owned.
+- [x] Keep component-specific semantics in components while framework-wide lifecycle, traversal, layout and rendering remain framework-owned.
+- [x] Add a minimal image component with non-owning texture semantics; keep texture/resource lifetime outside the component.
 
 Reference: `COMPONENT_DESIGN.md`, `EVENT_DISPATCHING.md`
 
@@ -94,6 +95,24 @@ Reference: `LAYOUT_SYSTEM.md`
 - [x] Remove or simplify any value variants that no longer represent a meaningful framework contract.
 
 Reference: `LAYOUT_SYSTEM.md`
+
+### Non-rectangular geometry
+
+- [ ] Define and validate framework-wide semantics for rounded rectangles, circles and other non-rectangular interaction/rendering shapes.
+- [ ] Ensure layout semantics remain rectangular while hit testing and draw paths can evaluate the actual shape geometry.
+- [ ] Define how `border-radius`/rounded clipping participates in rendering, clipping and hit testing without leaking renderer-specific details into `NodeTree`.
+- [ ] Define the minimum supported shape set for gameplay UI before introducing a general-purpose geometry abstraction.
+
+Reference: `LAYOUT_SYSTEM.md`, `INPUT_SYSTEM.md`, `RENDERING_SYSTEM.md`
+
+### Transform geometry
+
+- [ ] Decide whether scale/rotation belong in framework-wide geometry semantics or should remain component-local presentation behavior.
+- [ ] If transforms become framework-wide, define coordinate transforms for layout, hit testing, clipping and drawing consistently, including inverse transforms for input.
+- [ ] Define transform origin/pivot semantics and interaction with absolute positioning and scrolling.
+- [ ] Start with scale/rotation only if a concrete reusable gameplay UI requirement justifies framework support; do not add a general transform stack preemptively.
+
+Reference: `LAYOUT_SYSTEM.md`, `INPUT_SYSTEM.md`, `RENDERING_SYSTEM.md`, `ARCHITECTURE.md`
 
 ## NodeTree and component structure
 
