@@ -48,6 +48,17 @@ namespace ui
 
     const std::string &TextInput::getPlaceholder() const noexcept { return placeholder_; }
 
+    void TextInput::setFont(TTF_Font *font) noexcept
+    {
+        text_->setFont(font);
+        invalidateLayout();
+    }
+
+    TTF_Font *TextInput::getFont() const noexcept
+    {
+        return text_->getFont();
+    }
+
     std::size_t TextInput::getCaretPosition() const noexcept { return editState_->caret(); }
     std::size_t TextInput::getSelectionStart() const noexcept { return editState_->selectionStart(); }
     std::size_t TextInput::getSelectionEnd() const noexcept { return editState_->selectionEnd(); }
