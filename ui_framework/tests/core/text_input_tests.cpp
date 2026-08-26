@@ -117,6 +117,88 @@ namespace
         assert(input->getSelectionEnd() == 5);
     }
 
+    void testTextInputCompositionDoesNotModifyCommittedText()
+    {
+        ui::NodeTree tree;
+        ui::TextInput *input = attachTextInput(tree);
+
+        ui::FocusGainedEvent gained;
+        ui::EventDispatcher::dispatch(tree, input, gained, false, false);
+
+        ui::TextInputEvent textEvent;
+        textEvent.text = "hello";
+        ui::EventDispatcher::dispatch(tree, input, textEvent, false, false);
+
+        ui::TextEditingEvent editing;
+        editing.composition = "world";
+        editing.cursor = 3;
+        editing.selectionLength = 1;
+        ui::EventDispatcher::dispatch(tree, input, editing, false, false);
+
+        assert(input->getText() == "hello");
+    }
+
+    void testTextInputCompositionIsReplacedByNextEditingEvent()
+    {
+        ui::NodeTree tree;
+        ui::TextInput *input = attachTextInput(tree);
+
+        ui::FocusGainedEvent gained;
+        ui::EventDispatcher::dispatch(tree, input, gained, false, false);
+
+        ui::TextEditingEvent first;
+        first.composition = "hel";
+        first.cursor = 2;
+        first.selectionLength = 1;
+        ui::EventDispatcher::dispatch(tree, input, first, false, false);
+
+        ui::TextEditingEvent second;
+        second.composition = "hello";
+        second.cursor = 5;
+        second.selectionLength = 0;
+        ui::EventDispatcher::dispatch(tree, input, second, false, false);
+
+        assert(input->getText().empty());
+    }
+
+    void testTextInputCommitClearsComposition()
+    {
+        ui::NodeTree tree;
+        ui::TextInput *input = attachTextInput(tree);
+
+        ui::FocusGainedEvent gained;
+        ui::EventDispatcher::dispatch(tree, input, gained, false, false);
+
+        ui::TextEditingEvent editing;
+        editing.composition = "hello";
+        editing.cursor = 5;
+        ui::EventDispatcher::dispatch(tree, input, editing, false, false);
+
+        ui::TextInputEvent committed;
+        committed.text = "hello";
+        ui::EventDispatcher::dispatch(tree, input, committed, false, false);
+
+        assert(input->getText() == "hello");
+    }
+
+    void testTextInputFocusLossCancelsComposition()
+    {
+        ui::NodeTree tree;
+        ui::TextInput *input = attachTextInput(tree);
+
+        ui::FocusGainedEvent gained;
+        ui::EventDispatcher::dispatch(tree, input, gained, false, false);
+
+        ui::TextEditingEvent editing;
+        editing.composition = "hello";
+        ui::EventDispatcher::dispatch(tree, input, editing, false, false);
+
+        ui::FocusLostEvent lost;
+        ui::EventDispatcher::dispatch(tree, input, lost, false, false);
+
+        assert(input->getText().empty());
+    }
+
     void testSDLTextInputRoutesThroughInputSystemFocus()
     {
         ui::NodeTree tree;
@@ -187,6 +269,10 @@ int main()
     testTextInputIgnoresTextEventWithoutFocus();
     testTextInputKeyboardEditingAndShiftSelection();
     testTextInputCtrlASelectsAll();
+    testTextInputCompositionDoesNotModifyCommittedText();
+    testTextInputCompositionIsReplacedByNextEditingEvent();
+    testTextInputCommitClearsComposition();
+    testTextInputFocusLossCancelsComposition();
     testSDLTextInputRoutesThroughInputSystemFocus();
     testSDLTextInputDoesNotReachUnfocusedTextInput();
     testSDLKeyDownRoutesModifiersToTextInput();
