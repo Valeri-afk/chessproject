@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <string>
 #include <utility>
 
@@ -29,16 +30,12 @@ namespace ui
         void setText(std::string text) { text_ = std::move(text); }
         const std::string &getText() const noexcept { return text_; }
 
-        // Non-owning. The caller is responsible for keeping the source font
-        // alive for as long as this layout may be measured or rendered.
         void setFont(TTF_Font *font) noexcept { font_ = font; }
         TTF_Font *getFont() const noexcept { return font_; }
 
         void setFontSize(float logicalSize) noexcept { fontSize_ = logicalSize; }
         float getFontSize() const noexcept { return fontSize_; }
 
-        // 0 means use the source font's native line skip. Positive values are
-        // logical pixels and are applied to the derived measurement/raster font.
         void setLineHeight(float logicalLineHeight) noexcept { lineHeight_ = logicalLineHeight; }
         float getLineHeight() const noexcept { return lineHeight_; }
 
@@ -47,6 +44,11 @@ namespace ui
 
         TextLayoutResult measureLayout(float availableWidth) const noexcept;
         LayoutSize measure(float availableWidth) const noexcept;
+
+        // Logical text geometry for the current unwrapped single-line text.
+        // The position is a UTF-8 code-point index, not a byte offset.
+        float caretOffset(std::size_t textPosition) const noexcept;
+        std::size_t textPositionAt(float x) const noexcept;
 
     private:
         std::string text_;
