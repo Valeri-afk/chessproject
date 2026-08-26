@@ -193,6 +193,28 @@ namespace
         assert(!textEvent.propagationStopped);
     }
 
+    void testTextInputFirstClickFocusesAndPlacesCaret()
+    {
+        ui::NodeTree tree;
+        ui::InputSystem inputSystem;
+        ui::TextInput *input = attachTextInput(tree);
+
+        input->setSize(ui::LayoutSizeValue::fixed(200.0f, 40.0f));
+        input->setPosition({0.0f, 0.0f});
+
+        SDL_Event event{};
+        event.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
+        event.button.x = 0.0f;
+        event.button.y = 10.0f;
+        event.button.button = SDL_BUTTON_LEFT;
+
+        inputSystem.processEvent(event, tree, nullptr);
+
+        assert(inputSystem.focusedNode() == input);
+        assert(inputSystem.capturedNode() == input);
+        assert(input->getCaretPosition() == 0);
+    }
+
     void testSDLTextInputRoutesThroughInputSystemFocus()
     {
         ui::NodeTree tree;
@@ -263,6 +285,7 @@ int main()
     testTextInputCompositionDoesNotMutateCommittedText();
     testTextInputCompositionIsDroppedOnFocusLoss();
     testTextInputFocusLossStopsFurtherTextInput();
+    testTextInputFirstClickFocusesAndPlacesCaret();
     testSDLTextInputRoutesThroughInputSystemFocus();
     testSDLTextInputDoesNotReachUnfocusedTextInput();
     testSDLKeyDownRoutesModifiersToTextInput();
