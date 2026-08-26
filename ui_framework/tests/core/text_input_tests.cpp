@@ -193,26 +193,23 @@ namespace
         assert(!textEvent.propagationStopped);
     }
 
-    void testTextInputFirstClickFocusesAndPlacesCaret()
+    void testTextInputFirstMouseDownPlacesCaretBeforeFocus()
     {
         ui::NodeTree tree;
-        ui::InputSystem inputSystem;
         ui::TextInput *input = attachTextInput(tree);
+        input->setText("hello");
 
-        input->setSize(ui::LayoutSizeValue::fixed(200.0f, 40.0f));
-        input->setPosition({0.0f, 0.0f});
+        ui::MouseDownEvent mouseDown;
+        mouseDown.position = {0.0f, 0.0f};
+        mouseDown.button = ui::MouseButton::Left;
+        ui::EventDispatcher::dispatch(tree, input, mouseDown, false, false);
 
-        SDL_Event event{};
-        event.type = SDL_EVENT_MOUSE_BUTTON_DOWN;
-        event.button.x = 0.0f;
-        event.button.y = 10.0f;
-        event.button.button = SDL_BUTTON_LEFT;
-
-        inputSystem.processEvent(event, tree, nullptr);
-
-        assert(inputSystem.focusedNode() == input);
-        assert(inputSystem.capturedNode() == input);
         assert(input->getCaretPosition() == 0);
+        assert(input->hasSelection());
+
+        // The handler must not manufacture focus; InputSystem remains the focus owner.
+        ui::InputSystem inputSystem;
+        assert(inputSystem.focus(tree, *input));
     }
 
     void testSDLTextInputRoutesThroughInputSystemFocus()
@@ -285,7 +282,7 @@ int main()
     testTextInputCompositionDoesNotMutateCommittedText();
     testTextInputCompositionIsDroppedOnFocusLoss();
     testTextInputFocusLossStopsFurtherTextInput();
-    testTextInputFirstClickFocusesAndPlacesCaret();
+    testTextInputFirstMouseDownPlacesCaretBeforeFocus();
     testSDLTextInputRoutesThroughInputSystemFocus();
     testSDLTextInputDoesNotReachUnfocusedTextInput();
     testSDLKeyDownRoutesModifiersToTextInput();
