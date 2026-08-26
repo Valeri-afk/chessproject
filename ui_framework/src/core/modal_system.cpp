@@ -48,10 +48,6 @@ namespace ui
 
         modals_.push_back({modalId, previousFocusId, previousModalId, options});
 
-        // The modal boundary must be visible to InputSystem immediately.
-        // showModal performs the initial focus transition before the next
-        // UIManager::processEvent call, so waiting for that call would leave
-        // the new modal with an inconsistent focus/input boundary.
         input.setModalRoot(liveModal);
 
         if (options.showBackdrop)
@@ -237,7 +233,7 @@ namespace ui
         panel->forEachChild([this, &result](Node &child)
         {
             result = findFirstFocusable(child);
-            return result == nullptr;
+            return result != nullptr;
         });
         return result;
     }
