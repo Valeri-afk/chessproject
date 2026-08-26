@@ -14,6 +14,7 @@ namespace ui
     {
         LayoutSize content{};
         ScrollOffset offset{};
+        bool clipToBoundsBeforeRegistration = false;
 
         ScrollOffset maxOffset(const LayoutSize &viewport) const noexcept;
         void clampOffset(const LayoutSize &viewport) noexcept;
