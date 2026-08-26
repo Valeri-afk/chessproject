@@ -36,10 +36,18 @@ namespace ui
         Layout,
         Absolute
     };
-    enum class BackdropClickBehavior
+    enum class OutsideClickBehavior
     {
         Consume,
         Close
+    };
+    using BackdropClickBehavior = OutsideClickBehavior;
+
+    struct ModalOptions
+    {
+        OutsideClickBehavior outsideClick = OutsideClickBehavior::Consume;
+        bool closeOnEscape = true;
+        bool showBackdrop = true;
     };
 
     struct LayoutPosition
