@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the current contract for framework layout execution. The framework uses an imperative, retained-mode Measure → Arrange pipeline with explicit invalidation.
+This document defines the current framework layout contract. The framework uses an imperative, retained-mode Measure → Arrange pipeline with explicit invalidation.
 
 ## Ownership boundary
 
@@ -19,154 +19,157 @@ Component
   → component-specific layout state
 
 Client
-  → explicit notification when semantic state makes derived layout stale
+  → explicit invalidation when its semantic changes make derived layout stale
 ```
 
-`Node` has Measure and Arrange semantics regardless of whether it owns children. `PanelNode` is the structural capability that can own framework-visible children. `StackPanelNode` is a specialized `PanelNode` with a predefined linear policy.
+`Node` provides the base Measure/Arrange hooks. `PanelNode` adds structural child ownership. `StackPanelNode` provides the current one-dimensional flow policy.
 
 ## Measure
 
-Measure answers what size the component desires under the effective content-space proposal supplied by the framework.
+Measure receives an available content-space proposal after framework border/padding conversion and constraint handling. The component returns desired content size; the framework composes it back into desired border-box size and applies final constraints.
 
 ```text
-parent border-box proposal
+parent proposal
     ↓
-framework size/min/max/padding/border resolution
+framework proposal/constraint resolution
     ↓
-effective content-box proposal
+content-box proposal
     ↓
 component Measure
     ↓
 desired content size
     ↓
-framework box composition
+framework border-box composition + final constraints
     ↓
-desired border-box size
+desired size
 ```
 
-Measure constraints are available bounds, not promises of final allocation. A component may report a desired size larger than the supplied available size.
-
-Leaf `Node` measures its own content. `PanelNode` may recursively measure children and aggregate their desired sizes.
+A maximum can narrow the measurement proposal. A minimum is applied to final size and does not automatically become a narrower measurement proposal.
 
 ## Arrange
 
-Arrange uses the final content geometry selected by the parent layout policy.
+Arrange receives the final content position and size selected by the parent layout policy. The framework commits `actualPosition` and `actualSize` as derived geometry.
 
 ```text
 parent allocation
     ↓
-framework final constraints
-    ↓
 component Arrange
     ↓
-actual internal geometry
+child placement
     ↓
-framework committed actualPosition / actualSize
+framework final-size constraints
+    ↓
+actual geometry
 ```
 
 `Measure proposal != Arrange allocation` is a core invariant.
 
 ## Constraint semantics
 
-Current semantics are:
+The current `LayoutValue` model has only:
 
 ```text
-Fixed size
-  → measurement proposal + final size
-
-Max size
-  → measurement proposal + final size
-
-Min size
-  → final size only
-
 Auto
-  → intrinsic measurement / parent allocation
+Value (fixed)
 ```
 
-A minimum does not automatically narrow intrinsic measurement. A maximum may narrow the Measure proposal before width-sensitive content is measured.
+Minimum and maximum size are separate Node constraints.
 
-`Auto` is not "fill parent". Its meaning depends on the surrounding layout policy.
+Current behavior is:
+
+```text
+fixed size → measurement proposal and final-size constraint
+max size   → measurement proposal bound and final-size constraint
+min size   → final-size constraint
+auto       → surrounding layout policy / intrinsic measurement
+```
+
+`Auto` does not itself mean fill-parent.
 
 ## Border-box model
 
-Node outer geometry remains a border box. Measure/Arrange component hooks operate in content-space terms; padding and border are converted by framework layout code.
+Node outer geometry is a border box. Component Measure/Arrange hooks operate on content-space values; the framework converts between border-box and content-box using sanitized padding and border values.
 
-`Overflow::HIDDEN` is not a layout constraint. It is a rendering/input boundary.
+There is no `Overflow` layout enum. Clipping is controlled by the Node property:
+
+```cpp
+node.setClipToBounds(true);
+```
 
 ## Linear layout
 
-The current minimal flow model supports orientation, gap, main-axis alignment and cross-axis alignment, visibility filtering and absolute-child separation.
+`StackPanelNode` supports:
 
-Absolute children do not contribute to normal-flow aggregation.
+```text
+Vertical / Horizontal orientation
+gap
+main-axis alignment: START / CENTER / END / SPACE_BETWEEN
+cross-axis alignment: START / CENTER / END / STRETCH
+```
 
-Stretch allocates available cross-axis space and final min/max constraints are then applied. There is no flex-shrink/flex-basis/flex-wrap/grid implementation in this contract.
+Visible non-absolute children participate in normal flow. Absolute children are measured/arranged separately and do not contribute to normal-flow aggregation.
+
+Stretch expands the cross axis before final min/max constraints are applied. Flex grow/shrink/basis/wrap and grid are not implemented.
+
+## Absolute positioning
+
+`PositionMode::Absolute` removes a child from normal linear flow. The parent layout still measures and arranges that child separately using the child's position relative to the parent's content position and the applicable size constraints.
 
 ## Invalidation
 
-The current public invalidation contract is:
+The public invalidation entry point is:
 
 ```cpp
 uiManager.invalidateLayout(node);
 ```
 
+`Node::invalidateLayout()` also routes through its owning `NodeTree` for mounted nodes.
+
 Invalidation is explicit and asynchronous. It does not run Measure/Arrange immediately and there is no public flush operation.
 
-The framework does not observe arbitrary component fields.
+The current NodeTree implementation promotes a descendant invalidation to its containing top-level root/overlay and deduplicates the queued root. The next `LayoutSystem::processLayoutQueue()` pass performs the complete recursive Measure/Arrange operation for that root.
+
+## Layout scheduling and frame order
+
+`UIManager::runFrame()` currently performs layout before node update:
 
 ```text
-semantic state mutation
+sync input/modal state
     ↓
-explicit invalidateLayout()
+flush pending tree mutations
     ↓
-root promotion + queue deduplication
+process layout queue
     ↓
-next framework layout phase
+scroll synchronization
+    ↓
+modal synchronization/update
+    ↓
+NodeTree update
+    ↓
+draw
 ```
 
-Repeated invalidations of the same root are coalesced. Detached/non-live nodes are not accepted as layout jobs.
+If the renderer's logical presentation size changes, `LayoutSystem` requests a full layout for all roots/overlays before the frame's layout processing.
 
-Invalidation of a descendant is promoted to the containing top-level root/overlay because the whole affected subtree must be measured under the root's constraints.
+## Re-invalidation
 
-## Re-invalidation during layout
-
-If Measure or Arrange invalidates a node, the current pass is not restarted recursively. The currently queued roots are consumed first; a new invalidation queues work for a later framework-controlled pass.
-
-A component that invalidates itself on every Measure/Arrange call can therefore cause repeated future passes. That is component behavior, not recursive scheduler behavior.
+If Measure/Arrange causes another invalidation while a layout pass is active, the mutation/invalidation is not used to recursively restart the current traversal. The newly queued work is handled by a later framework-controlled layout pass.
 
 ## Derived geometry validity
 
-`getDesiredSize()` and `getActualSize()` expose the latest committed layout values. They are cached derived state, not live computations.
-
-After invalidation and before the next layout pass, old geometry remains readable but may be stale.
-
-No separate geometry-validity bit is required at the current stage.
+`getDesiredSize()` and `getActualSize()` expose cached derived layout state. After invalidation and before the next layout pass, previously committed geometry may be stale.
 
 ## Structural interaction
 
-`PanelNode::addChild/removeChild` already participate in framework mutation handling and layout consequences. A separate public `treeStructureChanged()` notification is not required for ordinary structural child operations.
+`PanelNode::addChild/removeChild` already route mounted structural changes through `NodeTree`. They establish ownership/liveness and queue the affected parent/root for layout as part of the structural operation. No separate `treeStructureChanged()` notification exists.
 
-## No paint invalidation yet
+## No paint invalidation
 
-Rendering runs every frame, so there is currently no separate `invalidatePaint()` queue. A paint-dirty subsystem should only be introduced if the renderer later requires explicit scheduling.
+Rendering runs every frame. There is no separate public `invalidatePaint()` queue.
 
 ## Acceptance cases
 
-Important acceptance cases include:
-
-- fixed width text;
-- text + button + gap;
-- padding/border conversion;
-- fixed child width smaller than parent;
-- min/max without feeding min into Measure;
-- parent width changing wrapped text;
-- main/cross-axis centering;
-- cross-axis stretch with final constraints;
-- absolute children excluded from flow;
-- nested panels;
-- hidden children excluded from layout;
-- fixed parent height with overflowing content;
-- maxWidth affecting measurement before wrapping.
+Important cases include fixed-size nodes, text width-sensitive measurement, padding/border conversion, min/max constraints, wrapping after parent width changes, main/cross-axis alignment, absolute children, hidden children, nested panels and overflowing content.
 
 ## Intentionally deferred
 
