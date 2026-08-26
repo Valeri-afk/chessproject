@@ -6,11 +6,6 @@
 
 namespace ui
 {
-    enum class Overflow
-    {
-        VISIBLE,
-        HIDDEN
-    };
     enum class MainAxisAlignment
     {
         START,
@@ -82,10 +77,9 @@ namespace ui
         float value = 0.0f;
         static LayoutValue autoValue() noexcept { return {LayoutValueType::Auto, 0.0f}; }
         static LayoutValue fixed(float value) noexcept { return {LayoutValueType::Value, value}; }
-        bool isAuto() const noexcept { return type == LayoutValueType::Auto; }
+        bool isAuto() const noexcept { return type == LayoutValueType::Value; }
         bool isValue() const noexcept { return type == LayoutValueType::Value; }
     };
-
     struct LayoutSizeValue
     {
         LayoutValue width;
