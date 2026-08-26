@@ -4,9 +4,18 @@
 
 namespace
 {
+    class TestImage final : public ui::Image
+    {
+    public:
+        ui::LayoutSize measureForTest(const ui::LayoutSize &available) const
+        {
+            return measureContent(available);
+        }
+    };
+
     void testDefaultState()
     {
-        ui::Image image;
+        TestImage image;
         assert(image.getTexture() == nullptr);
         assert(image.getIntrinsicSize() == ui::LayoutSize{});
         assert(image.getFitMode() == ui::Image::FitMode::CONTAIN);
@@ -15,9 +24,10 @@ namespace
 
     void testIntrinsicSizeAndFitMode()
     {
-        ui::Image image;
-        image.setIntrinsicSize({128.0f, 64.0f});
-        assert(image.getIntrinsicSize() == ui::LayoutSize{128.0f, 64.0f});
+        TestImage image;
+        const ui::LayoutSize expected{128.0f, 64.0f};
+        image.setIntrinsicSize(expected);
+        assert(image.getIntrinsicSize() == expected);
 
         image.setFitMode(ui::Image::FitMode::STRETCH);
         assert(image.getFitMode() == ui::Image::FitMode::STRETCH);
@@ -31,7 +41,7 @@ namespace
 
     void testTint()
     {
-        ui::Image image;
+        TestImage image;
         const ui::Color tint{10, 20, 30, 40};
         image.setTint(tint);
         assert(image.getTint() == tint);
@@ -39,16 +49,18 @@ namespace
 
     void testIntrinsicMeasureIsIndependentFromFitMode()
     {
-        ui::Image image;
-        image.setIntrinsicSize({128.0f, 64.0f});
+        TestImage image;
+        const ui::LayoutSize intrinsic{128.0f, 64.0f};
+        image.setIntrinsicSize(intrinsic);
 
+        const ui::LayoutSize available{1000.0f, 900.0f};
         for (const auto mode : {ui::Image::FitMode::STRETCH,
                                 ui::Image::FitMode::CONTAIN,
                                 ui::Image::FitMode::COVER})
         {
             image.setFitMode(mode);
-            const ui::LayoutSize measured = image.measureContent({1000.0f, 900.0f});
-            assert(measured == ui::LayoutSize{128.0f, 64.0f});
+            const ui::LayoutSize measured = image.measureForTest(available);
+            assert(measured == intrinsic);
         }
     }
 }
