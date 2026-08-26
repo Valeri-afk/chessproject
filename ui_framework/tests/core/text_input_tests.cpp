@@ -144,6 +144,39 @@ namespace
         TTF_Quit();
     }
 
+    void testTextInputUtf8MouseCaretUsesCodePointPositions()
+    {
+        const std::filesystem::path fontPath = findTestFont();
+        assert(!fontPath.empty());
+        assert(TTF_Init());
+
+        TTF_Font *font = TTF_OpenFont(fontPath.string().c_str(), 24.0f);
+        assert(font != nullptr);
+
+        {
+            ui::NodeTree tree;
+            ui::TextInput *input = attachTextInput(tree);
+            input->setFont(font);
+            input->setText(u8"AЖ🙂B");
+            dispatchFocusGained(tree, input);
+
+            int prefixWidth = 0;
+            int height = 0;
+            assert(TTF_GetStringSize(font, u8"AЖ", 0, &prefixWidth, &height));
+            assert(prefixWidth > 0);
+
+            ui::MouseDownEvent mouseDown;
+            mouseDown.button = ui::MouseButton::Left;
+            mouseDown.position = {static_cast<float>(prefixWidth + 1), 0.0f};
+            ui::EventDispatcher::dispatch(tree, input, mouseDown, false, false);
+
+            assert(input->getCaretPosition() == 2);
+        }
+
+        TTF_CloseFont(font);
+        TTF_Quit();
+    }
+
     void testTextInputHandlesFocusedTextEvent()
     {
         ui::NodeTree tree;
@@ -372,6 +405,7 @@ int main()
     testTextInputPublishesSemanticTextChanges();
     testTextInputAllCommittedMutationsNotifyOnce();
     testTextInputClientFontDrivesPointerCaretGeometry();
+    testTextInputUtf8MouseCaretUsesCodePointPositions();
     testTextInputHandlesFocusedTextEvent();
     testTextInputIgnoresTextEventWithoutFocus();
     testTextInputKeyboardEditingAndShiftSelection();
