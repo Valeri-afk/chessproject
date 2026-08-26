@@ -192,13 +192,7 @@ namespace ui
         for (size_t i = modals_.size(); i > 0; --i)
         {
             if (eraseInvalidModalSession(nodeTree, input, i - 1))
-            {
-                // A removed lower modal invalidates every modal above it.
-                // Keep only the surviving prefix of the stack.
-                if (i - 1 < modals_.size())
-                    modals_.erase(modals_.begin() + static_cast<std::ptrdiff_t>(i - 1), modals_.end());
                 break;
-            }
         }
 
         updateBackdropState();
@@ -221,12 +215,12 @@ namespace ui
         panel->forEachChild([this, &result](Node &child)
         {
             result = findFirstFocusable(child);
-            return result != nullptr;
+            return result == nullptr;
         });
         return result;
     }
 
-    bool ModalSystem::collectFocusable(Node &node, const Node *current, std::vector<Node *> &nodes) const
+    bool ModalSystem::collectFocusable(Node &node, const Node *, std::vector<Node *> &nodes) const
     {
         if (!node.isVisible() || !node.isEnabled())
             return true;
@@ -238,15 +232,12 @@ namespace ui
         if (!panel)
             return true;
 
-        bool keepGoing = true;
-        panel->forEachChild([this, current, &nodes, &keepGoing](Node &child)
+        panel->forEachChild([this, &nodes](Node &child)
         {
-            if (!keepGoing)
-                return false;
-            keepGoing = collectFocusable(child, current, nodes);
-            return keepGoing;
+            collectFocusable(child, nullptr, nodes);
+            return true;
         });
-        return keepGoing;
+        return true;
     }
 
     Node *ModalSystem::findNextFocusableInModal(NodeTree &, Node &modal, const Node &current) const
@@ -272,13 +263,13 @@ namespace ui
         nodeTree.forEachRoot([this, &result](Node &root)
         {
             result = findFirstFocusable(root);
-            return result != nullptr;
+            return result == nullptr;
         });
         if (!result)
             nodeTree.forEachOverlay([this, &result](Node &overlay)
             {
                 result = findFirstFocusable(overlay);
-                return result != nullptr;
+                return result == nullptr;
             });
         return result;
     }
@@ -359,7 +350,7 @@ namespace ui
         if (index >= modals_.size())
             return false;
 
-        ModalSession &session = modals_[index];
+        const ModalSession session = modals_[index];
         Node *modalNode = nodeTree.findNode(session.modalId);
         if (modalNode && isLiveVisibleEnabledModal(nodeTree, *modalNode))
             return false;
