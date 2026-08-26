@@ -4,7 +4,6 @@
 #include "ui_framework/events.hpp"
 
 #include <algorithm>
-#include <utility>
 
 namespace ui
 {
@@ -13,7 +12,7 @@ namespace ui
         setFocusable(true);
         setCapturable(true);
         setSize(LayoutSizeValue::fixed(radius_ * 2.0f, radius_ * 2.0f));
-        addHandler<MouseClickEvent>([this](MouseClickEvent &event, Node &)
+        on<MouseClickEvent>([this](MouseClickEvent &event, Node &)
         {
             if (event.button == MouseButton::Left)
                 activate();
@@ -31,15 +30,13 @@ namespace ui
 
     float RadioButton::getRadius() const noexcept { return radius_; }
 
-    void RadioButton::setOnSelect(SelectCallback callback) { onSelect_ = std::move(callback); }
-
     void RadioButton::select()
     {
         if (!isVisible() || !isEnabled() || selected_)
             return;
         selected_ = true;
-        if (onSelect_)
-            onSelect_(*this, true);
+        RadioButtonSelectedEvent event;
+        emit(event);
     }
 
     void RadioButton::activate() { select(); }
