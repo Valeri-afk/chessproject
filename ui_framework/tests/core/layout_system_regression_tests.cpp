@@ -203,6 +203,7 @@ namespace
         LayoutFixture f;
         auto panel = std::make_unique<ui::StackPanelNode>();
         panel->setSize(ui::LayoutSizeValue::fixed(200.0f, 100.0f));
+        panel->setCrossAlignment(ui::CrossAxisAlignment::START);
 
         auto child = std::make_unique<MeasuringNode>(ui::LayoutSize{30.0f, 20.0f});
         ui::Node *childPtr = child.get();
@@ -213,7 +214,7 @@ namespace
 
         expect(near(childPtr->getActualSize().width, 30.0f) &&
                near(childPtr->getActualSize().height, 20.0f),
-               "auto size must preserve intrinsic desired size instead of filling the parent");
+               "auto size must preserve intrinsic desired size when cross-axis stretching is disabled");
     }
 
     void test_relayout_commits_changed_geometry_only_after_processing()
