@@ -82,7 +82,7 @@ namespace
                "a panel outside the manager tree must not become a scroll container");
     }
 
-    void test_scroll_registration_forces_and_restores_clipping()
+    void test_scroll_registration_does_not_change_clipping()
     {
         ui::UIManager manager;
         auto panel = makeVerticalPanel();
@@ -90,9 +90,11 @@ namespace
         ui::Node *root = manager.addRoot(std::move(panel));
 
         expect(manager.enableScrolling(*root), "attached panel must register for scrolling");
-        expect(root->getClipToBounds(), "scroll registration must force viewport clipping");
+        expect(!root->getClipToBounds(),
+               "scroll registration must not take ownership of the node's clipping state");
         expect(manager.disableScrolling(*root), "registered panel must unregister cleanly");
-        expect(!root->getClipToBounds(), "unregister must restore previous clipping state");
+        expect(!root->getClipToBounds(),
+               "unregister must not modify the node's clipping state");
     }
 
     void test_preexisting_clipping_survives_scroll_lifecycle()
@@ -103,8 +105,9 @@ namespace
         ui::Node *root = manager.addRoot(std::move(panel));
 
         expect(manager.enableScrolling(*root), "attached panel must register");
+        expect(root->getClipToBounds(), "existing clipping must remain enabled while scrolling");
         expect(manager.disableScrolling(*root), "registered panel must unregister");
-        expect(root->getClipToBounds(), "pre-existing clipping must remain enabled after unregister");
+        expect(root->getClipToBounds(), "existing clipping must remain enabled after unregister");
     }
 
     void test_content_extent_and_max_offset_are_derived_from_layout()
@@ -365,7 +368,7 @@ int main()
     {
         test_only_panels_can_be_scroll_containers();
         test_unmounted_panel_cannot_be_registered();
-        test_scroll_registration_forces_and_restores_clipping();
+        test_scroll_registration_does_not_change_clipping();
         test_preexisting_clipping_survives_scroll_lifecycle();
         test_content_extent_and_max_offset_are_derived_from_layout();
         test_offset_is_clamped_against_current_geometry();
