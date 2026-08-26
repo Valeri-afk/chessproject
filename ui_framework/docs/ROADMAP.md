@@ -20,11 +20,14 @@ Reference: `SCROLL_SYSTEM.md`
 
 ### Text input
 
-- [ ] Implement editable text fields/input controls.
-- [ ] Integrate committed text and IME events with the existing `InputSystem` focus and keyboard routing.
-- [ ] Build editing on top of `TextLayout` and `TextRenderer` without moving editing semantics into `Node` or the renderer.
-- [ ] Implement the minimum required caret, selection, clipboard and IME contracts defined by concrete use cases.
-- [ ] Add focused regression coverage for editing commands, Unicode text input, selection, focus lifecycle, mouse caret positioning and IME composition where supported.
+- [x] Implement editable text fields/input controls.
+- [x] Integrate committed text and IME events with the existing `InputSystem` focus and keyboard routing.
+- [x] Build editing on top of `TextLayout` and `TextRenderer` without moving editing semantics into `Node` or the renderer.
+- [x] Implement the minimum required caret and selection behavior for the current single-line game-oriented input model.
+- [x] Add focused regression coverage for editing commands, Unicode text input, selection, focus lifecycle, mouse caret positioning and IME composition state.
+- [ ] Add clipboard support or richer IME/window integration only when a concrete game/client use case requires it.
+
+The current `TextInput` scope is intentionally game-oriented. It is not a desktop text editor: no undo/redo stack, word-wise navigation, multiline editing, text viewport/scrolling, or framework-owned SDL window lifecycle is required by the current contract.
 
 Reference: `TEXT_INPUT_SYSTEM.md`
 
