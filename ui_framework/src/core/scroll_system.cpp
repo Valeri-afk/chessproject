@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
 
 #include "node_tree.hpp"
 #include "ui_framework/panel_node.hpp"
@@ -35,10 +34,8 @@ namespace ui
     {
         if (!dynamic_cast<PanelNode *>(&node))
             return false;
-
         if (states_.contains(node.getId()))
             return false;
-
         states_.emplace(node.getId(), ScrollState{});
         return true;
     }
@@ -53,25 +50,28 @@ namespace ui
         return states_.contains(nodeId);
     }
 
-    bool ScrollSystem::setOffset(Node::Id nodeId, const ScrollOffset &offset)
+    bool ScrollSystem::setOffset(NodeTree &nodeTree, Node::Id nodeId, const ScrollOffset &offset)
     {
         auto it = states_.find(nodeId);
-        if (it == states_.end())
+        Node *node = nodeTree.findNode(nodeId);
+        if (it == states_.end() || !node)
             return false;
 
         it->second.offset = offset;
+        it->second.clampOffset(getViewport(*node));
         return true;
     }
 
-    bool ScrollSystem::scrollBy(Node::Id nodeId, const ScrollOffset &delta)
+    bool ScrollSystem::scrollBy(NodeTree &nodeTree, Node::Id nodeId, const ScrollOffset &delta)
     {
         auto it = states_.find(nodeId);
-        if (it == states_.end())
+        Node *node = nodeTree.findNode(nodeId);
+        if (it == states_.end() || !node)
             return false;
 
-        const auto *node = static_cast<const Node *>(nullptr);
-        (void)node;
-        it->second.offset += delta;
+        it->second.offset.x += finiteOrZero(delta.x);
+        it->second.offset.y += finiteOrZero(delta.y);
+        it->second.clampOffset(getViewport(*node));
         return true;
     }
 
@@ -89,13 +89,12 @@ namespace ui
         return it == states_.end() ? ScrollOffset{} : it->second.offset;
     }
 
-    ScrollOffset ScrollSystem::getMaxOffset(Node::Id nodeId) const noexcept
+    ScrollOffset ScrollSystem::getMaxOffset(const Node &node) const noexcept
     {
-        const auto it = states_.find(nodeId);
+        const auto it = states_.find(node.getId());
         if (it == states_.end())
             return {};
-
-        return it->second.maxOffset(LayoutSize{});
+        return it->second.maxOffset(getViewport(node));
     }
 
     ScrollOffset ScrollSystem::getAccumulatedOffset(const Node &node) const noexcept
@@ -105,7 +104,7 @@ namespace ui
         while (current)
         {
             if (const auto it = states_.find(current->getId()); it != states_.end())
-                result += it->second.offset;
+                result.x += it->second.offset.x, result.y += it->second.offset.y;
             current = current->getParent();
         }
         return result;
@@ -114,10 +113,8 @@ namespace ui
     Node *ScrollSystem::findNearestScrollableAncestor(NodeTree &, Node *target) const noexcept
     {
         for (Node *current = target; current; current = current->getParent())
-        {
             if (isRegistered(current->getId()))
                 return current;
-        }
         return nullptr;
     }
 
@@ -178,12 +175,11 @@ namespace ui
         if (it == states_.end())
             return delta;
 
-        const LayoutSize viewport = getViewport(node);
-        const ScrollOffset maximum = it->second.maxOffset(viewport);
+        const ScrollOffset maximum = it->second.maxOffset(getViewport(node));
         const ScrollOffset before = it->second.offset;
 
-        it->second.offset.x = std::clamp(before.x + delta.x, 0.0f, maximum.x);
-        it->second.offset.y = std::clamp(before.y + delta.y, 0.0f, maximum.y);
+        it->second.offset.x = std::clamp(before.x + finiteOrZero(delta.x), 0.0f, maximum.x);
+        it->second.offset.y = std::clamp(before.y + finiteOrZero(delta.y), 0.0f, maximum.y);
 
         return {
             delta.x - (it->second.offset.x - before.x),
@@ -202,9 +198,8 @@ namespace ui
         ScrollOffset remaining{finiteOrZero(deltaX), finiteOrZero(deltaY)};
         bool consumed = false;
 
-        for (Node *scrollNode = findNearestScrollableAncestor(nodeTree, target);
-             scrollNode;
-             scrollNode = scrollNode->getParent() ? findNearestScrollableAncestor(nodeTree, scrollNode->getParent()) : nullptr)
+        Node *scrollNode = findNearestScrollableAncestor(nodeTree, target);
+        while (scrollNode)
         {
             const ScrollOffset before = remaining;
             remaining = consumeScroll(*scrollNode, remaining);
@@ -212,6 +207,9 @@ namespace ui
 
             if (remaining.x == 0.0f && remaining.y == 0.0f)
                 break;
+
+            Node *parent = scrollNode->getParent();
+            scrollNode = findNearestScrollableAncestor(nodeTree, parent);
         }
 
         return consumed;
