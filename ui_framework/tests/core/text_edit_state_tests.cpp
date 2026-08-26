@@ -83,6 +83,45 @@ namespace
         assert(state.text() == "a");
         assert(state.caret() == 1);
     }
+
+    void testFourByteUtf8CaretAndDeletion()
+    {
+        ui::TextEditState state("A😀B");
+        assert(state.textLength() == 3);
+        assert(state.caret() == 3);
+
+        state.moveLeft();
+        assert(state.caret() == 2);
+        state.moveLeft();
+        assert(state.caret() == 1);
+
+        state.moveRight();
+        assert(state.caret() == 2);
+
+        state.backspace();
+        assert(state.text() == "AB");
+        assert(state.caret() == 1);
+
+        state.setText("A😀B");
+        state.setCaret(1);
+        state.deleteForward();
+        assert(state.text() == "AB");
+        assert(state.caret() == 1);
+    }
+
+    void testFourByteUtf8SelectionReplacement()
+    {
+        ui::TextEditState state("A😀B");
+        state.setCaret(1);
+        state.moveRight(true);
+        assert(state.selectionStart() == 1);
+        assert(state.selectionEnd() == 2);
+
+        state.insertText("x");
+        assert(state.text() == "AxB");
+        assert(state.caret() == 2);
+        assert(!state.hasSelection());
+    }
 }
 
 int main()
@@ -93,5 +132,7 @@ int main()
     testBackspaceAndDelete();
     testSelectionCommands();
     testUtf8CaretAndDeletion();
+    testFourByteUtf8CaretAndDeletion();
+    testFourByteUtf8SelectionReplacement();
     return 0;
 }
