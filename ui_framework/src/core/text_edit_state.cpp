@@ -1,6 +1,7 @@
 #include "text_edit_state.hpp"
 
 #include <algorithm>
+#include <utility>
 
 namespace ui
 {
@@ -33,6 +34,11 @@ namespace ui
     {
         caret_ = std::min(position, textLength());
         anchor_ = caret_;
+    }
+
+    void TextEditState::extendSelectionTo(std::size_t position) noexcept
+    {
+        caret_ = std::min(position, textLength());
     }
 
     void TextEditState::collapseSelectionToCaret() noexcept { anchor_ = caret_; }
