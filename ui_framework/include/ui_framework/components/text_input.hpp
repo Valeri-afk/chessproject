@@ -37,6 +37,11 @@ namespace ui
         void selectAll() noexcept;
         void clearSelection() noexcept;
 
+        const std::string &getCompositionText() const noexcept;
+        int getCompositionCursor() const noexcept;
+        int getCompositionSelectionLength() const noexcept;
+        bool hasComposition() const noexcept;
+
         void insertText(std::string_view text);
         void backspace();
         void deleteForward();
@@ -62,11 +67,15 @@ namespace ui
         void handleTextEditing(TextEditingEvent &event, Node &node);
         void markTextChanged();
         void syncTextContent();
+        void clearComposition() noexcept;
         void setCaretFromPointer(float x, bool extendSelection);
 
         std::unique_ptr<TextEditState> editState_;
         std::unique_ptr<TextContent> text_;
         std::string placeholder_;
+        std::string composition_;
+        int compositionCursor_ = 0;
+        int compositionSelectionLength_ = 0;
         TextChangedCallback onTextChanged_;
         std::size_t pointerSelectionAnchor_ = 0;
         bool pointerSelecting_ = false;
