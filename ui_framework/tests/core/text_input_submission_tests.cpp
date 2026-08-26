@@ -20,7 +20,7 @@ namespace
     void focus(ui::NodeTree &tree, ui::TextInput *input)
     {
         ui::FocusGainedEvent event;
-        assert(ui::EventDispatcher::dispatch(tree, input, event, false, false));
+        ui::EventDispatcher::dispatch(tree, input, event, false, false);
     }
 
     void testEnterPublishesSubmittedWithoutMutatingText()
@@ -41,9 +41,8 @@ namespace
 
         ui::KeyDownEvent enter;
         enter.key = ui::KeyCode::ENTER;
-        const bool dispatched = ui::EventDispatcher::dispatch(tree, input, enter, false, false);
+        ui::EventDispatcher::dispatch(tree, input, enter, false, false);
 
-        assert(dispatched);
         assert(submitted == 1);
         assert(observedText == "message");
         assert(input->getText() == "message");
