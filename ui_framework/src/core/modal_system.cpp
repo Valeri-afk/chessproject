@@ -355,15 +355,11 @@ namespace ui
         if (modalNode && isLiveVisibleEnabledModal(nodeTree, *modalNode))
             return false;
 
-        const bool wasTop = index + 1 == modals_.size();
         modals_.erase(modals_.begin() + static_cast<std::ptrdiff_t>(index), modals_.end());
 
         input.cancelPointerInteraction(nodeTree);
-        input.syncState(nodeTree);
-
-        if (wasTop)
-            restoreFocusAfterClose(nodeTree, input, session);
-
+        input.clearFocus(nodeTree);
+        restoreFocusAfterClose(nodeTree, input, session);
         return true;
     }
 
