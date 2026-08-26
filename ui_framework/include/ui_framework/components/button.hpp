@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <string>
 
@@ -13,11 +12,12 @@ namespace ui
 {
     class TextContent;
 
+    struct ButtonActivatedEvent : UIEvent {};
+
     class Button : public Node
     {
     public:
         enum class Variant { FILLED, OUTLINED, TEXT };
-        using ActivateCallback = std::function<void(Button &)>;
         Button();
         explicit Button(float borderRadius);
         ~Button() override;
@@ -45,7 +45,6 @@ namespace ui
         float getPressAnimationSpeed() const noexcept;
         bool isPressed() const noexcept;
         bool isHovered() const noexcept;
-        void setOnActivate(ActivateCallback callback);
         virtual void activate();
     protected:
         virtual void onActivate();
@@ -78,6 +77,5 @@ namespace ui
         float targetScale_ = 1.0f;
         bool pressed_ = false;
         bool hovered_ = false;
-        ActivateCallback onActivate_;
     };
 }
