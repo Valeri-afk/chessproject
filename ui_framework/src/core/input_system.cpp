@@ -256,10 +256,6 @@ namespace ui
             break;
         }
 
-        default:
-            break;
-        }
-
         case SDL_EVENT_TEXT_INPUT:
         {
             TextInputEvent event;
@@ -277,6 +273,10 @@ namespace ui
             event.selectionLength = sdlEvent.edit.length;
         
             handleTextEditingEvent(nodeTree, event);
+            break;
+        }
+
+        default:
             break;
         }
 
