@@ -4,7 +4,7 @@
 
 The project originated from a chess application, but the UI framework is not a chess framework and is not intended to become a complete widget library.
 
-It provides a small retained-mode C++/SDL3 runtime in which independently implemented UI objects can participate in one coherent system with shared ownership, lifecycle, traversal, layout, input, events and rendering.
+It provides a small retained-mode C++/SDL3 runtime in which independently implemented UI objects participate in one coherent system with shared ownership, lifecycle, traversal, layout, input, events and rendering.
 
 The chess application is the immediate validation target, not the source of application-specific framework components.
 
@@ -22,7 +22,8 @@ The framework provides generic infrastructure for:
 - scrolling and modality as framework services;
 - low-level rendering primitives;
 - a small standard component set;
-- custom `Node` and `PanelNode` extension points.
+- custom `Node` and `PanelNode` extension points;
+- single-line game-oriented text input/editing.
 
 It is intentionally narrower than Qt, WPF or a universal application toolkit.
 
@@ -47,8 +48,6 @@ button->setPadding(...);
 ```
 
 These operations describe changes to retained semantic state or structure. They do not give client code control over framework phase ordering. `UIManager`, `NodeTree` and the internal subsystems remain responsible for lifecycle, mutation safety, scheduling, layout execution, input routing and rendering traversal.
-
-This distinction is intentional: imperative syntax does not imply an imperative runtime.
 
 ## Developer vs framework responsibility
 
@@ -125,19 +124,6 @@ The client owns application-specific state and meaning, for example:
 - application-specific semantics and callbacks;
 - custom component behavior.
 
-Example:
-
-```text
-Framework:
-    detect click
-    dispatch event
-    invoke registered behavior
-
-Client:
-    interpret "New Game"
-    reset application state
-```
-
 ## Current standard components
 
 ```text
@@ -150,6 +136,8 @@ RadioButton
 Slider
 Dropdown
 Typography
+TextInput
+Image
 StackPanelNode / PanelNode
 ```
 
@@ -181,7 +169,7 @@ Modality is framework infrastructure behind the public `UIManager` facade. A sta
 
 ### Scrolling
 
-Scrolling is framework infrastructure. A standalone public `Scroll` / `ScrollArea` component is not currently required. Scrollbar presentation is also deferred until scroll behavior has dedicated runtime validation and a stable visual contract.
+Scrolling is framework infrastructure behind the public `UIManager` facade. `ScrollSystem` is an internal service; a standalone public `Scroll` / `ScrollArea` component is not currently required.
 
 ### Text
 
@@ -195,9 +183,9 @@ Typography / text-bearing controls
  TextLayout  TextRenderer
 ```
 
-`TextLayout` owns logical measurement/wrapping; `TextRenderer` is internal backend rendering. Source `TTF_Font*` remains client-owned; derived rendering resources are framework-owned.
+`TextLayout` provides logical measurement/wrapping using SDL_ttf font metrics. `TextContent` bridges component presentation and geometry to the layout/rendering layers. `TextRenderer` is internal backend rendering. Source `TTF_Font*` remains client-owned; derived renderer resources are framework-owned.
 
-Text input/editing is not implemented yet and is intentionally isolated as a future subsystem rather than a base `Node` concern.
+`TextInput` is an active single-line editing component. It owns committed text, caret/selection state and private IME composition state while using `TextContent` for layout/rendering geometry.
 
 ## Ownership and lifetime
 
@@ -207,11 +195,11 @@ Client-held `Node*` references are non-owning. Live membership is authoritative 
 
 Structural mutations are framework-managed and deferred when required for traversal safety.
 
-For text, the source `TTF_Font*` is non-owning from the framework perspective and must outlive its text users. No general ResourceManager is justified until concrete requirements such as shared ownership, unloading, replacement or hot reload appear.
+For text, the source `TTF_Font*` is non-owning from the framework perspective and must outlive its text users. No general ResourceManager is currently required by the framework contract.
 
 ## Reparenting
 
-Reparenting is a future capability, not a current requirement. It should only be introduced after a concrete use case such as drag-and-drop, docking or tab transfer establishes the need.
+Reparenting is a future capability, not a current requirement. It should only be introduced after a concrete use case establishes the need.
 
 ## Design philosophy
 
@@ -240,7 +228,7 @@ signals/change tracking as a global requirement
 tree diffing/reconciliation
 ```
 
-The reason is architectural simplicity: framework-known state is handled by framework contracts, while component-owned state remains local and participates through explicit hooks and notifications. A more general change-tracking model should only be added when a concrete reusable requirement cannot be expressed cleanly with those contracts.
+Framework-known state is handled by explicit framework contracts, while component-owned state remains local and participates through explicit hooks and notifications.
 
 ## Future capability rule
 
@@ -249,13 +237,16 @@ A capability should be added when it is a real reusable responsibility of the UI
 Deferred examples include:
 
 ```text
-TextField / editable text
-Image / resource ownership
-List
-IconButton
+clipboard support
+rich IME/window integration
+multiline text editor
+undo/redo and word-wise text navigation
+text viewport/scrolling inside TextInput
 scrollbar presentation
 standalone Scroll / ScrollArea component
 standalone Modal component
+reparenting
+advanced geometry/transforms
 ```
 
 These are requirements to evaluate, not commitments to implement blindly.
