@@ -1,6 +1,9 @@
 #include "ui_framework/components/text_input.hpp"
 
+#include <algorithm>
 #include <utility>
+
+#include <SDL3/SDL.h>
 
 #include "../core/text_content.hpp"
 #include "../core/text_edit_state.hpp"
@@ -109,8 +112,42 @@ namespace ui
 
     void TextInput::draw(SDL_Renderer *renderer)
     {
-        if (renderer)
-            text_->draw(renderer);
+        if (!renderer)
+            return;
+
+        const LayoutPosition textPosition = text_->getArrangedPosition();
+        const LayoutSize actualSize = getActualSize();
+
+        Uint8 oldR = 0;
+        Uint8 oldG = 0;
+        Uint8 oldB = 0;
+        Uint8 oldA = 255;
+        const bool haveOldColor = SDL_GetRenderDrawColor(renderer, &oldR, &oldG, &oldB, &oldA);
+
+        if (focused_ && editState_->hasSelection())
+        {
+            const float start = text_->caretOffset(editState_->selectionStart());
+            const float end = text_->caretOffset(editState_->selectionEnd());
+            const float width = std::max(0.0f, end - start);
+            const SDL_FRect selectionRect{textPosition.x + start, textPosition.y, width, actualSize.height};
+
+            SDL_SetRenderDrawColor(renderer, 70, 110, 190, 110);
+            SDL_RenderFillRect(renderer, &selectionRect);
+        }
+
+        text_->draw(renderer);
+
+        if (focused_)
+        {
+            const float caretX = textPosition.x + text_->caretOffset(editState_->caret());
+            const SDL_FRect caretRect{caretX, textPosition.y, 1.0f, actualSize.height};
+
+            SDL_SetRenderDrawColor(renderer, 30, 30, 30, 255);
+            SDL_RenderFillRect(renderer, &caretRect);
+        }
+
+        if (haveOldColor)
+            SDL_SetRenderDrawColor(renderer, oldR, oldG, oldB, oldA);
     }
 
     void TextInput::handleFocusGained(FocusGainedEvent &, Node &)
