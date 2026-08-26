@@ -30,8 +30,10 @@ namespace ui
         offset.y = std::clamp(finiteOrZero(offset.y), 0.0f, maximum.y);
     }
 
-    bool ScrollSystem::registerScrollNode(Node &node)
+    bool ScrollSystem::registerScrollNode(NodeTree &nodeTree, Node &node)
     {
+        if (!nodeTree.isNodeLive(node.getId()) || nodeTree.findNode(node.getId()) != &node)
+            return false;
         if (!dynamic_cast<PanelNode *>(&node))
             return false;
         if (states_.contains(node.getId()))
@@ -74,7 +76,7 @@ namespace ui
         return true;
     }
 
-    bool ScrollSystem::scrollBy(NodeTree &nodeTree, Node::Id nodeId, const ScrollOffset &delta)
+    bool ScrollSystem::scrollBy(NodeTree &nodeTree, Node::Id nodeId, const ScrollOffset &delta) noexcept
     {
         auto it = states_.find(nodeId);
         Node *node = nodeTree.findNode(nodeId);
