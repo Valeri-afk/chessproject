@@ -23,8 +23,7 @@ namespace ui
     void Image::setTexture(SDL_Texture *texture) noexcept
     {
         texture_ = texture;
-        if (texture_)
-            intrinsicSize_ = queryTextureSize(texture_);
+        intrinsicSize_ = texture_ ? queryTextureSize(texture_) : LayoutSize{};
     }
 
     SDL_Texture *Image::getTexture() const noexcept
@@ -81,13 +80,26 @@ namespace ui
         if (!renderer || !texture_ || arrangedSize_.width <= 0.0f || arrangedSize_.height <= 0.0f)
             return;
 
+        Uint8 oldR = 255;
+        Uint8 oldG = 255;
+        Uint8 oldB = 255;
+        Uint8 oldA = 255;
+        const bool haveColorMod = SDL_GetTextureColorMod(texture_, &oldR, &oldG, &oldB);
+        const bool haveAlphaMod = SDL_GetTextureAlphaMod(texture_, &oldA);
+
         SDL_SetTextureColorMod(texture_, tint_.r, tint_.g, tint_.b);
         SDL_SetTextureAlphaMod(texture_, tint_.a);
 
         const float sourceWidth = intrinsicSize_.width;
         const float sourceHeight = intrinsicSize_.height;
         if (sourceWidth <= 0.0f || sourceHeight <= 0.0f)
+        {
+            if (haveColorMod)
+                SDL_SetTextureColorMod(texture_, oldR, oldG, oldB);
+            if (haveAlphaMod)
+                SDL_SetTextureAlphaMod(texture_, oldA);
             return;
+        }
 
         SDL_FRect sourceRect{0.0f, 0.0f, sourceWidth, sourceHeight};
         SDL_FRect destinationRect{
@@ -126,5 +138,10 @@ namespace ui
         }
 
         SDL_RenderTexture(renderer, texture_, &sourceRect, &destinationRect);
+
+        if (haveColorMod)
+            SDL_SetTextureColorMod(texture_, oldR, oldG, oldB);
+        if (haveAlphaMod)
+            SDL_SetTextureAlphaMod(texture_, oldA);
     }
 }
