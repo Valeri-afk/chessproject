@@ -39,23 +39,17 @@ namespace ui
         if (states_.contains(node.getId()))
             return false;
 
-        ScrollState state;
-        state.clipToBoundsBeforeRegistration = node.getClipToBounds();
-        node.setClipToBounds(true);
-        states_.emplace(node.getId(), state);
+        states_.emplace(node.getId(), ScrollState{});
         return true;
     }
 
     bool ScrollSystem::unregisterScrollNode(NodeTree &nodeTree, Node::Id nodeId)
     {
-        const auto it = states_.find(nodeId);
-        if (it == states_.end())
+        if (!states_.contains(nodeId))
             return false;
 
-        if (Node *node = nodeTree.findNode(nodeId))
-            node->setClipToBounds(it->second.clipToBoundsBeforeRegistration);
-
-        states_.erase(it);
+        (void)nodeTree;
+        states_.erase(nodeId);
         return true;
     }
 
@@ -258,13 +252,8 @@ namespace ui
         }
     }
 
-    void ScrollSystem::clear(NodeTree &nodeTree) noexcept
+    void ScrollSystem::clear(NodeTree &) noexcept
     {
-        for (const auto &[nodeId, state] : states_)
-        {
-            if (Node *node = nodeTree.findNode(nodeId))
-                node->setClipToBounds(state.clipToBoundsBeforeRegistration);
-        }
         states_.clear();
     }
 }
