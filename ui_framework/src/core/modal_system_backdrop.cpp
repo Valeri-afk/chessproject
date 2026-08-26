@@ -86,7 +86,10 @@ namespace ui
         backdropId_ = backdrop->getId();
         Node *raw = nodeTree.attachOverlay(nodeTree.overlaysCount(), std::move(backdrop));
         if (!raw)
+        {
+            backdropId_.reset();
             return;
+        }
         backdropNode_ = static_cast<BackdropNode *>(raw);
     }
 
@@ -101,7 +104,10 @@ namespace ui
 
     void ModalSystem::updateBackdropState() noexcept
     {
-        backdropTargetOpacity_ = modals_.empty() ? 0.0f : 1.0f;
+        const bool shouldShow =
+            !modals_.empty() && modals_.back().options.showBackdrop;
+        backdropTargetOpacity_ = shouldShow ? 1.0f : 0.0f;
+
         if (backdropNode_)
         {
             backdropNode_->setViewport(viewportSize_);
@@ -111,7 +117,8 @@ namespace ui
 
     void ModalSystem::update(NodeTree &nodeTree, float dt) noexcept
     {
-        backdropTargetOpacity_ = modals_.empty() ? 0.0f : 1.0f;
+        updateBackdropState();
+
         if (backdropFadeDuration_ <= 0.0f)
             backdropOpacity_ = backdropTargetOpacity_;
         else
@@ -123,7 +130,7 @@ namespace ui
                 backdropOpacity_ = std::max(backdropTargetOpacity_, backdropOpacity_ - step);
         }
 
-        if (!modals_.empty())
+        if (backdropTargetOpacity_ > 0.0f)
             ensureBackdrop(nodeTree);
         else if (backdropOpacity_ <= 0.0f)
             removeBackdrop(nodeTree);
