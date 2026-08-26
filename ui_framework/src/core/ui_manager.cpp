@@ -110,10 +110,7 @@ namespace ui
             }
         }
 
-        inputSystem_->processEvent(
-            event,
-            *nodeTree_,
-            modalRoot);
+        inputSystem_->processEvent(event, *nodeTree_, modalRoot);
     }
 
     void UIManager::runFrame(float dt, SDL_Renderer *renderer)
@@ -211,7 +208,7 @@ namespace ui
 
     bool UIManager::enableScrolling(Node &node)
     {
-        return scrollSystem_ && scrollSystem_->registerScrollNode(node);
+        return scrollSystem_ && nodeTree_ && scrollSystem_->registerScrollNode(*nodeTree_, node);
     }
 
     bool UIManager::disableScrolling(Node &node)
