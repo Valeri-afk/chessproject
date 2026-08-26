@@ -253,7 +253,7 @@ namespace ui
         panel->forEachChild([this, &nodes](Node &child)
         {
             collectFocusable(child, nullptr, nodes);
-            return true;
+            return false;
         });
         return true;
     }
