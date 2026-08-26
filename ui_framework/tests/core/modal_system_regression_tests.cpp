@@ -1,6 +1,9 @@
 #include "ui_framework/ui_manager.hpp"
 #include "ui_framework/node.hpp"
 #include "ui_framework/panel_node.hpp"
+#include "node_tree.hpp"
+#include "input_system.hpp"
+#include "modal_system.hpp"
 
 #include <SDL3/SDL.h>
 
@@ -51,6 +54,14 @@ namespace
     private:
         int *updates_ = nullptr;
     };
+
+    std::unique_ptr<ui::Node> makeModal(float width = 100.0f, float height = 100.0f)
+    {
+        auto node = std::make_unique<ui::Node>();
+        node->setSize(ui::LayoutSizeValue::fixed(width, height));
+        node->setFocusable(true);
+        return node;
+    }
 
     void prepare(ui::UIManager &manager, ui::Node &node)
     {
@@ -159,9 +170,7 @@ namespace
     void test_escape_can_be_consumed_or_disabled()
     {
         ui::UIManager manager;
-        auto modal = std::make_unique<ui::Node>();
-        modal->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
-        modal->setFocusable(true);
+        auto modal = makeModal();
         ui::Node *modalPtr = manager.addOverlay(std::move(modal));
         prepare(manager, *modalPtr);
 
@@ -180,9 +189,7 @@ namespace
     void test_outside_click_policy_is_independent_of_backdrop()
     {
         ui::UIManager manager;
-        auto modal = std::make_unique<ui::Node>();
-        modal->setSize(ui::LayoutSizeValue::fixed(20.0f, 20.0f));
-        modal->setFocusable(true);
+        auto modal = makeModal(20.0f, 20.0f);
         ui::Node *modalPtr = manager.addOverlay(std::move(modal));
         prepare(manager, *modalPtr);
 
@@ -199,14 +206,10 @@ namespace
     void test_removing_lower_modal_closes_entire_modal_branch()
     {
         ui::UIManager manager;
-        auto lower = std::make_unique<ui::Node>();
-        lower->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
-        lower->setFocusable(true);
+        auto lower = makeModal();
         ui::Node *lowerPtr = manager.addOverlay(std::move(lower));
 
-        auto upper = std::make_unique<ui::Node>();
-        upper->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
-        upper->setFocusable(true);
+        auto upper = makeModal();
         ui::Node *upperPtr = manager.addOverlay(std::move(upper));
 
         prepare(manager, *upperPtr);
@@ -219,6 +222,88 @@ namespace
         expect(manager.getActiveModal() == nullptr,
                "removing the base modal must invalidate the entire modal branch");
     }
+
+    void test_nested_close_restores_previous_modal_focus_scope()
+    {
+        ui::UIManager manager;
+
+        auto lower = std::make_unique<ui::PanelNode>();
+        lower->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
+        auto lowerFocus = std::make_unique<ui::Node>();
+        lowerFocus->setFocusable(true);
+        lowerFocus->setSize(ui::LayoutSizeValue::fixed(20.0f, 20.0f));
+        ui::Node *lowerFocusPtr = lowerFocus.get();
+        lower->addChild(std::move(lowerFocus), 0);
+        ui::Node *lowerPtr = manager.addOverlay(std::move(lower));
+
+        auto upper = std::make_unique<ui::PanelNode>();
+        upper->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
+        auto upperFocus = std::make_unique<ui::Node>();
+        upperFocus->setFocusable(true);
+        upperFocus->setSize(ui::LayoutSizeValue::fixed(20.0f, 20.0f));
+        ui::Node *upperFocusPtr = upperFocus.get();
+        upper->addChild(std::move(upperFocus), 0);
+        ui::Node *upperPtr = manager.addOverlay(std::move(upper));
+
+        prepare(manager, *lowerPtr);
+        expect(manager.showModal(*lowerPtr), "lower modal must open");
+        expect(manager.showModal(*upperPtr), "upper modal must open");
+
+        expect(manager.getActiveModal() == upperPtr,
+               "upper modal must be the active modal while nested");
+        (void)upperFocusPtr;
+
+        expect(manager.closeModal(), "closing top modal must succeed");
+        expect(manager.getActiveModal() == lowerPtr,
+               "closing top modal must reveal the previous modal");
+
+        (void)lowerFocusPtr;
+    }
+
+    void test_capture_is_cancelled_when_new_modal_opens()
+    {
+        ui::NodeTree tree;
+        ui::InputSystem input;
+        ui::ModalSystem modalSystem;
+
+        auto first = makeModal();
+        first->setCapturable(true);
+        ui::Node *firstPtr = tree.attachOverlay(0, std::move(first));
+
+        auto second = makeModal();
+        ui::Node *secondPtr = tree.attachOverlay(1, std::move(second));
+
+        expect(input.capture(tree, *firstPtr), "first node must be capturable");
+        expect(input.capturedNode() == firstPtr, "capture must be established before opening modal");
+
+        expect(modalSystem.showModal(tree, input, *secondPtr),
+               "second node must open as modal");
+        expect(input.capturedNode() == nullptr,
+               "opening a modal must cancel any previous pointer capture");
+    }
+
+    void test_backdrop_lifecycle_follows_modal_stack()
+    {
+        ui::NodeTree tree;
+        ui::InputSystem input;
+        ui::ModalSystem modalSystem;
+        modalSystem.setBackdropFadeDuration(0.1f);
+
+        auto modal = makeModal();
+        ui::Node *modalPtr = tree.attachOverlay(0, std::move(modal));
+
+        expect(modalSystem.showModal(tree, input, *modalPtr), "modal must open");
+        ui::Node *backdrop = modalSystem.backdropNode(tree);
+        expect(backdrop != nullptr, "showing a modal with backdrop must create its presentation node");
+
+        expect(modalSystem.closeModal(tree, input), "modal close must succeed");
+        expect(modalSystem.backdropNode(tree) != nullptr,
+               "backdrop must remain alive during its fade-out lifecycle");
+
+        modalSystem.update(tree, 0.2f);
+        expect(modalSystem.backdropNode(tree) == nullptr,
+               "backdrop must be removed after the fade-out completes");
+    }
 }
 
 int main()
@@ -230,6 +315,9 @@ int main()
         test_escape_can_be_consumed_or_disabled();
         test_outside_click_policy_is_independent_of_backdrop();
         test_removing_lower_modal_closes_entire_modal_branch();
+        test_nested_close_restores_previous_modal_focus_scope();
+        test_capture_is_cancelled_when_new_modal_opens();
+        test_backdrop_lifecycle_follows_modal_stack();
     }
     catch (const TestFailure &failure)
     {
