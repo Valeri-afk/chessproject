@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <functional>
 #include <memory>
 #include <string>
 
@@ -11,10 +10,14 @@
 
 namespace ui
 {
+    struct DropdownSelectionChangedEvent : UIEvent
+    {
+        MenuItem *selectedItem = nullptr;
+    };
+
     class Dropdown : public PanelNode
     {
     public:
-        using SelectionCallback = std::function<void(Dropdown &, MenuItem &)>;
         Dropdown();
         ~Dropdown() override = default;
         MenuItem *addItem(std::unique_ptr<MenuItem> item, size_t index = static_cast<size_t>(-1));
@@ -32,7 +35,6 @@ namespace ui
         const Menu &getMenu() const noexcept;
         void setPlaceholder(std::string text);
         const std::string &getPlaceholder() const noexcept;
-        void setOnSelectionChanged(SelectionCallback callback);
     private:
         void handleTriggerActivate();
         void handleItemActivate(MenuItem &item);
@@ -42,6 +44,5 @@ namespace ui
         MenuItem *selectedItem_ = nullptr;
         size_t selectedIndex_ = static_cast<size_t>(-1);
         std::string placeholder_ = "Select...";
-        SelectionCallback onSelectionChanged_;
     };
 }
