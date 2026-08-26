@@ -5,8 +5,10 @@
 #include "node_tree.hpp"
 
 #include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
 
 #include <cassert>
+#include <filesystem>
 #include <memory>
 #include <string>
 
@@ -30,6 +32,26 @@ namespace
     {
         ui::FocusLostEvent lost;
         ui::EventDispatcher::dispatch(tree, input, lost, false, false);
+    }
+
+    std::filesystem::path findTestFont()
+    {
+        const std::filesystem::path filePath(__FILE__);
+        const std::filesystem::path sourceRoot = filePath.parent_path().parent_path().parent_path();
+
+        const std::filesystem::path fromSource = sourceRoot / "chess_client" / "fonts" / "Roboto-Medium.ttf";
+        const std::filesystem::path fromWorkingDirectory =
+            std::filesystem::current_path() / ".." / "chess_client" / "fonts" / "Roboto-Medium.ttf";
+        const std::filesystem::path fromRepositoryRoot =
+            std::filesystem::current_path() / "chess_client" / "fonts" / "Roboto-Medium.ttf";
+
+        if (std::filesystem::exists(fromSource))
+            return fromSource;
+        if (std::filesystem::exists(fromWorkingDirectory))
+            return fromWorkingDirectory;
+        if (std::filesystem::exists(fromRepositoryRoot))
+            return fromRepositoryRoot;
+        return {};
     }
 
     void testTextInputPublishesSemanticTextChanges()
@@ -83,6 +105,43 @@ namespace
 
         input->insertText("");
         assert(changes == 3);
+    }
+
+    void testTextInputClientFontDrivesPointerCaretGeometry()
+    {
+        const std::filesystem::path fontPath = findTestFont();
+        assert(!fontPath.empty());
+        assert(TTF_Init());
+
+        TTF_Font *font = TTF_OpenFont(fontPath.string().c_str(), 24.0f);
+        assert(font != nullptr);
+
+        {
+            ui::NodeTree tree;
+            ui::TextInput *input = attachTextInput(tree);
+            input->setFont(font);
+            input->setText("hello");
+            assert(input->getFont() == font);
+
+            ui::MouseDownEvent mouseDown;
+            mouseDown.position = {0.0f, 0.0f};
+            mouseDown.button = ui::MouseButton::Left;
+            ui::EventDispatcher::dispatch(tree, input, mouseDown, false, false);
+            assert(input->getCaretPosition() == 0);
+
+            int width = 0;
+            int height = 0;
+            assert(TTF_GetStringSize(font, "hello", 0, &width, &height));
+            assert(width > 0);
+
+            mouseDown.position = {static_cast<float>(width + 10), 0.0f};
+            mouseDown.propagationStopped = false;
+            ui::EventDispatcher::dispatch(tree, input, mouseDown, false, false);
+            assert(input->getCaretPosition() == 5);
+        }
+
+        TTF_CloseFont(font);
+        TTF_Quit();
     }
 
     void testTextInputHandlesFocusedTextEvent()
@@ -312,6 +371,7 @@ int main()
 {
     testTextInputPublishesSemanticTextChanges();
     testTextInputAllCommittedMutationsNotifyOnce();
+    testTextInputClientFontDrivesPointerCaretGeometry();
     testTextInputHandlesFocusedTextEvent();
     testTextInputIgnoresTextEventWithoutFocus();
     testTextInputKeyboardEditingAndShiftSelection();
