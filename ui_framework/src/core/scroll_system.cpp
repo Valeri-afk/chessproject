@@ -153,10 +153,13 @@ namespace ui
         float &maxRight,
         float &maxBottom) const noexcept
     {
-        const LayoutPosition position = current.getActualPosition();
-        const LayoutSize size = current.getActualSize();
-        maxRight = std::max(maxRight, finiteOrZero(position.x) - originX + std::max(0.0f, finiteOrZero(size.width)));
-        maxBottom = std::max(maxBottom, finiteOrZero(position.y) - originY + std::max(0.0f, finiteOrZero(size.height)));
+        if (&current != &root)
+        {
+            const LayoutPosition position = current.getActualPosition();
+            const LayoutSize size = current.getActualSize();
+            maxRight = std::max(maxRight, finiteOrZero(position.x) - originX + std::max(0.0f, finiteOrZero(size.width)));
+            maxBottom = std::max(maxBottom, finiteOrZero(position.y) - originY + std::max(0.0f, finiteOrZero(size.height)));
+        }
 
         if (&current != &root && isRegistered(current.getId()))
             return;
