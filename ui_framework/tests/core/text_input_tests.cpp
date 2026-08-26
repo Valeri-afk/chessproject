@@ -12,12 +12,24 @@
 
 namespace
 {
-    ui::TextInput *attachTextInput(ui::NodeTree &tree)
+    ui::TextInput *attachTextInput(ui::NodeTree &tree, ui::Node::Id id = 0)
     {
         auto input = std::make_unique<ui::TextInput>();
         ui::TextInput *inputPtr = input.get();
-        tree.attachRoot(0, std::move(input));
+        tree.attachRoot(id, std::move(input));
         return inputPtr;
+    }
+
+    void dispatchFocusGained(ui::NodeTree &tree, ui::TextInput *input)
+    {
+        ui::FocusGainedEvent gained;
+        ui::EventDispatcher::dispatch(tree, input, gained, false, false);
+    }
+
+    void dispatchFocusLost(ui::NodeTree &tree, ui::TextInput *input)
+    {
+        ui::FocusLostEvent lost;
+        ui::EventDispatcher::dispatch(tree, input, lost, false, false);
     }
 
     void testTextInputPublishesSemanticTextChanges()
@@ -42,8 +54,7 @@ namespace
         ui::NodeTree tree;
         ui::TextInput *input = attachTextInput(tree);
 
-        ui::FocusGainedEvent gained;
-        ui::EventDispatcher::dispatch(tree, input, gained, false, false);
+        dispatchFocusGained(tree, input);
 
         ui::TextInputEvent textEvent;
         textEvent.text = "hello";
@@ -71,8 +82,7 @@ namespace
         ui::NodeTree tree;
         ui::TextInput *input = attachTextInput(tree);
 
-        ui::FocusGainedEvent gained;
-        ui::EventDispatcher::dispatch(tree, input, gained, false, false);
+        dispatchFocusGained(tree, input);
 
         ui::TextInputEvent textEvent;
         textEvent.text = "hello";
@@ -100,8 +110,7 @@ namespace
         ui::NodeTree tree;
         ui::TextInput *input = attachTextInput(tree);
 
-        ui::FocusGainedEvent gained;
-        ui::EventDispatcher::dispatch(tree, input, gained, false, false);
+        dispatchFocusGained(tree, input);
 
         ui::TextInputEvent textEvent;
         textEvent.text = "hello";
@@ -117,62 +126,27 @@ namespace
         assert(input->getSelectionEnd() == 5);
     }
 
-    void testTextInputCompositionDoesNotModifyCommittedText()
+    void testTextInputCompositionDoesNotMutateCommittedText()
     {
         ui::NodeTree tree;
         ui::TextInput *input = attachTextInput(tree);
 
-        ui::FocusGainedEvent gained;
-        ui::EventDispatcher::dispatch(tree, input, gained, false, false);
-
-        ui::TextInputEvent textEvent;
-        textEvent.text = "hello";
-        ui::EventDispatcher::dispatch(tree, input, textEvent, false, false);
+        dispatchFocusGained(tree, input);
 
         ui::TextEditingEvent editing;
-        editing.composition = "world";
-        editing.cursor = 3;
+        editing.composition = "hel";
+        editing.cursor = 2;
         editing.selectionLength = 1;
         ui::EventDispatcher::dispatch(tree, input, editing, false, false);
 
-        assert(input->getText() == "hello");
-    }
+        assert(input->getText().empty());
 
-    void testTextInputCompositionIsReplacedByNextEditingEvent()
-    {
-        ui::NodeTree tree;
-        ui::TextInput *input = attachTextInput(tree);
-
-        ui::FocusGainedEvent gained;
-        ui::EventDispatcher::dispatch(tree, input, gained, false, false);
-
-        ui::TextEditingEvent first;
-        first.composition = "hel";
-        first.cursor = 2;
-        first.selectionLength = 1;
-        ui::EventDispatcher::dispatch(tree, input, first, false, false);
-
-        ui::TextEditingEvent second;
-        second.composition = "hello";
-        second.cursor = 5;
-        second.selectionLength = 0;
-        ui::EventDispatcher::dispatch(tree, input, second, false, false);
+        editing.composition = "hell";
+        editing.cursor = 4;
+        editing.selectionLength = 0;
+        ui::EventDispatcher::dispatch(tree, input, editing, false, false);
 
         assert(input->getText().empty());
-    }
-
-    void testTextInputCommitClearsComposition()
-    {
-        ui::NodeTree tree;
-        ui::TextInput *input = attachTextInput(tree);
-
-        ui::FocusGainedEvent gained;
-        ui::EventDispatcher::dispatch(tree, input, gained, false, false);
-
-        ui::TextEditingEvent editing;
-        editing.composition = "hello";
-        editing.cursor = 5;
-        ui::EventDispatcher::dispatch(tree, input, editing, false, false);
 
         ui::TextInputEvent committed;
         committed.text = "hello";
@@ -181,22 +155,42 @@ namespace
         assert(input->getText() == "hello");
     }
 
-    void testTextInputFocusLossCancelsComposition()
+    void testTextInputCompositionIsDroppedOnFocusLoss()
     {
         ui::NodeTree tree;
         ui::TextInput *input = attachTextInput(tree);
 
-        ui::FocusGainedEvent gained;
-        ui::EventDispatcher::dispatch(tree, input, gained, false, false);
+        dispatchFocusGained(tree, input);
 
         ui::TextEditingEvent editing;
-        editing.composition = "hello";
+        editing.composition = "temporary";
         ui::EventDispatcher::dispatch(tree, input, editing, false, false);
+        assert(input->getText().empty());
 
-        ui::FocusLostEvent lost;
-        ui::EventDispatcher::dispatch(tree, input, lost, false, false);
+        dispatchFocusLost(tree, input);
+        dispatchFocusGained(tree, input);
+
+        ui::TextInputEvent committed;
+        committed.text = "abc";
+        ui::EventDispatcher::dispatch(tree, input, committed, false, false);
+
+        assert(input->getText() == "abc");
+    }
+
+    void testTextInputFocusLossStopsFurtherTextInput()
+    {
+        ui::NodeTree tree;
+        ui::TextInput *input = attachTextInput(tree);
+
+        dispatchFocusGained(tree, input);
+        dispatchFocusLost(tree, input);
+
+        ui::TextInputEvent textEvent;
+        textEvent.text = "ignored";
+        ui::EventDispatcher::dispatch(tree, input, textEvent, false, false);
 
         assert(input->getText().empty());
+        assert(!textEvent.propagationStopped);
     }
 
     void testSDLTextInputRoutesThroughInputSystemFocus()
@@ -220,11 +214,8 @@ namespace
     {
         ui::NodeTree tree;
         ui::InputSystem inputSystem;
-        ui::TextInput *first = attachTextInput(tree);
-
-        auto secondNode = std::make_unique<ui::TextInput>();
-        ui::TextInput *second = secondNode.get();
-        tree.attachRoot(1, std::move(secondNode));
+        ui::TextInput *first = attachTextInput(tree, 0);
+        ui::TextInput *second = attachTextInput(tree, 1);
 
         assert(inputSystem.focus(tree, *first));
 
@@ -269,10 +260,9 @@ int main()
     testTextInputIgnoresTextEventWithoutFocus();
     testTextInputKeyboardEditingAndShiftSelection();
     testTextInputCtrlASelectsAll();
-    testTextInputCompositionDoesNotModifyCommittedText();
-    testTextInputCompositionIsReplacedByNextEditingEvent();
-    testTextInputCommitClearsComposition();
-    testTextInputFocusLossCancelsComposition();
+    testTextInputCompositionDoesNotMutateCommittedText();
+    testTextInputCompositionIsDroppedOnFocusLoss();
+    testTextInputFocusLossStopsFurtherTextInput();
     testSDLTextInputRoutesThroughInputSystemFocus();
     testSDLTextInputDoesNotReachUnfocusedTextInput();
     testSDLKeyDownRoutesModifiersToTextInput();
