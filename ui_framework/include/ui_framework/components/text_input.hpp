@@ -1,0 +1,78 @@
+#pragma once
+
+#include <cstddef>
+#include <functional>
+#include <memory>
+#include <string>
+#include <string_view>
+
+#include "ui_framework/node.hpp"
+#include "ui_framework/types.hpp"
+
+namespace ui
+{
+    class TextContent;
+    class TextEditState;
+
+    class TextInput : public Node
+    {
+    public:
+        using TextChangedCallback = std::function<void(TextInput &)>;
+
+        TextInput();
+        ~TextInput() override;
+
+        TextInput(const TextInput &) = delete;
+        TextInput &operator=(const TextInput &) = delete;
+
+        void setText(std::string text);
+        const std::string &getText() const noexcept;
+
+        void setPlaceholder(std::string text);
+        const std::string &getPlaceholder() const noexcept;
+
+        void setFont(TTF_Font *font) noexcept;
+        TTF_Font *getFont() const noexcept;
+        void setFontSize(float logicalSize) noexcept;
+        float getFontSize() const noexcept;
+        void setTextColor(Color color) noexcept;
+        Color getTextColor() const noexcept;
+
+        std::size_t getCaretPosition() const noexcept;
+        std::size_t getSelectionStart() const noexcept;
+        std::size_t getSelectionEnd() const noexcept;
+        bool hasSelection() const noexcept;
+
+        void setCaretPosition(std::size_t position) noexcept;
+        void selectAll() noexcept;
+        void clearSelection() noexcept;
+
+        void insertText(std::string_view text);
+        void backspace();
+        void deleteForward();
+        void moveCaretLeft(bool extendSelection = false) noexcept;
+        void moveCaretRight(bool extendSelection = false) noexcept;
+        void moveCaretHome(bool extendSelection = false) noexcept;
+        void moveCaretEnd(bool extendSelection = false) noexcept;
+
+        void setOnTextChanged(TextChangedCallback callback);
+
+    protected:
+        LayoutSize measureContent(const LayoutSize &availableContent) const override;
+        void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize) override;
+        void draw(SDL_Renderer *renderer) override;
+
+    private:
+        void handleFocusGained(FocusGainedEvent &event, Node &node);
+        void handleFocusLost(FocusLostEvent &event, Node &node);
+        void handleKeyDown(KeyDownEvent &event, Node &node);
+        void markTextChanged();
+        void syncTextContent();
+
+        std::unique_ptr<TextEditState> editState_;
+        std::unique_ptr<TextContent> text_;
+        std::string placeholder_;
+        TextChangedCallback onTextChanged_;
+        bool focused_ = false;
+    };
+}
