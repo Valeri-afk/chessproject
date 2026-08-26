@@ -5,7 +5,7 @@
 The active text path is:
 
 ```text
-Typography / text-bearing controls
+Typography / text-bearing controls / TextInput
         ↓
     TextContent
       ↙     ↘
@@ -15,29 +15,29 @@ font-backed    SDL_ttf
 measurement   rasterization/draw
 ```
 
-`TextContent` is an internal bridge owning logical text presentation state and the Measure/Arrange/Draw connection. Components do not expose `TextLayoutResult`, renderer state, `TTF_Text`, or raster-font caches.
+`TextContent` is an internal bridge owning text presentation state and the Measure/Arrange/Draw connection. Components do not expose `TextRenderer`, renderer caches, `TTF_Text`, or other backend state as part of the public text contract.
 
 The important architectural distinction is:
 
 ```text
 TextLayout
-    = text state + logical measurement/wrapping
-      using font metrics
+    = retained text measurement state + logical measurement/wrapping
+      using SDL_ttf font metrics
 
 TextContent
-    = component-facing orchestration/presentation state
+    = component-facing text presentation and geometry bridge
 
 TextRenderer
     = physical rasterization + SDL renderer integration
 ```
 
-`TextLayout` is therefore a logical measurement layer, but it is **not a backend-independent typography engine**. Its current implementation obtains font metrics through SDL_ttf. This is intentional for the current framework and should not be mistaken for a future-proof typography abstraction.
+`TextLayout` is a logical measurement layer, but it is not a backend-independent typography engine. Its current implementation obtains font metrics through SDL_ttf. This is intentional for the current framework.
 
 ## Typography
 
-`Typography` is the single public standalone text component. There is no separate `Heading` / `Paragraph` component hierarchy.
+`Typography` is the public standalone text component. There is no separate Heading / Paragraph component hierarchy.
 
-Variants include semantic styles such as:
+`TypographyVariant` currently defines:
 
 ```text
 INHERIT
@@ -53,145 +53,80 @@ Variants are typography policy/semantic metadata, not independent layout algorit
 
 ## Text-bearing controls
 
-`Button`, `MenuItem` and `TabItem` use internal shared text state rather than creating a retained `Typography` child merely to display a string.
-
-The same logical text contract should be reused by future text-bearing controls.
+`Button`, `MenuItem`, `TabItem` and `TextInput` use internal text state/`TextContent` rather than creating a retained `Typography` child merely to display their text.
 
 ## TextLayout architecture
 
-`TextLayout` owns the retained text measurement state:
+`TextLayout` retains:
 
 ```text
 text
-source font (non-owning)
+source TTF_Font* (non-owning)
 logical font size
 logical line height
 wrap mode
 ```
 
-Its public operation is measurement:
+Its measurement contract accepts an available logical width and returns the desired logical size through the layout pipeline. `TextInput` additionally uses `TextContent` geometry queries for caret positioning and pointer-to-text-position mapping.
+
+The implementation may use a temporary font copy when requested logical font metrics differ from the source font. That copy is local to measurement/render preparation and does not transfer ownership of the client source font.
+
+### Why TextLayout depends on SDL_ttf
+
+The current implementation intentionally uses SDL_ttf for font metrics:
 
 ```text
-available logical width
-        ↓
-SDL_ttf font metrics
-        ↓
-TextLayoutResult
+TextLayout   → SDL_ttf metrics
+TextRenderer → SDL_ttf rendering
 ```
 
-The implementation may create a temporary copied font when the requested logical font size or line height differs from the source font. That copy belongs only to the measurement operation.
-
-This keeps font mutation local and prevents measurement from mutating the caller-owned source font.
-
-### Why TextLayout is more complex than LayoutSystem
-
-LayoutSystem operates on framework geometry primitives that it owns directly. Text measurement cannot determine its result without a font-metrics provider.
-
-The current implementation therefore has an intentional dependency:
-
-```text
-TextLayout → SDL_ttf metrics API
-TextRenderer → SDL_ttf rendering API
-```
-
-while still maintaining the higher-level separation:
-
-```text
-TextLayout  ≠ rasterization
-TextRenderer ≠ wrapping/desired-size policy
-```
-
-A future backend-independent typography layer would be a larger architectural change and should only be introduced when another text backend, richer text model, or a concrete testing/reusability requirement justifies it.
+This still keeps logical measurement/wrapping separate from rasterization. A backend-independent typography layer should only be introduced for a concrete reusable requirement.
 
 ## TextLayoutResult
 
-The internal layout result contains the currently required logical metadata such as:
-
-```text
-desiredSize
-lineHeight
-lineCount
-wrapWidth
-```
-
-It is intentionally not a generic `Node` field and does not expose glyph runs, baselines, caret data or SDL text objects until concrete features require them.
-
-The result is currently deliberately small. It should not become a catch-all text state object.
+The layout result is intentionally small and currently contains the metadata required by the implementation, including desired size and line metrics/wrapping information. It is not an editor-state object and does not expose renderer internals.
 
 ## TextRenderer
 
-`TextRenderer` is internal/backend-oriented. It owns physical/rendering concerns:
+`TextRenderer` is internal/backend-oriented. It owns physical/rendering concerns such as SDL_ttf text objects, derived raster fonts, renderer integration and renderer-state handling.
 
-```text
-TTF_TextEngine
-TTF_Text
-derived physical raster fonts
-font-generation cache refresh
-logical → physical render conversion
-SDL renderer-state isolation
-actual SDL_ttf drawing
-```
-
-It does not own wrapping, desired-size calculation, Measure, Arrange or semantic alignment policy.
+It does not own component editing state or the framework Measure/Arrange lifecycle.
 
 ## Measure → Arrange → Draw
 
-The text pipeline follows the framework layout lifecycle:
+Text participates in the framework lifecycle:
 
 ```text
-Measure(available width)
-        ↓
-desired logical size
-        ↓
-parent allocates content size
-        ↓
-Arrange(actual content position/size)
-        ↓
-remeasure using final width when wrapping requires it
-        ↓
-Draw(renderer)
+Measure
+   ↓
+desired content size
+   ↓
+parent allocation
+   ↓
+Arrange
+   ↓
+text geometry for final content size
+   ↓
+Draw
 ```
 
-This second measurement during Arrange is intentional: the parent's final allocation may differ from the width available during Measure.
+For wrapping, the final arranged width is used by `TextContent` to establish the rendered layout corresponding to the committed allocation.
 
 ## Logical → physical rendering
 
-The client uses a logical UI space with SDL logical presentation.
-
-Text size is expressed in logical coordinates and converted to physical raster size before SDL_ttf rasterization when integer presentation scaling is active:
-
-```text
-logical font size
-    × presentation scale
-    ↓
-physical raster font size
-    ↓
-SDL_ttf rasterization
-    ↓
-physical rendering
-```
-
-The renderer must not normally rasterize a tiny bitmap and then enlarge that bitmap.
+The client uses a logical UI space with SDL logical presentation. Text sizes are logical values; the rendering layer derives the appropriate physical raster representation before SDL_ttf drawing.
 
 ## Font ownership
 
-The source `TTF_Font*` is client-owned and non-owning from the framework perspective.
+The source `TTF_Font*` is client-owned and non-owning from the framework perspective. The source font must outlive every text user.
 
-The framework owns derived renderer resources such as copied raster fonts, `TTF_TextEngine` and `TTF_Text`.
-
-The source font must outlive every text user. No general font ResourceManager exists yet.
+Derived renderer resources are owned by the internal text renderer. There is no framework-wide font/resource manager contract.
 
 ## Font mutation
 
-SDL_ttf font generation tracking is only a backend cache-consistency mechanism. It tells the renderer whether a derived physical font needs refresh.
-
-It does not invalidate layout.
-
-If a source font mutation may change metrics, wrapping or desired size, the affected component/client must explicitly invalidate layout.
+SDL_ttf font-generation tracking is a renderer cache-consistency mechanism. It does not replace layout invalidation. If a font change can alter metrics, wrapping or desired size, the affected owner must explicitly invalidate layout.
 
 ## Wrapping
-
-Wrapping is a layout concern and must be consistently represented through Measure, Arrange and Draw.
 
 The current supported policies are:
 
@@ -200,36 +135,28 @@ WRAP
 NO_WRAP
 ```
 
-Truncation/ellipsis and richer line-breaking policies are intentionally deferred until a concrete use case requires them.
+Truncation/ellipsis and richer line-breaking policies are deferred.
 
-## Deferred text input
+## Text input relationship
 
-The framework currently has no editable text/input-control subsystem. This document deliberately does not define implementation yet.
-
-A future text-input system will need to integrate with:
+Editable text is implemented separately in `TEXT_INPUT_SYSTEM.md` as the public `TextInput` component. The editing state is not part of `Node` or `TextLayout`.
 
 ```text
-focus
-keyboard input
-text composition / IME if required
-caret/selection
-editing state
-TextLayout
-rendering
+TextInput
+   ├── TextEditState      committed text/caret/selection
+   ├── private IME state
+   └── TextContent → TextLayout / TextRenderer
 ```
 
-Do not add those fields to base `Node` merely in anticipation.
+This preserves the boundary between text presentation/measurement and editing semantics.
 
 ## Non-goals
 
 ```text
 public TextRenderer API
-font ResourceManager
+framework-wide font ResourceManager
 rich text spans
-text selection
-editable text
 ellipsis
 advanced typography theme inheritance
-font-weight/style system without a concrete policy
 backend-independent typography abstraction without a concrete requirement
 ```
