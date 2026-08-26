@@ -2,89 +2,74 @@
 
 ## Purpose
 
-Framework runtime phases must remain traversal-safe. Operations that would mutate the structure or invalidate the current traversal are deferred rather than executed re-entrantly.
+Framework runtime phases must remain traversal-safe. Structural operations that would mutate the hierarchy while it is being traversed are deferred through `NodeTree` mutation handling.
 
-## Framework-controlled phases
+## Framework-controlled frame
 
-The retained runtime owns the ordering of major work. The current frame conceptually includes:
+`UIManager::runFrame()` currently performs the major work in this order:
 
 ```text
-state synchronization
+synchronize input state
     ↓
-update / preparation
+flush pending tree mutations
     ↓
-process queued layout
+process layout queue
     ↓
-scroll/modal synchronization
+synchronize scrolling
     ↓
-node update
+synchronize/update modality
+    ↓
+NodeTree update traversal
     ↓
 draw traversal
 ```
 
-Exact internal ordering belongs to `UIManager` and private systems; it is not a client-side scheduling API.
+If the renderer's logical presentation size changes, a full layout is requested before the layout queue is processed.
 
-Scroll and modal synchronization are framework work. Client code requests semantic state changes through `UIManager` rather than manually invoking service phases.
+Exact private helper behavior remains an implementation detail; clients do not schedule these phases.
 
 ## Structural operations
 
-Child ownership changes during Measure, Arrange or Draw are deferred through NodeTree mutation handling.
+`PanelNode::addChild/removeChild` and root/overlay attachment/removal are routed through `NodeTree`. When a mutation scope is active, the structural change is queued instead of being applied re-entrantly.
 
-The current traversal sees a stable tree. Later phases observe the resulting tree after the mutation becomes safe to commit.
+The queue uses snapshot-swap draining. Mutations generated while a batch is executing are placed into a subsequent batch and drained by the same flush operation after the current mutation completes.
 
 ## Layout operations
 
-`invalidateLayout()` schedules work; it never executes layout immediately.
+`invalidateLayout()` schedules layout; it does not execute Measure/Arrange immediately.
 
-When a layout pass is active, a new invalidation is deferred to a subsequent framework-controlled pass.
+NodeTree promotes invalidation to the containing root/overlay and deduplicates queued roots. LayoutSystem consumes the queued roots during its layout phase.
 
-```text
-consume current layout roots
-        ↓
-run Measure / Arrange
-        ↓
-new invalidation
-        ↓
-queue root for later pass
-```
+A layout mutation that queues more work does not recursively restart the current traversal.
 
-Scroll geometry follows committed layout. A changed viewport or content extent is reconciled during scroll synchronization rather than forcing synchronous layout from the scroll API.
+## Event operations
+
+Input dispatch establishes a `NodeTree::ScopedMutationGuard` around event propagation. Handlers may request structural changes, but those changes are deferred until the guarded dispatch completes.
+
+`Node::on<Event>()` registration and handler removal use a snapshot of matching callbacks for the current delivery. Changes to the live handler table therefore do not invalidate the current callback iteration.
 
 ## Modal and scroll operations
 
-Opening/closing modality and enabling/disabling scrolling are semantic service operations. They must remain compatible with NodeTree lifetime and traversal safety.
+Modal and scroll state are framework services coordinated through `UIManager`. Their APIs do not expose internal queues or require the client to flush framework work.
 
 Examples:
 
-```text
+```cpp
 showModal(node)
 closeModal()
 enableScrolling(panel)
 setScrollOffset(panel, offset)
 ```
 
-These operations do not expose internal service queues or require the client to flush the framework.
-
-When a modal opens, modality establishes a new input boundary and cancels incompatible pointer capture. Focus initialization and modal filtering are framework-managed consequences of the operation.
-
-When scrolling changes effective coordinates, the framework refreshes hover after the scroll state has been applied. It does not synthesize a mouse-move event or implicitly reset pointer capture.
-
-If a modal or scroll node is structurally removed, the corresponding service state is cleaned/inactivated through framework lifecycle synchronization rather than by requiring the client to manipulate internal registries.
-
-## Why explicit deferral exists
-
-Without deferral, a component could mutate the tree or restart layout while the framework is iterating the same structure. That would make ownership, iteration, geometry and event routing difficult to reason about.
-
-The framework therefore guarantees runtime integrity and safe phase boundaries rather than immediate execution of every requested consequence.
+Scroll synchronization derives content extent from committed layout geometry. Modal synchronization validates live modal sessions and focus boundaries.
 
 ## Client responsibility
 
-Client/component code should not attempt to flush or manually execute framework phases.
+Client/component code should not attempt to flush or manually execute framework phases. `NodeTree::flushMutationQueue()` exists internally for runtime coordination and is not part of the public `UIManager` API.
 
 There is intentionally no public API for:
 
 ```text
-flushMutationQueue()
 runLayoutNow()
 runInputPhaseNow()
 flushFramework()
@@ -92,29 +77,9 @@ flushScrollSystem()
 flushModalSystem()
 ```
 
-A client reports semantic changes; the framework decides when and how to process them.
-
-## Batching
-
-Deferred processing naturally allows coalescing:
-
-```text
-local mutations
-    ↓
-semantic notification / invalidation
-    ↓
-framework queue
-    ↓
-coalesced processing at safe phase boundary
-```
-
-The developer may decide when a sequence of local semantic changes is complete enough to notify the framework. The framework owns subsequent scheduling.
-
 ## Re-entrancy rule
 
-Framework callbacks may change state and request future work, but must not assume that the request is executed synchronously.
-
-A component should therefore treat framework-derived geometry and other cached derived state as potentially stale until the framework completes the relevant phase.
+Framework callbacks may change state and request future work. They must not assume that a structural mutation or layout consequence is committed synchronously when invoked from a guarded phase.
 
 ## General principle
 
