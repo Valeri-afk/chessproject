@@ -64,10 +64,16 @@ namespace ui
     void TextInput::selectAll() noexcept { editState_->selectAll(); }
     void TextInput::clearSelection() noexcept { editState_->collapseSelectionToCaret(); }
 
+    const std::string &TextInput::getCompositionText() const noexcept { return composition_; }
+    int TextInput::getCompositionCursor() const noexcept { return compositionCursor_; }
+    int TextInput::getCompositionSelectionLength() const noexcept { return compositionSelectionLength_; }
+    bool TextInput::hasComposition() const noexcept { return !composition_.empty(); }
+
     void TextInput::insertText(std::string_view text)
     {
         if (text.empty())
             return;
+        clearComposition();
         editState_->insertText(text);
         syncTextContent();
         markTextChanged();
@@ -79,6 +85,7 @@ namespace ui
         editState_->backspace();
         if (editState_->text() == before)
             return;
+        clearComposition();
         syncTextContent();
         markTextChanged();
     }
@@ -89,6 +96,7 @@ namespace ui
         editState_->deleteForward();
         if (editState_->text() == before)
             return;
+        clearComposition();
         syncTextContent();
         markTextChanged();
     }
@@ -160,6 +168,7 @@ namespace ui
     {
         focused_ = false;
         pointerSelecting_ = false;
+        clearComposition();
         syncTextContent();
     }
 
@@ -168,6 +177,7 @@ namespace ui
         if (!focused_ || event.button != MouseButton::Left)
             return;
 
+        clearComposition();
         setCaretFromPointer(event.position.x, false);
         pointerSelectionAnchor_ = editState_->caret();
         pointerSelecting_ = true;
@@ -217,6 +227,7 @@ namespace ui
 
         if (event.modifiers.ctrl && event.key == KeyCode::A)
         {
+            clearComposition();
             selectAll();
             event.stopPropagation();
             return;
@@ -242,13 +253,21 @@ namespace ui
     {
         if (!focused_ || event.text.empty())
             return;
-        insertText(event.text);
+        clearComposition();
+        editState_->insertText(event.text);
+        syncTextContent();
+        markTextChanged();
         event.stopPropagation();
     }
 
-    void TextInput::handleTextEditing(TextEditingEvent &, Node &)
+    void TextInput::handleTextEditing(TextEditingEvent &event, Node &)
     {
-        // Composition is not committed until TextInputEvent arrives.
+        if (!focused_)
+            return;
+
+        composition_ = event.composition;
+        compositionCursor_ = std::max(0, event.cursor);
+        compositionSelectionLength_ = std::max(0, event.selectionLength);
     }
 
     void TextInput::markTextChanged()
@@ -256,6 +275,13 @@ namespace ui
         invalidateLayout();
         if (onTextChanged_)
             onTextChanged_(*this);
+    }
+
+    void TextInput::clearComposition() noexcept
+    {
+        composition_.clear();
+        compositionCursor_ = 0;
+        compositionSelectionLength_ = 0;
     }
 
     void TextInput::syncTextContent()
