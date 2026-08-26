@@ -83,4 +83,19 @@ namespace ui
             arrangedLayoutResult_.wrapWidth,
             color_);
     }
+
+    float TextContent::caretOffset(std::size_t textPosition) const noexcept
+    {
+        return layout_.caretOffset(textPosition);
+    }
+
+    std::size_t TextContent::textPositionAt(float x) const noexcept
+    {
+        return layout_.textPositionAt(x);
+    }
+
+    LayoutPosition TextContent::getArrangedPosition() const noexcept
+    {
+        return arrangedPosition_;
+    }
 }
