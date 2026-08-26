@@ -80,6 +80,8 @@ namespace ui
         void handleMouseWheelEvent(Node *node, NodeTree &nodeTree, MouseWheelEvent &event);
         void handleKeyDownEvent(NodeTree &nodeTree, KeyDownEvent &event);
         void handleKeyUpEvent(NodeTree &nodeTree, KeyUpEvent &event);
+        void handleTextInputEvent(NodeTree &nodeTree, TextInputEvent &event);
+        void handleTextEditingEvent(NodeTree &nodeTree, TextEditingEvent &event);
         KeyCode convertSDLKeyCodeToKeyCode(SDL_Keycode sdlKey) const;
         Node *resolveModalRoot(NodeTree &nodeTree) const noexcept;
         bool isNodeAllowedByModal(NodeTree &nodeTree, Node *node) const noexcept;
