@@ -157,12 +157,12 @@ namespace
             ui::NodeTree tree;
             ui::TextInput *input = attachTextInput(tree);
             input->setFont(font);
-            input->setText(u8"AЖ🙂B");
+            input->setText("AЖ🙂B");
             dispatchFocusGained(tree, input);
 
             int prefixWidth = 0;
             int height = 0;
-            assert(TTF_GetStringSize(font, u8"AЖ", 0, &prefixWidth, &height));
+            assert(TTF_GetStringSize(font, "AЖ", 0, &prefixWidth, &height));
             assert(prefixWidth > 0);
 
             ui::MouseDownEvent mouseDown;
