@@ -167,12 +167,14 @@ RadioButton
 Slider
 Dropdown
 Typography
+TextInput
+Image
 StackPanelNode / PanelNode
 ```
 
-`Paper`, `Label` and `Card` are composition/styling patterns rather than mandatory framework components.
+`Image` is intentionally a thin visual component. It references an externally owned `SDL_Texture`; it does not own texture lifetime or implement asset loading/caching. Its contract covers intrinsic size, tint and a small set of presentation fit modes (`STRETCH`, `CONTAIN`, `COVER`).
 
-Text input/editing and Image are infrastructure-dependent future components.
+`Paper`, `Label` and `Card` remain composition/styling patterns rather than mandatory framework components.
 
 ## Semantic callbacks and events
 
