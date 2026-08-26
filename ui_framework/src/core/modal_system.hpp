@@ -21,8 +21,10 @@ namespace ui
 
         bool showModal(NodeTree &nodeTree, InputSystem &input, Node &node);
         bool showModal(NodeTree &nodeTree, InputSystem &input, Node &node, BackdropClickBehavior backdropClickBehavior);
+        bool showModal(NodeTree &nodeTree, InputSystem &input, Node &node, const ModalOptions &options);
         bool closeModal(NodeTree &nodeTree, InputSystem &input);
         bool handleKeyDown(NodeTree &nodeTree, InputSystem &input, KeyCode key);
+        bool handleKeyEvent(NodeTree &nodeTree, InputSystem &input, KeyCode key, bool propagationStopped);
         bool handlePointerDown(NodeTree &nodeTree, InputSystem &input, const MousePosition &position, MouseButton button);
         void update(NodeTree &nodeTree, float dt) noexcept;
         void setViewportSize(const LayoutSize &size) noexcept;
@@ -46,7 +48,7 @@ namespace ui
             Node::Id modalId{};
             std::optional<Node::Id> previousFocusId;
             std::optional<Node::Id> previousModalId;
-            BackdropClickBehavior backdropClickBehavior = BackdropClickBehavior::Consume;
+            ModalOptions options{};
         };
 
         std::vector<ModalSession> modals_;
@@ -62,6 +64,8 @@ namespace ui
         Node *findFirstFocusableInTree(NodeTree &nodeTree) const;
         Node *findValidFocus(NodeTree &nodeTree, std::optional<Node::Id> preferredFocusId) const;
         Node *findFirstFocusableInModal(NodeTree &nodeTree, std::optional<Node::Id> modalId) const;
+        Node *findNextFocusableInModal(NodeTree &nodeTree, Node &modal, const Node &current) const;
+        bool collectFocusable(Node &node, const Node *current, std::vector<Node *> &nodes) const;
         bool isNodeUnder(const Node *node, const Node *ancestor) const noexcept;
         void restoreFocusAfterClose(NodeTree &nodeTree, InputSystem &input, const ModalSession &session) const;
         void syncFocusForTopModal(NodeTree &nodeTree, InputSystem &input) const;
