@@ -94,8 +94,8 @@ Reference: `LAYOUT_SYSTEM.md`
 
 ### NodeTree ownership reference
 
-- [ ] Reconsider whether `Node::owner_` is still necessary in the final architecture.
-- [ ] If removing it, preserve the existing ownership/liveness invariants and define the replacement resolution path before changing source.
+- [x] Reconsider whether `Node::owner_` is still necessary in the final architecture: keep it as the node's runtime membership and mutation-routing boundary.
+- [x] Preserve ownership/liveness invariants with `owner_` rather than replacing the mechanism.
 
 This is an architectural investigation, not a commitment to remove `owner_`.
 
@@ -103,11 +103,11 @@ Reference: `LIFETIME_AND_MUTATIONS.md`, `ARCHITECTURE.md`
 
 ### PanelNode / structural mutation boundary
 
-- [ ] Review the current `PanelNode` structural API and its relationship with `NodeTree`.
-- [ ] Decide how custom components should add/remove owned children without bypassing framework ownership and mutation safety.
-- [ ] Consider whether the developer should explicitly notify the runtime when a custom component changes its child structure.
-- [ ] Consider whether custom components should have a supported API for attaching/removing nested component children while retaining NodeTree authority.
-- [ ] Preserve ownership, registration, lifecycle and deferred-mutation invariants regardless of the chosen API.
+- [x] Review the current `PanelNode` structural API and its relationship with `NodeTree`.
+- [x] Use `PanelNode::addChild/removeChild` as the supported client/component mutation API; mounted nodes route mutations through `NodeTree` automatically.
+- [x] No explicit `notifyStructureChanged()` mechanism is required because mounted structural mutation already enters the authoritative `NodeTree` path.
+- [x] Custom components can attach/remove nested children through the existing `PanelNode` API without bypassing framework ownership and mutation safety.
+- [x] Preserve ownership, registration, lifecycle and deferred-mutation invariants across these operations.
 
 Reference: `COMPONENT_DESIGN.md`, `LIFETIME_AND_MUTATIONS.md`, `DEFERRED_OPERATIONS.md`, `ARCHITECTURE.md`
 
