@@ -76,7 +76,7 @@ namespace ui
         return true;
     }
 
-    bool ScrollSystem::scrollBy(NodeTree &nodeTree, Node::Id nodeId, const ScrollOffset &delta) noexcept
+    bool ScrollSystem::scrollBy(NodeTree &nodeTree, Node::Id nodeId, const ScrollOffset &delta)
     {
         auto it = states_.find(nodeId);
         Node *node = nodeTree.findNode(nodeId);
