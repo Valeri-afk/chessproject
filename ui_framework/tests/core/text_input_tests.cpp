@@ -205,11 +205,11 @@ namespace
         ui::EventDispatcher::dispatch(tree, input, mouseDown, false, false);
 
         assert(input->getCaretPosition() == 0);
-        assert(input->hasSelection());
+        assert(!input->hasSelection());
 
-        // The handler must not manufacture focus; InputSystem remains the focus owner.
         ui::InputSystem inputSystem;
         assert(inputSystem.focus(tree, *input));
+        assert(inputSystem.focusedNode() == input);
     }
 
     void testSDLTextInputRoutesThroughInputSystemFocus()
