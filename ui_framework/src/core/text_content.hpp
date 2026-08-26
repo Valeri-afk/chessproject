@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <string>
 
@@ -41,6 +42,10 @@ namespace ui
         LayoutSize measure(float availableWidth) const;
         void arrange(const LayoutPosition &contentPosition, const LayoutSize &contentSize);
         void draw(SDL_Renderer *renderer);
+
+        float caretOffset(std::size_t textPosition) const noexcept;
+        std::size_t textPositionAt(float x) const noexcept;
+        LayoutPosition getArrangedPosition() const noexcept;
 
     private:
         TextLayout layout_;
