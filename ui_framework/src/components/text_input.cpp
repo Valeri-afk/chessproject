@@ -230,6 +230,15 @@ namespace ui
             return;
         }
 
+        if (event.key == KeyCode::ENTER)
+        {
+            clearComposition();
+            TextInputSubmittedEvent submitted;
+            emit(submitted);
+            event.stopPropagation();
+            return;
+        }
+
         bool handled = true;
         switch (event.key)
         {
@@ -271,6 +280,12 @@ namespace ui
     {
         invalidateLayout();
         TextChangedEvent event;
+        emit(event);
+    }
+
+    void TextInput::emitSubmitted()
+    {
+        TextInputSubmittedEvent event;
         emit(event);
     }
 
