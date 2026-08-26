@@ -122,7 +122,7 @@ namespace
         }
     };
 
-    void test_update_removing_future_sibling_skips_that_sibling()
+    void test_update_removing_future_sibling_defers_removal_until_frame_end()
     {
         ui::NodeTree tree;
         auto parent = makePanel();
@@ -146,8 +146,10 @@ namespace
         tree.update(1.0f / 60.0f);
 
         expect(firstUpdates == 1, "first child must update once");
-        expect(secondUpdates == 0, "removed future sibling must not update in the same traversal");
-        expect(panel->getChildCount() == 1, "removed sibling must be absent after update flush");
+        expect(secondUpdates == 1,
+               "future sibling must still finish the current update pass before deferred removal");
+        expect(panel->getChildCount() == 1,
+               "deferred sibling removal must be applied after the update pass");
     }
 
     void test_update_adding_sibling_starts_next_frame()
@@ -256,19 +258,15 @@ namespace
 
         auto invisible = makePanel();
         invisible->setVisible(false);
-        ui::PanelNode *invisiblePtr = invisible.get();
         ui::Node *invisibleRoot = f.tree.attachRoot(0, std::move(invisible));
 
         auto disabled = makePanel();
         disabled->setEnabled(false);
-        ui::PanelNode *disabledPtr = disabled.get();
         ui::Node *disabledRoot = f.tree.attachRoot(1, std::move(disabled));
 
         auto visible = makeNode();
         ui::Node *visibleRoot = f.tree.attachRoot(2, std::move(visible));
 
-        (void)invisiblePtr;
-        (void)disabledPtr;
         f.process();
 
         expect(f.tree.hitTest(10.0f, 10.0f) == visibleRoot,
@@ -284,7 +282,7 @@ int main()
 {
     try
     {
-        test_update_removing_future_sibling_skips_that_sibling();
+        test_update_removing_future_sibling_defers_removal_until_frame_end();
         test_update_adding_sibling_starts_next_frame();
         test_stale_layout_queue_entry_is_ignored_after_root_removal();
         test_overlay_hit_test_precedes_root();
