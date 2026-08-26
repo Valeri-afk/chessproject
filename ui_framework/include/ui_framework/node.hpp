@@ -13,7 +13,7 @@
 
 #include <SDL3/SDL.h>
 
-#include "ui_framework/event_types.hpp"
+#include "ui_framework/events.hpp"
 #include "ui_framework/layout_context.hpp"
 #include "ui_framework/types.hpp"
 
@@ -37,6 +37,7 @@ namespace ui
             ~ScopedCoordinateTransform() { coordinateTransform() = std::move(previous_); }
             ScopedCoordinateTransform(const ScopedCoordinateTransform &) = delete;
             ScopedCoordinateTransform &operator=(const ScopedCoordinateTransform &) = delete;
+
         private:
             CoordinateTransform previous_;
         };
@@ -101,10 +102,10 @@ namespace ui
             const EventHandlerId token = nextEventHandlerId();
             eventHandlers_.push_back(
                 EventHandlerRecord{token, std::type_index(typeid(Event)),
-                    [handler = std::move(handler)](UIEvent &event, Node &node)
-                    {
-                        handler(static_cast<Event &>(event), node);
-                    }});
+                                   [handler = std::move(handler)](UIEvent &event, Node &node)
+                                   {
+                                       handler(static_cast<Event &>(event), node);
+                                   }});
             return token;
         }
 
@@ -114,10 +115,11 @@ namespace ui
             const std::type_index eventType(typeid(Event));
             eventHandlers_.erase(
                 std::remove_if(eventHandlers_.begin(), eventHandlers_.end(),
-                    [eventType, handlerId](const EventHandlerRecord &record)
-                    {
-                        return record.eventType == eventType && record.token == handlerId;
-                    }), eventHandlers_.end());
+                               [eventType, handlerId](const EventHandlerRecord &record)
+                               {
+                                   return record.eventType == eventType && record.token == handlerId;
+                               }),
+                eventHandlers_.end());
         }
 
         template <typename Event>
@@ -126,23 +128,35 @@ namespace ui
             const std::type_index eventType(typeid(Event));
             eventHandlers_.erase(
                 std::remove_if(eventHandlers_.begin(), eventHandlers_.end(),
-                    [eventType](const EventHandlerRecord &record)
-                    {
-                        return record.eventType == eventType;
-                    }), eventHandlers_.end());
+                               [eventType](const EventHandlerRecord &record)
+                               {
+                                   return record.eventType == eventType;
+                               }),
+                eventHandlers_.end());
         }
 
     protected:
-        template <typename Event> EventHandlerId addHandler(std::function<void(Event &, Node &)> handler) { return on<Event>(std::move(handler)); }
-        template <typename Event> void removeHandler(EventHandlerId handlerId) { removeEventHandler<Event>(handlerId); }
-        template <typename Event> void clearHandlers() { clearEventHandlers<Event>(); }
+        template <typename Event>
+        EventHandlerId addHandler(std::function<void(Event &, Node &)> handler) { return on<Event>(std::move(handler)); }
+        template <typename Event>
+        void removeHandler(EventHandlerId handlerId) { removeEventHandler<Event>(handlerId); }
+        template <typename Event>
+        void clearHandlers() { clearEventHandlers<Event>(); }
         void invalidateLayout() noexcept;
         virtual void update(float dt) {}
         virtual void draw(SDL_Renderer *renderer) {}
         virtual LayoutSize measure(const MeasureContext &context) const { return measureContent(context.availableContentSize); }
         virtual void arrange(const ArrangeContext &context) { arrangeContent(context.contentPosition, context.contentSize); }
-        virtual LayoutSize measureContent(const LayoutSize &availableContent) const { (void)availableContent; return {}; }
-        virtual void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize) { (void)contentPosition; (void)contentSize; }
+        virtual LayoutSize measureContent(const LayoutSize &availableContent) const
+        {
+            (void)availableContent;
+            return {};
+        }
+        virtual void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize)
+        {
+            (void)contentPosition;
+            (void)contentSize;
+        }
         virtual void onMount() {}
         virtual void onUnmount() {}
         virtual Node *hitTest(float x, float y) noexcept;
@@ -154,7 +168,11 @@ namespace ui
             std::type_index eventType = typeid(void);
             std::function<void(UIEvent &, Node &)> callback;
         };
-        static CoordinateTransform &coordinateTransform() { static thread_local CoordinateTransform transform; return transform; }
+        static CoordinateTransform &coordinateTransform()
+        {
+            static thread_local CoordinateTransform transform;
+            return transform;
+        }
         static EventHandlerId nextEventHandlerId() noexcept
         {
             static std::atomic<EventHandlerId> next{1};
@@ -180,7 +198,11 @@ namespace ui
         bool capturable_ = false;
         std::vector<EventHandlerRecord> eventHandlers_;
         const Id id_ = nextId();
-        static Id nextId() noexcept { static std::atomic<Id> next{1}; return next.fetch_add(1); }
+        static Id nextId() noexcept
+        {
+            static std::atomic<Id> next{1};
+            return next.fetch_add(1);
+        }
         LayoutSize clampSize(LayoutSize size, LayoutSize minSize, LayoutSize maxSize) const;
         template <typename Event>
         void dispatchEvent(Event &event, NodeTree &nodeTree)
