@@ -35,6 +35,7 @@ add_library(ui_framework STATIC
     src/core/text_layout.cpp
     src/core/text_content.cpp
     src/core/text_renderer.cpp
+    src/core/text_edit_state.cpp
     src/core/layout_system.cpp
     src/core/modal_system.cpp
     src/core/modal_system_backdrop.cpp
@@ -108,6 +109,10 @@ if(UI_FRAMEWORK_BUILD_TESTS)
         tests/core/layout_system_regression_tests.cpp
     )
 
+    add_executable(ui_framework_text_edit_state_tests
+        tests/core/text_edit_state_tests.cpp
+    )
+
     target_include_directories(ui_framework_input_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
     target_include_directories(ui_framework_input_mutation_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
     target_include_directories(ui_framework_node_tree_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
@@ -116,6 +121,7 @@ if(UI_FRAMEWORK_BUILD_TESTS)
     target_include_directories(ui_framework_modal_system_regression_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
     target_include_directories(ui_framework_scroll_system_regression_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
     target_include_directories(ui_framework_layout_system_regression_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
+    target_include_directories(ui_framework_text_edit_state_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
 
     target_link_libraries(ui_framework_input_tests PRIVATE ui_framework)
     target_link_libraries(ui_framework_input_mutation_tests PRIVATE ui_framework)
@@ -125,6 +131,7 @@ if(UI_FRAMEWORK_BUILD_TESTS)
     target_link_libraries(ui_framework_modal_system_regression_tests PRIVATE ui_framework)
     target_link_libraries(ui_framework_scroll_system_regression_tests PRIVATE ui_framework)
     target_link_libraries(ui_framework_layout_system_regression_tests PRIVATE ui_framework)
+    target_link_libraries(ui_framework_text_edit_state_tests PRIVATE ui_framework)
 
     add_test(NAME ui_framework_input_tests COMMAND ui_framework_input_tests)
     add_test(NAME ui_framework_input_mutation_tests COMMAND ui_framework_input_mutation_tests)
@@ -134,8 +141,9 @@ if(UI_FRAMEWORK_BUILD_TESTS)
     add_test(NAME ui_framework_modal_system_regression_tests COMMAND ui_framework_modal_system_regression_tests)
     add_test(NAME ui_framework_scroll_system_regression_tests COMMAND ui_framework_scroll_system_regression_tests)
     add_test(NAME ui_framework_layout_system_regression_tests COMMAND ui_framework_layout_system_regression_tests)
+    add_test(NAME ui_framework_text_edit_state_tests COMMAND ui_framework_text_edit_state_tests)
 
-    foreach(TEST_TARGET IN ITEMS ui_framework_input_tests ui_framework_input_mutation_tests ui_framework_node_tree_tests ui_framework_node_tree_regression_tests ui_framework_ui_manager_regression_tests ui_framework_modal_system_regression_tests ui_framework_scroll_system_regression_tests ui_framework_layout_system_regression_tests)
+    foreach(TEST_TARGET IN ITEMS ui_framework_input_tests ui_framework_input_mutation_tests ui_framework_node_tree_tests ui_framework_node_tree_regression_tests ui_framework_ui_manager_regression_tests ui_framework_modal_system_regression_tests ui_framework_scroll_system_regression_tests ui_framework_layout_system_regression_tests ui_framework_text_edit_state_tests)
         foreach(SDL_DLL IN LISTS UI_FRAMEWORK_SDL_DLLS)
             add_custom_command(TARGET ${TEST_TARGET} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
