@@ -137,21 +137,6 @@ namespace ui
                 eventHandlers_.end());
         }
 
-        template <typename Event>
-        void clearEventHandlers()
-        {
-            const std::type_index eventType(typeid(Event));
-            eventHandlers_.erase(
-                std::remove_if(
-                    eventHandlers_.begin(),
-                    eventHandlers_.end(),
-                    [eventType](const EventHandlerRecord &record)
-                    {
-                        return record.eventType == eventType;
-                    }),
-                eventHandlers_.end());
-        }
-
     protected:
         template <typename Event>
         void emit(Event &event)
