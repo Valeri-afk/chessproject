@@ -1,14 +1,14 @@
-# Text Input System — Future Contract
+# Text Input System
 
 ## Status
 
-Text input/editing is not implemented yet. This document defines the architectural contract that should guide the implementation.
+The current `TextInput` implementation is a **single-line, game-oriented editing control**. It is intentionally not a desktop text editor.
 
-The subsystem is intentionally deferred until the rest of the UI framework is stable. The implementation must fit the existing `InputSystem`, focus model, `TextLayout`, `TextRenderer`, and layout invalidation contract rather than introducing parallel infrastructure.
+Implemented responsibilities include committed text, caret, selection, keyboard editing, mouse caret/drag selection, focus integration, SDL text input routing, basic IME composition state, and caret/selection presentation.
+
+The current implementation does **not** own SDL window text-input lifecycle and does not expose window-specific IME APIs. Those remain optional until a concrete game/client requirement justifies them.
 
 ## Architectural boundary
-
-The intended responsibility split is:
 
 ```text
 Node
@@ -20,6 +20,7 @@ InputSystem
   ├── SDL keyboard input
   ├── SDL text input / IME events
   ├── focus routing
+  ├── pointer routing / capture
   └── dispatch to focused Node
 
 TextInput component
@@ -28,26 +29,29 @@ TextInput component
   ├── caret
   ├── selection
   ├── editing commands
-  ├── composition / IME state
+  ├── private composition / IME state
   └── text-input presentation policy
+
+TextEditState
+  │
+  └── editable text/caret/selection state and mutation operations
+
+TextContent
+  │
+  └── controlled bridge to text layout/rendering geometry
 
 TextLayout
   │
   ├── measurement
   ├── wrapping
-  ├── line metrics
-  └── future text geometry queries such as caret hit-testing
+  └── focused single-line geometry queries used by TextInput
 
 TextRenderer
   │
   └── text rasterization / SDL_ttf rendering
-
-UIManager
-  │
-  └── orchestration for window-level services such as SDL text-input activation
 ```
 
-The central rule is that text editing remains a specialized component concern. `Node` must not gain generic editing state such as a caret, selection or composition buffer merely to support text input.
+The central rule is that text editing remains a specialized component concern. `Node` does not gain generic editing state such as caret, selection or composition buffers merely to support text input.
 
 ## Input flow
 
@@ -70,58 +74,24 @@ SDL text editing / IME
         ↓
 TextEditingEvent
         ↓
-update temporary composition state
+update temporary private composition state
 ```
 
-The framework should not reconstruct Unicode text from key codes. `InputSystem` should translate SDL text-input events into framework events and route them through the existing focused-node event dispatch path.
-
-The framework event layer should expose semantic events rather than SDL-specific event types.
-
-## TextInput event semantics
-
-The expected framework-level events are conceptually:
-
-```cpp
-struct TextInputEvent : UIEvent
-{
-    std::string text;
-};
-
-struct TextEditingEvent : UIEvent
-{
-    std::string composition;
-    int cursor = 0;
-    int selectionLength = 0;
-};
-```
-
-The exact field types remain open until implementation, but the distinction must remain:
-
-```text
-TextInputEvent   = committed user text
-TextEditingEvent = temporary IME composition
-```
-
-Neither event should be coupled to a particular text-input component type.
+The framework does not reconstruct Unicode text from key codes. `InputSystem` translates SDL text-input events into framework events and routes them through the existing focused-node event path.
 
 ## Focus integration
 
-There is one focus model. `InputSystem` already owns actual focus transitions and keyboard routing.
+There is one focus model. `InputSystem` owns actual focus transitions and keyboard routing.
 
-The active editable control is simply the focused node capable of consuming text-input events:
+A `TextInput` becomes active through the normal focus system. Losing focus clears temporary composition state and stops the control from consuming subsequent text events.
 
-```text
-focus → TextInput
-focus lost → stop editing input
-```
+The framework does not introduce a second keyboard bus or a separate text-focus subsystem.
 
-The framework must not introduce a second keyboard bus or a separate text-focus subsystem.
-
-SDL text input activation is window-level state, so the framework should keep one current text-input owner and enable/disable SDL text input as focus moves between editable and non-editable controls. Client code should not have to call `SDL_StartTextInput()` merely to make a text field work.
+SDL text-input activation is intentionally **outside the current framework contract**. The window belongs to the client, and the current `TextInput` does not require `SDL_Window*` to be exposed through `UIManager`.
 
 ## Editing state
 
-The first implementation should keep three logically separate categories of state:
+The implementation keeps three logically separate categories of state:
 
 ```text
 Committed text
@@ -132,15 +102,17 @@ Selection / caret
     selection anchor/range
 
 IME composition
-    temporary composition text
-    composition cursor/selection metadata
+    private temporary composition text
+    private composition cursor/selection metadata
 ```
 
-IME composition must not be committed into the text buffer until the input system reports committed text.
+IME composition does not change committed text. A later `TextInputEvent` represents committed text and clears the temporary composition state.
+
+Composition state is intentionally not part of the public `TextInput` API.
 
 ## Editing commands
 
-The initial editing contract should cover the ordinary single-field editing operations without attempting to become a full editor framework:
+The current game-oriented editing contract covers:
 
 ```text
 Left / Right
@@ -149,73 +121,50 @@ Backspace / Delete
 select all
 insert committed text
 replace selection
-copy / cut / paste
+Shift-based selection
+mouse caret positioning
+mouse drag selection
 ```
 
-Additional navigation such as word-wise movement, richer mouse selection, undo/redo, and advanced editor behavior should be added only when concrete UI requirements justify them.
-
-The primary public API should expose semantic operations rather than raw selection internals. Internal implementations may still store caret/anchor indices or equivalent structures.
+Clipboard, word-wise navigation, undo/redo and rich editor behavior are intentionally outside the current contract.
 
 ## TextLayout relationship
 
-`TextLayout` remains a measurement/layout abstraction. It does not own editing state.
+`TextLayout` remains a logical measurement/layout abstraction. It does not own editing state.
 
-The future text-input component will consume layout information to answer questions such as:
-
-```text
-where is the caret for this text position?
-which text position is under this pointer?
-what geometry represents the current selection?
-```
-
-These APIs should be added to `TextLayout` only when the TextInput implementation actually requires them. Do not turn `TextLayoutResult` into a universal editor-state object preemptively.
-
-A likely future direction is a small set of focused geometry queries rather than exposing glyph runs or renderer internals:
+The current single-line input implementation uses a small set of focused geometry queries:
 
 ```text
-TextPosition → caret geometry
-layout position → text position
-text range → selection geometry
+Text position → caret X offset
+pointer X      → text position
 ```
+
+These queries are intentionally narrow. `TextLayoutResult` is not an editor-state object and does not expose renderer internals.
 
 ## Rendering relationship
 
-Editing semantics remain outside `TextRenderer`.
-
-Conceptually:
+Editing semantics remain outside `TextRenderer`:
 
 ```text
 TextInput::draw()
     ├── selection presentation
-    ├── TextRenderer → committed/composition text
+    ├── TextContent → text rendering
     └── caret presentation
 ```
 
-`TextRenderer` continues to render text and own SDL_ttf/backend state. It must not become the owner of the editing buffer, caret, selection, or IME state.
-
-Composition rendering belongs to the TextInput presentation layer, even when the actual text glyphs are drawn through `TextRenderer`.
+`TextRenderer` remains responsible for text rasterization and SDL_ttf/backend state. It does not own the editing buffer, caret, selection or IME state.
 
 ## Layout invalidation
 
-Text edits can change desired size, wrapping, and line count. The component must explicitly invalidate layout when the logical text or any layout-affecting text property changes.
+Committed text mutations call the existing explicit layout invalidation path because text can change desired size and wrapping.
 
-```text
-edit text
-   ↓
-text state changes
-   ↓
-layout may become stale
-   ↓
-invalidateLayout()
-```
+Render-only changes such as caret/selection presentation do not require Measure/Arrange invalidation.
 
-Caret blink, selection highlighting, and other render-only state changes should not require Measure/Arrange unless they alter the actual text geometry.
-
-This follows the framework-wide rule that ordinary setters do not automatically perform client-visible layout invalidation; the operation that knows a layout-affecting change occurred is responsible for requesting it.
+This follows the framework rule that ordinary setters do not universally imply automatic layout invalidation; the operation that knows a layout-affecting change occurred requests recomputation.
 
 ## Mouse interaction
 
-Mouse selection should use the normal `InputSystem` pointer routing and focus model:
+Mouse selection uses the normal framework pointer routing and capture semantics:
 
 ```text
 pointer hit-test
@@ -224,86 +173,49 @@ TextInput
      ↓
 focus
      ↓
-text-position hit test
+text-position query through TextContent/TextLayout
      ↓
 caret / selection update
 ```
 
-Pointer capture should use the existing framework capture semantics for drag selection. TextInput must not introduce a second pointer-capture implementation.
+`TextInput` does not implement a second pointer-capture mechanism.
 
-## Clipboard
+## Scope and non-goals
 
-Clipboard support is part of editing behavior, not core input routing.
+The current implementation intentionally targets common game UI scenarios such as names, chat fields, search/filter boxes, passwords and room codes.
 
-The first implementation should use the framework/client window integration already available for SDL clipboard operations. A dedicated general-purpose `ClipboardSystem` should not be introduced unless multiple framework features establish a real need for one.
-
-## IME and text-input window geometry
-
-IME integration may need the current caret position in SDL/window coordinates so the platform can place composition UI or an on-screen keyboard near the text cursor.
-
-The conversion should be:
+Not currently required:
 
 ```text
-TextInput caret geometry
-        ↓
-framework logical UI coordinates
-        ↓
-logical presentation / window coordinates
-        ↓
-SDL text-input area
-```
-
-TextInput must not store physical window pixels as its primary geometry model.
-
-## Lifecycle of SDL text input
-
-SDL text input is window-level state. The framework should manage it from focus ownership:
-
-```text
-focused editable control
-        ↓
-start SDL text input
-
-focus moves away
-        ↓
-stop SDL text input
-```
-
-Only one control is the active text-input owner at a time.
-
-The implementation must account for platform behavior where enabling text input affects the event stream or invokes an IME/virtual keyboard.
-
-## Scope of the first implementation
-
-The first production version should target:
-
-```text
-single-line and/or explicit multiline policy
-committed text
-caret
-selection
-keyboard navigation
-backspace/delete
-mouse caret positioning
-clipboard
-SDL text input
-basic IME composition
-TextLayout integration
-caret/selection rendering
-```
-
-Do not add rich text editing, automatic undo/redo, advanced typography, or a generalized editor framework until concrete requirements demand them.
-
-## Non-goals
-
-```text
-editable fields on base Node
-second keyboard event bus
-second focus system
-public TextRenderer API
-SDL-specific event types in component APIs
-universal ClipboardSystem
+framework-owned SDL_StartTextInput()/SDL_StopTextInput() lifecycle
+SDL text-input-area / OS IME positioning API
+clipboard system
+undo/redo
+word-wise navigation
+multiline editor
+text viewport/scrolling
 rich text editing
-undo/redo before required
-backend-independent text engine before required
+backend-independent text engine
+```
+
+These should only be added when a concrete reusable game/client requirement appears.
+
+## Validation
+
+Regression coverage includes:
+
+```text
+committed text mutation
+focused text input events
+ignored text input without focus
+keyboard editing
+Shift selection
+Ctrl+A selection
+focus-loss behavior
+SDL text-input routing
+unfocused text-input isolation
+SDL keyboard modifier routing
+IME composition without mutating committed text
+composition replacement
+composition cleanup on focus loss
 ```
