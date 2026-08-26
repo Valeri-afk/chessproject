@@ -1,6 +1,7 @@
 #include "ui_framework/components/text_input.hpp"
 
 #include "ui_framework/core/input_system.hpp"
+#include "ui_framework/core/layout_system.hpp"
 #include "ui_framework/core/node_tree.hpp"
 
 #include <SDL3/SDL.h>
@@ -49,6 +50,11 @@ int main()
     input->setPosition({20.0f, 20.0f});
     input->setSize(ui::LayoutSizeValue::fixed(120.0f, 40.0f));
     tree.attachRoot(0, std::move(input));
+
+    ui::LayoutSystem layout;
+    layout.setViewportSize({200.0f, 100.0f});
+    layout.requestFullLayout(tree);
+    layout.processLayoutQueue(tree);
 
     ui::InputSystem inputSystem;
 
