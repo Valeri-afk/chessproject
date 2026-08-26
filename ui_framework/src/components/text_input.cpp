@@ -93,8 +93,6 @@ namespace ui
     void TextInput::moveCaretHome(bool extendSelection) noexcept { editState_->moveHome(extendSelection); }
     void TextInput::moveCaretEnd(bool extendSelection) noexcept { editState_->moveEnd(extendSelection); }
 
-    void TextInput::setOnTextChanged(TextChangedCallback callback) { onTextChanged_ = std::move(callback); }
-
     LayoutSize TextInput::measureContent(const LayoutSize &availableContent) const
     {
         return text_->measure(availableContent.width);
@@ -260,8 +258,8 @@ namespace ui
     void TextInput::markTextChanged()
     {
         invalidateLayout();
-        if (onTextChanged_)
-            onTextChanged_(*this);
+        TextChangedEvent event;
+        emit(event);
     }
 
     void TextInput::clearComposition() noexcept
