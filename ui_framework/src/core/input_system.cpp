@@ -475,11 +475,6 @@ namespace ui
         float y,
         const Node *modalRoot)
     {
-        // A captured pointer owns the current interaction.
-        // Scrolling must not synthesize hover transitions for a captured node.
-        if (input_.capturedNode)
-            return;
-
         const MousePosition position{x, y};
         input_.pointerPosition_ = position;
 
