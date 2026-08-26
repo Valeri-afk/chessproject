@@ -22,6 +22,14 @@ namespace ui
         Right = 3
     };
 
+    struct KeyModifiers
+    {
+        bool shift = false;
+        bool ctrl = false;
+        bool alt = false;
+        bool gui = false;
+    };
+
     enum class KeyCode : int
     {
         UNKNOWN = 0,
@@ -68,8 +76,8 @@ namespace ui
     struct MouseDragBeginEvent : UIEvent { bool dragging = false; MousePosition position{}; LayoutSize delta{}; };
     struct MouseDragEvent : UIEvent { bool dragging = false; MousePosition position{}; LayoutSize delta{}; };
     struct MouseDragEndEvent : UIEvent { MousePosition position{}; LayoutSize delta{}; };
-    struct KeyDownEvent : UIEvent { bool is_repeat = false; KeyCode key = KeyCode::UNKNOWN; };
-    struct KeyUpEvent : UIEvent { bool is_repeat = false; KeyCode key = KeyCode::UNKNOWN; };
+    struct KeyDownEvent : UIEvent { bool is_repeat = false; KeyCode key = KeyCode::UNKNOWN; KeyModifiers modifiers{}; };
+    struct KeyUpEvent : UIEvent { bool is_repeat = false; KeyCode key = KeyCode::UNKNOWN; KeyModifiers modifiers{}; };
     struct FocusGainedEvent : UIEvent {};
     struct FocusLostEvent : UIEvent {};
 
