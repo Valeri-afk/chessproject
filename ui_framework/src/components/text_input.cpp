@@ -161,7 +161,7 @@ namespace ui
 
     void TextInput::handleMouseDown(MouseDownEvent &event, Node &)
     {
-        if (!focused_ || event.button != MouseButton::Left)
+        if (event.button != MouseButton::Left)
             return;
 
         clearComposition();
