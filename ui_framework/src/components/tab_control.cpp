@@ -12,7 +12,7 @@ namespace ui
     {
         if (!tab) return nullptr;
         TabItem *raw = tab.get();
-        raw->on<TabItemActivatedEvent>([this](TabItemActivatedEvent &, Node &) { handleTabActivation(*raw); });
+        raw->on<TabItemActivatedEvent>([this](TabItemActivatedEvent &, Node &node) { handleTabActivation(static_cast<TabItem &>(node)); });
         Node *attached = addChild(std::move(tab), index);
         if (attached != raw) return nullptr;
         if (!selectedTab_) selectTab(*raw);
