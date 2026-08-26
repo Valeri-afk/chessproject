@@ -63,14 +63,10 @@ namespace ui
         return tint_;
     }
 
-    LayoutSize Image::measureContent(const LayoutSize &availableContent) const
+    LayoutSize Image::measureContent(const LayoutSize &) const
     {
-        if (intrinsicSize_.width <= 0.0f || intrinsicSize_.height <= 0.0f)
-            return {};
-
-        if (fitMode_ == FitMode::STRETCH)
-            return availableContent;
-
+        // Fit mode affects rendering inside the arranged box. It must not
+        // turn an auto-sized image into a fill-parent element.
         return intrinsicSize_;
     }
 
