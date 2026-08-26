@@ -173,6 +173,7 @@ namespace ui
         Padding padding_;
         Border border_;
         Overflow overflow_ = Overflow::VISIBLE;
+        bool clipToBounds_ = false;
         bool visible_ = true;
         bool enabled_ = true;
         bool focusable_ = false;
