@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -14,11 +13,13 @@ namespace ui
     class TextContent;
     class TextEditState;
 
+    struct TextChangedEvent : UIEvent
+    {
+    };
+
     class TextInput : public Node
     {
     public:
-        using TextChangedCallback = std::function<void(TextInput &)>;
-
         TextInput();
         ~TextInput() override;
         TextInput(const TextInput &) = delete;
@@ -44,7 +45,6 @@ namespace ui
         void moveCaretRight(bool extendSelection = false) noexcept;
         void moveCaretHome(bool extendSelection = false) noexcept;
         void moveCaretEnd(bool extendSelection = false) noexcept;
-        void setOnTextChanged(TextChangedCallback callback);
 
     protected:
         LayoutSize measureContent(const LayoutSize &availableContent) const override;
@@ -71,7 +71,6 @@ namespace ui
         std::string composition_;
         int compositionCursor_ = 0;
         int compositionSelectionLength_ = 0;
-        TextChangedCallback onTextChanged_;
         std::size_t pointerSelectionAnchor_ = 0;
         bool pointerSelecting_ = false;
         bool focused_ = false;
