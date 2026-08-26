@@ -203,6 +203,98 @@ namespace
                "outside click must close modal even without a backdrop");
     }
 
+    void test_outside_click_consume_blocks_background_input()
+    {
+        ui::UIManager manager;
+        int backgroundClicks = 0;
+
+        auto background = std::make_unique<ui::Node>();
+        background->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
+        background->on<ui::MouseDownEvent>([&](ui::MouseDownEvent &, ui::Node &)
+        {
+            ++backgroundClicks;
+        });
+        manager.addRoot(std::move(background));
+
+        auto modal = makeModal(20.0f, 20.0f);
+        ui::Node *modalPtr = manager.addOverlay(std::move(modal));
+        prepare(manager, *modalPtr);
+
+        ui::ModalOptions options;
+        options.showBackdrop = false;
+        options.outsideClick = ui::OutsideClickBehavior::Consume;
+
+        expect(manager.showModal(*modalPtr, options), "modal must open with consume policy");
+        manager.processEvent(mouseDown(80.0f, 80.0f));
+
+        expect(manager.getActiveModal() == modalPtr,
+               "consume policy must keep the modal open");
+        expect(backgroundClicks == 0,
+               "consume policy must prevent outside input from reaching background content");
+    }
+
+    void test_keyboard_input_never_reaches_lower_modal()
+    {
+        ui::UIManager manager;
+        int lowerKeys = 0;
+        int upperKeys = 0;
+
+        auto lower = makeModal();
+        lower->on<ui::KeyDownEvent>([&](ui::KeyDownEvent &, ui::Node &)
+        {
+            ++lowerKeys;
+        });
+        ui::Node *lowerPtr = manager.addOverlay(std::move(lower));
+
+        auto upper = makeModal();
+        upper->on<ui::KeyDownEvent>([&](ui::KeyDownEvent &, ui::Node &)
+        {
+            ++upperKeys;
+        });
+        ui::Node *upperPtr = manager.addOverlay(std::move(upper));
+
+        prepare(manager, *upperPtr);
+        expect(manager.showModal(*lowerPtr), "lower modal must open");
+        expect(manager.showModal(*upperPtr), "upper modal must open");
+
+        manager.processEvent(keyDown(SDLK_a));
+
+        expect(upperKeys == 1, "top modal must receive keyboard input");
+        expect(lowerKeys == 0, "lower modal must never receive keyboard input while blocked");
+    }
+
+    void test_nested_close_restores_previous_modal_focus_scope()
+    {
+        ui::NodeTree tree;
+        ui::InputSystem input;
+        ui::ModalSystem modalSystem;
+
+        auto lower = std::make_unique<ui::PanelNode>();
+        lower->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
+        auto lowerFocus = std::make_unique<ui::Node>();
+        lowerFocus->setFocusable(true);
+        lowerFocus->setSize(ui::LayoutSizeValue::fixed(20.0f, 20.0f));
+        ui::Node *lowerFocusPtr = lowerFocus.get();
+        lower->addChild(std::move(lowerFocus), 0);
+        ui::Node *lowerPtr = tree.attachOverlay(0, std::move(lower));
+
+        auto upper = makeModal();
+        ui::Node *upperPtr = tree.attachOverlay(1, std::move(upper));
+
+        expect(input.focus(tree, *lowerFocusPtr), "lower modal focus target must be focusable");
+        expect(modalSystem.showModal(tree, input, *lowerPtr), "lower modal must open");
+        expect(input.focusedNode() == lowerFocusPtr, "lower modal child must own the initial focus scope");
+
+        expect(modalSystem.showModal(tree, input, *upperPtr), "upper modal must open");
+        expect(input.focusedNode() == upperPtr, "upper modal must become the focused scope");
+
+        expect(modalSystem.closeModal(tree, input), "closing top modal must succeed");
+        expect(modalSystem.topModalNode(tree) == lowerPtr,
+               "closing top modal must reveal the previous modal");
+        expect(input.focusedNode() == lowerFocusPtr,
+               "closing top modal must restore the previous modal focus scope");
+    }
+
     void test_removing_lower_modal_closes_entire_modal_branch()
     {
         ui::UIManager manager;
@@ -221,43 +313,6 @@ namespace
 
         expect(manager.getActiveModal() == nullptr,
                "removing the base modal must invalidate the entire modal branch");
-    }
-
-    void test_nested_close_restores_previous_modal_focus_scope()
-    {
-        ui::UIManager manager;
-
-        auto lower = std::make_unique<ui::PanelNode>();
-        lower->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
-        auto lowerFocus = std::make_unique<ui::Node>();
-        lowerFocus->setFocusable(true);
-        lowerFocus->setSize(ui::LayoutSizeValue::fixed(20.0f, 20.0f));
-        ui::Node *lowerFocusPtr = lowerFocus.get();
-        lower->addChild(std::move(lowerFocus), 0);
-        ui::Node *lowerPtr = manager.addOverlay(std::move(lower));
-
-        auto upper = std::make_unique<ui::PanelNode>();
-        upper->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
-        auto upperFocus = std::make_unique<ui::Node>();
-        upperFocus->setFocusable(true);
-        upperFocus->setSize(ui::LayoutSizeValue::fixed(20.0f, 20.0f));
-        ui::Node *upperFocusPtr = upperFocus.get();
-        upper->addChild(std::move(upperFocus), 0);
-        ui::Node *upperPtr = manager.addOverlay(std::move(upper));
-
-        prepare(manager, *lowerPtr);
-        expect(manager.showModal(*lowerPtr), "lower modal must open");
-        expect(manager.showModal(*upperPtr), "upper modal must open");
-
-        expect(manager.getActiveModal() == upperPtr,
-               "upper modal must be the active modal while nested");
-        (void)upperFocusPtr;
-
-        expect(manager.closeModal(), "closing top modal must succeed");
-        expect(manager.getActiveModal() == lowerPtr,
-               "closing top modal must reveal the previous modal");
-
-        (void)lowerFocusPtr;
     }
 
     void test_capture_is_cancelled_when_new_modal_opens()
@@ -314,8 +369,10 @@ int main()
         test_modal_focus_and_tab_trap();
         test_escape_can_be_consumed_or_disabled();
         test_outside_click_policy_is_independent_of_backdrop();
-        test_removing_lower_modal_closes_entire_modal_branch();
+        test_outside_click_consume_blocks_background_input();
+        test_keyboard_input_never_reaches_lower_modal();
         test_nested_close_restores_previous_modal_focus_scope();
+        test_removing_lower_modal_closes_entire_modal_branch();
         test_capture_is_cancelled_when_new_modal_opens();
         test_backdrop_lifecycle_follows_modal_stack();
     }
