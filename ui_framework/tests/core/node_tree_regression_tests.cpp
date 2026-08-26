@@ -230,12 +230,12 @@ namespace
                "normal hit-test must still reach the underlying root without modal restriction");
     }
 
-    void test_overflow_hidden_blocks_outside_descendant()
+    void test_clip_to_bounds_blocks_outside_descendant()
     {
         LayoutFixture f;
         auto parent = std::make_unique<ui::StackPanelNode>();
         parent->setSize(ui::LayoutSizeValue::fixed(50.0f, 50.0f));
-        parent->setOverflow(ui::Overflow::HIDDEN);
+        parent->setClipToBounds(true);
         ui::StackPanelNode *panel = parent.get();
         f.tree.attachRoot(0, std::move(parent));
 
@@ -249,7 +249,7 @@ namespace
         expect(f.tree.hitTest(45.0f, 45.0f) == childPtr,
                "visible part of an overflowing child must remain hittable");
         expect(f.tree.hitTest(60.0f, 60.0f) == nullptr,
-               "overflow hidden must block hits outside the parent bounds");
+               "clipToBounds must block hits outside the parent bounds");
     }
 
     void test_invisible_and_disabled_subtrees_are_not_hittable()
@@ -287,7 +287,7 @@ int main()
         test_stale_layout_queue_entry_is_ignored_after_root_removal();
         test_overlay_hit_test_precedes_root();
         test_modal_hit_test_never_escapes_modal_subtree();
-        test_overflow_hidden_blocks_outside_descendant();
+        test_clip_to_bounds_blocks_outside_descendant();
         test_invisible_and_disabled_subtrees_are_not_hittable();
     }
     catch (const TestFailure &failure)
