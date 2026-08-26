@@ -175,6 +175,11 @@ namespace ui
 
     LayoutSize ScrollSystem::calculateContentExtent(const Node &node) const noexcept
     {
+        Node::ScopedCoordinateTransform rawLayoutTransform([](const Node &, const LayoutPosition &position)
+        {
+            return position;
+        });
+
         const LayoutPosition position = node.getActualPosition();
         const Padding padding = node.getPadding();
         const Border border = node.getBorder();
