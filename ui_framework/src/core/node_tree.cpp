@@ -415,7 +415,7 @@ namespace ui
                 {
                     if (unmountingNodeIds.contains(childId))
                         return;
-            
+                    
                     if (PanelNode *panelParent = resolveLivePanelNode(parentId))
                     {
                         if (Node *liveChild = findNode(childId))
@@ -863,12 +863,12 @@ namespace ui
                 });
         }
     
+        flushMutationQueue();
+    
         for (NodeId id : unmountingIds)
         {
             unmountingNodeIds.erase(id);
         }
-    
-        flushMutationQueue();
     }
 
     void NodeTree::insertLayoutQueue(Node *node)
