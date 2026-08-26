@@ -10,27 +10,17 @@ If documentation conflicts with source code:
 
 > source code wins.
 
-## 2. Initial Repository Analysis
+## 2. Repository Analysis
 
-Before modifying code:
+Before modifying code or architecture documentation:
 
 1. Inspect the repository structure.
 2. Read the relevant focused documentation.
-3. Read `docs/FRAMEWORK_SCOPE.md` to understand why the framework exists, its target application class, responsibilities and scope boundaries.
+3. Read `docs/FRAMEWORK_SCOPE.md` to understand purpose, responsibilities and scope boundaries.
 4. Read `ARCHITECTURE.md` when the task depends on global architecture, ownership or subsystem relationships.
 5. Analyze the actual source code.
 6. Reconstruct the current behavior and contracts.
 7. Identify known limitations and unfinished areas.
-
-Do not modify code during this initial analysis.
-
-After analysis, provide a concise readiness report when the change is significant.
-
-The report should distinguish between:
-
-- facts confirmed by source code;
-- information described by documentation;
-- planned or hypothetical behavior.
 
 Do not treat planned behavior as existing implementation.
 
@@ -72,11 +62,11 @@ Preserve or explicitly redefine, rather than accidentally break:
 - node attachment semantics;
 - event behavior;
 - layout invalidation and scheduling;
-- measure/arrange ordering;
+- Measure/Arrange ordering;
 - rendering behavior;
 - modal and input routing boundaries.
 
-If ownership, mutation, lifecycle or other fundamental runtime semantics change intentionally, update the corresponding focused subsystem documentation before or together with the implementation.
+If ownership, mutation, lifecycle or another fundamental runtime semantic changes intentionally, update the corresponding focused documentation before or together with the implementation.
 
 ## 6. Testing / Verification
 
@@ -105,9 +95,8 @@ Update documentation when:
 - ownership or lifetime semantics change;
 - public subsystem behavior changes;
 - a significant invariant is introduced or removed;
-- a capability is deliberately deferred or made part of the framework scope.
-
-Do not update documentation merely because an implementation detail changed without affecting the documented contract.
+- a capability is deliberately deferred or made part of the framework scope;
+- existing documentation is found to contradict the source or another focused document.
 
 The documentation roles are:
 
@@ -119,7 +108,7 @@ ARCHITECTURE.md
     global architecture and subsystem relationships
 
 LAYOUT_SYSTEM.md
-    measure / arrange / geometry / invalidation
+    Measure / Arrange / geometry / invalidation
 
 LIFETIME_AND_MUTATIONS.md
     ownership, identity, lifecycle and structural mutation
@@ -149,7 +138,7 @@ TEXT_SYSTEM.md
     text content, layout and rendering
 
 TEXT_INPUT_SYSTEM.md
-    future editable text/input subsystem
+    editable text/input control
 
 README.md
     documentation entry point and current high-level state
