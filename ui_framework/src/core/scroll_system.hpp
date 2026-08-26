@@ -27,7 +27,7 @@ namespace ui
         ScrollSystem(const ScrollSystem &) = delete;
         ScrollSystem &operator=(const ScrollSystem &) = delete;
 
-        bool registerScrollNode(Node &node);
+        bool registerScrollNode(NodeTree &nodeTree, Node &node);
         bool unregisterScrollNode(NodeTree &nodeTree, Node::Id nodeId);
         bool isRegistered(Node::Id nodeId) const noexcept;
 
