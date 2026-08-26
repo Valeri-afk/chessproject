@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "ui_framework/types.hpp"
 
 namespace ui
@@ -70,4 +72,16 @@ namespace ui
     struct KeyUpEvent : UIEvent { bool is_repeat = false; KeyCode key = KeyCode::UNKNOWN; };
     struct FocusGainedEvent : UIEvent {};
     struct FocusLostEvent : UIEvent {};
+
+    struct TextInputEvent : UIEvent
+    {
+        std::string text;
+    };
+
+    struct TextEditingEvent : UIEvent
+    {
+        std::string composition;
+        int cursor = 0;
+        int selectionLength = 0;
+    };
 }
