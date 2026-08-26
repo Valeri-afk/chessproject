@@ -59,16 +59,16 @@ Reference: `COMPONENT_DESIGN.md`, `EVENT_DISPATCHING.md`
 
 ### Border-box model
 
-- [ ] Complete and stabilize the border-box model across the framework.
-- [ ] Verify content-box ↔ border-box conversions for padding and border.
-- [ ] Verify desired size, arranged size and rendered geometry stay consistent.
+- [x] Complete and stabilize the border-box model across the framework.
+- [x] Verify content-box ↔ border-box conversions for padding and border.
+- [x] Verify desired size, arranged size and rendered geometry stay consistent.
 
 Reference: `LAYOUT_SYSTEM.md`
 
 ### Clipping
 
 - [x] Complete clipping semantics and validation.
-- [ ] Verify nested clipping intersections.
+- [x] Verify nested clipping intersections.
 - [x] Verify clipping consistency between rendering and hit testing.
 - [x] Verify clipping together with scrolling transforms.
 
@@ -76,17 +76,17 @@ Reference: `RENDERING_SYSTEM.md`, `INPUT_SYSTEM.md`, `SCROLL_SYSTEM.md`
 
 ### Absolute positioning
 
-- [ ] Verify `PositionMode::Absolute` behavior in all relevant container/layout scenarios.
-- [ ] Verify absolute children are excluded from normal linear flow where intended.
-- [ ] Verify their final geometry and interaction boundaries are correct.
+- [x] Verify `PositionMode::Absolute` behavior in all relevant container/layout scenarios.
+- [x] Verify absolute children are excluded from normal linear flow where intended.
+- [x] Verify their final geometry and interaction boundaries are correct.
 
 Reference: `LAYOUT_SYSTEM.md`
 
 ### LayoutValue type
 
-- [ ] Review the current `LayoutValue` model and verify all supported value types have clear semantics.
-- [ ] Verify fixed / auto / min / max-related behavior against the final border-box and Measure/Arrange contracts.
-- [ ] Remove or simplify any value variants that no longer represent a meaningful framework contract.
+- [x] Review the current `LayoutValue` model and verify all supported value types have clear semantics.
+- [x] Verify fixed / auto / min / max-related behavior against the final border-box and Measure/Arrange contracts.
+- [x] Remove or simplify any value variants that no longer represent a meaningful framework contract.
 
 Reference: `LAYOUT_SYSTEM.md`
 
