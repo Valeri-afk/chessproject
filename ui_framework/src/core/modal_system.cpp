@@ -48,6 +48,12 @@ namespace ui
 
         modals_.push_back({modalId, previousFocusId, previousModalId, options});
 
+        // The modal boundary must be visible to InputSystem immediately.
+        // showModal performs the initial focus transition before the next
+        // UIManager::processEvent call, so waiting for that call would leave
+        // the new modal with an inconsistent focus/input boundary.
+        input.setModalRoot(liveModal);
+
         if (options.showBackdrop)
             ensureBackdrop(nodeTree);
 
@@ -63,6 +69,7 @@ namespace ui
             focusOrClear(nodeTree, input, findFirstFocusable(*liveModal));
         }
 
+        input.syncState(nodeTree);
         return true;
     }
 
@@ -76,8 +83,15 @@ namespace ui
 
         input.cancelPointerInteraction(nodeTree);
         input.clearFocus(nodeTree);
+
+        if (Node *nextModal = topModalNode(nodeTree))
+            input.setModalRoot(nextModal);
+        else
+            input.setModalRoot(nullptr);
+
         restoreFocusAfterClose(nodeTree, input, session);
         updateBackdropState();
+        input.syncState(nodeTree);
         return true;
     }
 
@@ -196,8 +210,16 @@ namespace ui
         }
 
         updateBackdropState();
-        if (!modals_.empty())
+
+        if (Node *topModal = topModalNode(nodeTree))
+        {
+            input.setModalRoot(topModal);
             syncFocusForTopModal(nodeTree, input);
+        }
+        else
+        {
+            input.setModalRoot(nullptr);
+        }
     }
 
     Node *ModalSystem::findFirstFocusable(Node &node) const
