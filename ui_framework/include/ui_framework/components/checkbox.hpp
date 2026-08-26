@@ -1,16 +1,18 @@
 #pragma once
 
-#include <functional>
-
 #include "ui_framework/node.hpp"
+#include "ui_framework/events.hpp"
 
 namespace ui
 {
+    struct CheckboxToggledEvent : UIEvent
+    {
+        bool checked = false;
+    };
+
     class Checkbox : public Node
     {
     public:
-        using ToggleCallback = std::function<void(Checkbox &, bool)>;
-
         Checkbox();
         ~Checkbox() override = default;
 
@@ -18,7 +20,6 @@ namespace ui
         bool isChecked() const noexcept;
         void setBoxSize(float size) noexcept;
         float getBoxSize() const noexcept;
-        void setOnToggle(ToggleCallback callback);
         void toggle();
         void activate();
 
@@ -29,6 +30,5 @@ namespace ui
     private:
         bool checked_ = false;
         float boxSize_ = 20.0f;
-        ToggleCallback onToggle_;
     };
 }
