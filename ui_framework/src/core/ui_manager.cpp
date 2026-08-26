@@ -94,6 +94,20 @@ namespace ui
             return;
         }
 
+        if (event.type == SDL_EVENT_MOUSE_WHEEL && scrollSystem_)
+        {
+            const float x = static_cast<float>(event.wheel.mouse_x);
+            const float y = static_cast<float>(event.wheel.mouse_y);
+            const float deltaX = static_cast<float>(event.wheel.x);
+            const float deltaY = static_cast<float>(event.wheel.y);
+
+            if (scrollSystem_->handleWheel(*nodeTree_, x, y, deltaX, deltaY, modalRoot))
+            {
+                inputSystem_->refreshHover(*nodeTree_, x, y, modalRoot);
+                return;
+            }
+        }
+
         inputSystem_->processEvent(
             event,
             *nodeTree_,
@@ -210,7 +224,7 @@ namespace ui
 
     bool UIManager::setScrollOffset(Node &node, const ScrollOffset &offset)
     {
-        return scrollSystem_ && scrollSystem_->setOffset(node.getId(), offset);
+        return scrollSystem_ && nodeTree_ && scrollSystem_->setOffset(*nodeTree_, node.getId(), offset);
     }
 
     ScrollOffset UIManager::getScrollOffset(const Node &node) const noexcept
@@ -220,7 +234,7 @@ namespace ui
 
     ScrollOffset UIManager::getMaximumScrollOffset(const Node &node) const noexcept
     {
-        return scrollSystem_ ? scrollSystem_->getMaxOffset(node.getId()) : ScrollOffset{};
+        return scrollSystem_ ? scrollSystem_->getMaxOffset(node) : ScrollOffset{};
     }
 
     bool UIManager::showModal(Node &node)
