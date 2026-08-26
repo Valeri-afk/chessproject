@@ -12,11 +12,18 @@ namespace ui
           text_(std::make_unique<TextContent>())
     {
         setFocusable(true);
+        setCapturable(true);
 
         addHandler<FocusGainedEvent>([this](FocusGainedEvent &event, Node &node)
                                      { handleFocusGained(event, node); });
         addHandler<FocusLostEvent>([this](FocusLostEvent &event, Node &node)
                                    { handleFocusLost(event, node); });
+        addHandler<MouseDownEvent>([this](MouseDownEvent &event, Node &node)
+                                   { handleMouseDown(event, node); });
+        addHandler<MouseDragEvent>([this](MouseDragEvent &event, Node &node)
+                                   { handleMouseDrag(event, node); });
+        addHandler<MouseDragEndEvent>([this](MouseDragEndEvent &event, Node &node)
+                                      { handleMouseDragEnd(event, node); });
         addHandler<KeyDownEvent>([this](KeyDownEvent &event, Node &node)
                                  { handleKeyDown(event, node); });
         addHandler<TextInputEvent>([this](TextInputEvent &event, Node &node)
@@ -115,7 +122,55 @@ namespace ui
     void TextInput::handleFocusLost(FocusLostEvent &, Node &)
     {
         focused_ = false;
+        pointerSelecting_ = false;
         syncTextContent();
+    }
+
+    void TextInput::handleMouseDown(MouseDownEvent &event, Node &)
+    {
+        if (!focused_ || event.button != MouseButton::Left)
+            return;
+
+        setCaretFromPointer(event.position.x, false);
+        pointerSelectionAnchor_ = editState_->caret();
+        pointerSelecting_ = true;
+        event.stopPropagation();
+    }
+
+    void TextInput::handleMouseDrag(MouseDragEvent &event, Node &)
+    {
+        if (!focused_ || !pointerSelecting_)
+            return;
+
+        setCaretFromPointer(event.position.x, true);
+        event.stopPropagation();
+    }
+
+    void TextInput::handleMouseDragEnd(MouseDragEndEvent &event, Node &)
+    {
+        if (!focused_ || !pointerSelecting_)
+            return;
+
+        setCaretFromPointer(event.position.x, true);
+        pointerSelecting_ = false;
+        event.stopPropagation();
+    }
+
+    void TextInput::setCaretFromPointer(float x, bool extendSelection)
+    {
+        const LayoutPosition textPosition = text_->getArrangedPosition();
+        const float localX = x - textPosition.x;
+        const std::size_t position = text_->textPositionAt(localX);
+
+        if (extendSelection)
+        {
+            editState_->setCaret(pointerSelectionAnchor_);
+            editState_->extendSelectionTo(position);
+        }
+        else
+        {
+            editState_->setCaret(position);
+        }
     }
 
     void TextInput::handleKeyDown(KeyDownEvent &event, Node &)
