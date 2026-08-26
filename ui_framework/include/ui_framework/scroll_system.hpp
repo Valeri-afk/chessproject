@@ -30,11 +30,11 @@ namespace ui
         bool unregisterScrollNode(NodeTree &nodeTree, Node::Id nodeId);
         bool isRegistered(Node::Id nodeId) const noexcept;
 
-        bool setOffset(Node::Id nodeId, const ScrollOffset &offset);
-        bool scrollBy(Node::Id nodeId, const ScrollOffset &delta);
+        bool setOffset(NodeTree &nodeTree, Node::Id nodeId, const ScrollOffset &offset);
+        bool scrollBy(NodeTree &nodeTree, Node::Id nodeId, const ScrollOffset &delta);
         std::optional<ScrollState> getState(Node::Id nodeId) const;
         ScrollOffset getOffset(Node::Id nodeId) const noexcept;
-        ScrollOffset getMaxOffset(Node::Id nodeId) const noexcept;
+        ScrollOffset getMaxOffset(const Node &node) const noexcept;
         ScrollOffset getAccumulatedOffset(const Node &node) const noexcept;
 
         Node *findNearestScrollableAncestor(NodeTree &nodeTree, Node *target) const noexcept;
