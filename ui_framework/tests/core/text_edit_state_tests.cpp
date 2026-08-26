@@ -25,18 +25,18 @@ namespace
     void testSelectionReplacement()
     {
         ui::TextEditState state("hello world");
-        state.setCaret(5);
+        state.setCaret(6);
         state.moveRight(true);
         state.moveRight(true);
         state.moveRight(true);
         state.moveRight(true);
         state.moveRight(true);
-        assert(state.selectionStart() == 5);
-        assert(state.selectionEnd() == 10);
+        assert(state.selectionStart() == 6);
+        assert(state.selectionEnd() == 11);
         state.insertText("there");
         assert(state.text() == "hello there");
         assert(!state.hasSelection());
-        assert(state.caret() == 10);
+        assert(state.caret() == 11);
     }
 
     void testBackspaceAndDelete()
