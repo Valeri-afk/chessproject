@@ -104,7 +104,10 @@ namespace ui
         while (current)
         {
             if (const auto it = states_.find(current->getId()); it != states_.end())
-                result.x += it->second.offset.x, result.y += it->second.offset.y;
+            {
+                result.x += it->second.offset.x;
+                result.y += it->second.offset.y;
+            }
             current = current->getParent();
         }
         return result;
@@ -148,11 +151,12 @@ namespace ui
         if (!panel)
             return;
 
-        panel->forEachChild([&](Node &child)
+        for (size_t index = 0; index < panel->getChildCount(); ++index)
         {
-            calculateContentExtentRecursive(root, child, originX, originY, maxRight, maxBottom);
-            return false;
-        });
+            const Node *child = panel->getChild(index);
+            if (child && child->isVisible())
+                calculateContentExtentRecursive(root, *child, originX, originY, maxRight, maxBottom);
+        }
     }
 
     LayoutSize ScrollSystem::calculateContentExtent(const Node &node) const noexcept
