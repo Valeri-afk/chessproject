@@ -87,6 +87,8 @@ namespace ui
         void setBottomBorder(float value);
         void setOverflow(Overflow overflow);
         Overflow getOverflow() const noexcept;
+        void setClipToBounds(bool clip) noexcept;
+        bool getClipToBounds() const noexcept;
         LayoutPosition getActualPosition() const noexcept;
         LayoutSize getActualSize() const noexcept;
         virtual Node *getVisibleChild(size_t visibleIndex) const noexcept;
@@ -177,7 +179,7 @@ namespace ui
         bool capturable_ = false;
         std::vector<EventHandlerRecord> eventHandlers_;
         const Id id_ = nextId();
-        static Id nextId() noexcept { static std::atomic<Id> next{1}; return next.fetch_add(1, std::memory_order_relaxed); }
+        static Id nextId() noexcept { static std::atomic<Id> next{1}; return next.fetch_add(1); }
         LayoutSize clampSize(LayoutSize size, LayoutSize minSize, LayoutSize maxSize) const;
         template <typename Event>
         void dispatchEvent(Event &event, NodeTree &nodeTree)
