@@ -24,6 +24,24 @@ Detached nodes are ordinary client-owned objects again and must not be treated a
 
 Framework services must resolve live nodes through the authoritative tree rather than assuming a stale pointer remains registered.
 
+## Service state and node lifetime
+
+Framework services that index nodes must not outlive the corresponding live-node registration.
+
+This applies to modality and scrolling:
+
+```text
+NodeTree live node
+      ↓
+modal / scroll service state
+      ↓
+node removal
+      ↓
+service state is cleaned or invalidated
+```
+
+A removed modal must not remain the active modal. A removed scroll container must not leave stale scroll state that can affect coordinate transforms or wheel routing.
+
 ## Structural mutations
 
 `PanelNode::addChild()` and `removeChild()` are framework-managed structural operations.
@@ -57,6 +75,8 @@ This applies to mutations that would otherwise invalidate iterators, traversal s
 Structural operations already know their layout consequences. They should not require a separate public `treeStructureChanged()` call.
 
 For component-owned non-structural state, the framework does not observe arbitrary fields. If the change affects derived layout state, the component/client reports it explicitly with `invalidateLayout()`.
+
+Scroll state is derived from committed layout geometry. A content or viewport change is reconciled during framework synchronization rather than requiring the client to maintain a second geometry model.
 
 ## Batch/coalescing principle
 

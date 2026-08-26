@@ -1,5 +1,6 @@
 #include "node_tree.hpp"
 #include "rendering_state.hpp"
+#include <unordered_set>
 
 #include <algorithm>
 #include <optional>
@@ -19,6 +20,8 @@ namespace
 
         return std::nullopt;
     }
+
+    thread_local std::unordered_set<ui::Node::Id> unmountingNodeIds;
 }
 
 namespace ui
@@ -410,11 +413,17 @@ namespace ui
             enqueueMutation(
                 [this, parentId, childId]()
                 {
+                    if (unmountingNodeIds.contains(childId))
+                        return;
+
                     if (PanelNode *panelParent = resolveLivePanelNode(parentId))
                     {
                         if (Node *liveChild = findNode(childId))
                         {
-                            removeChildInternal(*panelParent, *liveChild);
+                            if (liveChild->getParent() == panelParent)
+                            {
+                                removeChildInternal(*panelParent, *liveChild);
+                            }
                         }
                     }
                 });
@@ -827,6 +836,21 @@ namespace ui
 
     void NodeTree::unmountSubtree(Node &root)
     {
+        std::vector<NodeId> unmountingIds;
+
+        traversePreOrder(
+            root,
+            [&unmountingIds](Node &node)
+            {
+                unmountingIds.push_back(node.getId());
+                return TraversalResult::Continue;
+            });
+
+        for (NodeId id : unmountingIds)
+        {
+            unmountingNodeIds.insert(id);
+        }
+
         {
             ScopedMutationGuard guard(*this);
 
@@ -840,6 +864,11 @@ namespace ui
         }
 
         flushMutationQueue();
+
+        for (NodeId id : unmountingIds)
+        {
+            unmountingNodeIds.erase(id);
+        }
     }
 
     void NodeTree::insertLayoutQueue(Node *node)
@@ -956,7 +985,7 @@ namespace ui
 
         RendererStateScope state(renderer);
 
-        if (node.getOverflow() == Overflow::HIDDEN)
+        if (node.getClipToBounds())
         {
             SDL_Rect nodeRect =
                 toSDLRect(node);
@@ -1082,7 +1111,7 @@ namespace ui
         Node *selfHit =
             node.hitTest(x, y);
 
-        if (node.getOverflow() == Overflow::HIDDEN)
+        if (node.getClipToBounds())
         {
             const LayoutPosition position = node.getActualPosition();
             const LayoutSize size = node.getActualSize();

@@ -36,6 +36,10 @@ namespace ui
         Node *pressedNode() const noexcept;
         bool isDragging() const noexcept;
 
+        // методы для тестов
+        Node *hoveredNode() const noexcept;
+        float getDragThreshhold() const noexcept { return input_.dragThreshold; };
+
     private:
         struct InputState
         {
@@ -58,6 +62,7 @@ namespace ui
         std::optional<Node::Id> pendingFocusNodeId_;
         bool pendingClearFocus_ = false;
         bool focusTransitionInProgress_ = false;
+        bool dragEndDispatchInProgress_ = false;
 
         static void rememberNode(Node *&node, std::optional<Node::Id> &id) noexcept;
         static void clearTrackedNode(Node *&node, std::optional<Node::Id> &id) noexcept;

@@ -22,7 +22,9 @@ node update
 draw traversal
 ```
 
-Exact internal ordering belongs to `UIManager`/private systems and is not a client-side scheduling API.
+Exact internal ordering belongs to `UIManager` and private systems; it is not a client-side scheduling API.
+
+Scroll and modal synchronization are framework work. Client code requests semantic state changes through `UIManager` rather than manually invoking service phases.
 
 ## Structural operations
 
@@ -46,7 +48,28 @@ new invalidation
 queue root for later pass
 ```
 
-This prevents recursive layout execution and unstable traversal.
+Scroll geometry follows committed layout. A changed viewport or content extent is reconciled during scroll synchronization rather than forcing synchronous layout from the scroll API.
+
+## Modal and scroll operations
+
+Opening/closing modality and enabling/disabling scrolling are semantic service operations. They must remain compatible with NodeTree lifetime and traversal safety.
+
+Examples:
+
+```text
+showModal(node)
+closeModal()
+enableScrolling(panel)
+setScrollOffset(panel, offset)
+```
+
+These operations do not expose internal service queues or require the client to flush the framework.
+
+When a modal opens, modality establishes a new input boundary and cancels incompatible pointer capture. Focus initialization and modal filtering are framework-managed consequences of the operation.
+
+When scrolling changes effective coordinates, the framework refreshes hover after the scroll state has been applied. It does not synthesize a mouse-move event or implicitly reset pointer capture.
+
+If a modal or scroll node is structurally removed, the corresponding service state is cleaned/inactivated through framework lifecycle synchronization rather than by requiring the client to manipulate internal registries.
 
 ## Why explicit deferral exists
 
@@ -65,6 +88,8 @@ flushMutationQueue()
 runLayoutNow()
 runInputPhaseNow()
 flushFramework()
+flushScrollSystem()
+flushModalSystem()
 ```
 
 A client reports semantic changes; the framework decides when and how to process them.

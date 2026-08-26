@@ -432,6 +432,7 @@ namespace ui
         pendingFocusNodeId_.reset();
         pendingClearFocus_ = false;
         focusTransitionInProgress_ = false;
+        dragEndDispatchInProgress_ = false;
     }
 
     void InputSystem::refreshHover(
@@ -557,8 +558,29 @@ namespace ui
         if (oldFocused == &node)
         {
             pendingFocusNodeId_.reset();
+
+            FocusGainedEvent event;
+
+            if (!dispatchEvent(
+                    nodeTree,
+                    &node,
+                    event,
+                    false,
+                    false))
+            {
+                syncState(nodeTree);
+                finishTransition();
+                return false;
+            }
+
+            syncState(nodeTree);
+
+            const bool success =
+                input_.focusedNode == &node;
+
             finishTransition();
-            return true;
+
+            return success;
         }
 
         if (oldFocused)
@@ -567,16 +589,21 @@ namespace ui
 
             FocusLostEvent event;
 
-            if (!dispatchEvent(
+            // ИСПРАВЛЕНИЕ 1: Сохраняем результат dispatchEvent,
+            // а не интерпретируем false как ошибку
+            const bool oldFocusedSurvived =
+                dispatchEvent(
                     nodeTree,
                     oldFocused,
                     event,
                     false,
-                    false))
+                    false);
+
+            if (!oldFocusedSurvived)
             {
+                // FocusLost callback может удалить старый узел.
+                // Переход фокуса должен продолжаться к запрошенному узлу.
                 syncState(nodeTree);
-                finishTransition();
-                return false;
             }
 
             if (pendingClearFocus_)
@@ -603,6 +630,17 @@ namespace ui
 
                 if (pendingNode)
                 {
+                    // The old node has already received FocusLost.
+                    // Remove it from the tracked focus state before
+                    // starting the pending transition. Otherwise a nested
+                    // focus() would dispatch FocusLost on the same node again.
+                    if (input_.focusedNode == oldFocused)
+                    {
+                        clearTrackedNode(
+                            input_.focusedNode,
+                            input_.focusedNodeId);
+                    }
+
                     focusTransitionInProgress_ = false;
                     return focus(nodeTree, *pendingNode);
                 }
@@ -612,11 +650,17 @@ namespace ui
                 return false;
             }
 
+            // ИСПРАВЛЕНИЕ 2: Удаление старого узла - не ошибка,
+            // а нормальный сценарий. Продолжаем фокусировку на запрошенном узле.
             if (!nodeTree.findNode(oldFocusedId))
             {
+                // Старый узел был удален во время FocusLost.
+                // Продолжаем фокусировку на запрошенном узле.
+                clearTrackedNode(
+                    input_.focusedNode,
+                    input_.focusedNodeId);
+
                 syncState(nodeTree);
-                finishTransition();
-                return false;
             }
         }
 
@@ -650,7 +694,8 @@ namespace ui
 
             syncState(nodeTree);
             finishTransition();
-            return input_.focusedNode == nullptr;
+
+            return false;
         }
 
         if (pendingFocusNodeId_)
@@ -886,6 +931,8 @@ namespace ui
             return;
         }
 
+        // DragEndEvent may have changed pointer capture.
+        // Never overwrite callback-established capture state.
         if (capturedId &&
             input_.capturedNode &&
             input_.capturedNode->getId() != *capturedId)
@@ -896,11 +943,45 @@ namespace ui
 
         Node *hovered = input_.hoveredNode;
 
+        const std::optional<Node::Id> hoveredId =
+            hovered
+                ? std::optional<Node::Id>(hovered->getId())
+                : std::nullopt;
+
         if (!dispatchMouseLeaveIfNeeded(
                 nodeTree,
                 hovered,
                 position))
         {
+            return;
+        }
+
+        // MouseLeaveEvent may mutate pointer state:
+        // - establish a new capture;
+        // - establish a new pressed node;
+        // - replace the hovered node.
+        //
+        // Never clear callback-established state.
+        if (capturedId &&
+            input_.capturedNode &&
+            input_.capturedNode->getId() != *capturedId)
+        {
+            syncState(nodeTree);
+            return;
+        }
+
+        if (!capturedId &&
+            input_.capturedNode)
+        {
+            syncState(nodeTree);
+            return;
+        }
+
+        if (hoveredId &&
+            input_.hoveredNode &&
+            input_.hoveredNode->getId() != *hoveredId)
+        {
+            syncState(nodeTree);
             return;
         }
 
@@ -932,6 +1013,11 @@ namespace ui
         return input_.pressedNode;
     }
 
+    Node *InputSystem::hoveredNode() const noexcept
+    {
+        return input_.hoveredNode;
+    }
+
     bool InputSystem::isDragging() const noexcept
     {
         return input_.isDragging;
@@ -950,6 +1036,9 @@ namespace ui
         std::optional<MousePosition> position)
     {
         if (!node || !input_.isDragging)
+            return true;
+
+        if (dragEndDispatchInProgress_)
             return true;
 
         const Node::Id nodeId = node->getId();
@@ -972,12 +1061,19 @@ namespace ui
             event.delta = {};
         }
 
-        if (!dispatchEvent(
+        dragEndDispatchInProgress_ = true;
+
+        const bool dispatched =
+            dispatchEvent(
                 nodeTree,
                 node,
                 event,
                 false,
-                false))
+                false);
+
+        dragEndDispatchInProgress_ = false;
+
+        if (!dispatched)
         {
             syncState(nodeTree);
             return false;
@@ -1319,11 +1415,21 @@ namespace ui
             capture(nodeTree, *liveNode, event.position);
         }
 
-        if (!hadFocusBefore &&
-            !input.focusedNode &&
-            liveNode->isFocusable())
+        if (liveNode->isFocusable())
         {
-            focus(nodeTree, *liveNode);
+            if (!focus(nodeTree, *liveNode))
+            {
+                syncState(nodeTree);
+                return;
+            }
+
+            liveNode = nodeTree.findNode(liveNode->getId());
+
+            if (!liveNode)
+            {
+                syncState(nodeTree);
+                return;
+            }
         }
 
         syncState(nodeTree);

@@ -6,11 +6,6 @@
 
 namespace ui
 {
-    enum class Overflow
-    {
-        VISIBLE,
-        HIDDEN
-    };
     enum class MainAxisAlignment
     {
         START,
@@ -36,10 +31,18 @@ namespace ui
         Layout,
         Absolute
     };
-    enum class BackdropClickBehavior
+    enum class OutsideClickBehavior
     {
         Consume,
         Close
+    };
+    using BackdropClickBehavior = OutsideClickBehavior;
+
+    struct ModalOptions
+    {
+        OutsideClickBehavior outsideClick = OutsideClickBehavior::Consume;
+        bool closeOnEscape = true;
+        bool showBackdrop = true;
     };
 
     struct LayoutPosition
@@ -77,7 +80,6 @@ namespace ui
         bool isAuto() const noexcept { return type == LayoutValueType::Auto; }
         bool isValue() const noexcept { return type == LayoutValueType::Value; }
     };
-
     struct LayoutSizeValue
     {
         LayoutValue width;
