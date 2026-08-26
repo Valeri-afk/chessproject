@@ -7,7 +7,17 @@
 #include <utility>
 namespace ui
 {
-    Button::Button() : text_(std::make_unique<TextContent>()) { setDefaultGeometry(); setFocusable(true); setCapturable(true); addHandler<MouseDownEvent>([this](MouseDownEvent &e, Node &) { handleMouseDown(e); }); addHandler<MouseUpEvent>([this](MouseUpEvent &e, Node &) { handleMouseUp(e); }); addHandler<MouseClickEvent>([this](MouseClickEvent &e, Node &) { handleMouseClick(e); }); addHandler<MouseEnterEvent>([this](MouseEnterEvent &e, Node &) { handleMouseEnter(e); }); addHandler<MouseLeaveEvent>([this](MouseLeaveEvent &e, Node &) { handleMouseLeave(e); }); }
+    Button::Button() : text_(std::make_unique<TextContent>())
+    {
+        setDefaultGeometry();
+        setFocusable(true);
+        setCapturable(true);
+        on<MouseDownEvent>([this](MouseDownEvent &e, Node &) { handleMouseDown(e); });
+        on<MouseUpEvent>([this](MouseUpEvent &e, Node &) { handleMouseUp(e); });
+        on<MouseClickEvent>([this](MouseClickEvent &e, Node &) { handleMouseClick(e); });
+        on<MouseEnterEvent>([this](MouseEnterEvent &e, Node &) { handleMouseEnter(e); });
+        on<MouseLeaveEvent>([this](MouseLeaveEvent &e, Node &) { handleMouseLeave(e); });
+    }
     Button::Button(float borderRadius) : Button() { setBorderRadius(borderRadius); }
     Button::~Button() = default;
     void Button::setDefaultGeometry() { setPadding({12.0f,12.0f,8.0f,8.0f}); setBorder({1.0f,1.0f,1.0f,1.0f}); }
@@ -33,9 +43,8 @@ namespace ui
     float Button::getPressAnimationSpeed() const noexcept { return pressAnimationSpeed_; }
     bool Button::isPressed() const noexcept { return pressed_; }
     bool Button::isHovered() const noexcept { return hovered_; }
-    void Button::setOnActivate(ActivateCallback cb) { onActivate_=std::move(cb); }
     void Button::activate() { if(!isVisible() || !isEnabled()) return; onActivate(); }
-    void Button::onActivate() { if(onActivate_) onActivate_(*this); }
+    void Button::onActivate() { ButtonActivatedEvent event; emit(event); }
     Color Button::presentationBackgroundColor() const noexcept { return backgroundColor_; }
     Color Button::presentationBorderColor() const noexcept { return borderColor_; }
     Color Button::presentationTextColor() const noexcept { return textColor_; }
