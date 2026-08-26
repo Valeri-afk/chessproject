@@ -37,11 +37,6 @@ namespace ui
         void selectAll() noexcept;
         void clearSelection() noexcept;
 
-        const std::string &getCompositionText() const noexcept;
-        int getCompositionCursor() const noexcept;
-        int getCompositionSelectionLength() const noexcept;
-        bool hasComposition() const noexcept;
-
         void insertText(std::string_view text);
         void backspace();
         void deleteForward();
