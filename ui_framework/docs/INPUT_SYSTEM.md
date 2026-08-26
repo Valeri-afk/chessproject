@@ -2,7 +2,7 @@
 
 ## Role
 
-Input is framework runtime infrastructure. Client code and components consume framework events; they do not reimplement global routing, hit testing, capture, focus or scroll routing.
+Input is framework runtime infrastructure. Client code and components consume framework events; they do not reimplement global routing, hit testing, pointer capture, focus or scroll routing.
 
 ## Main responsibilities
 
@@ -18,42 +18,38 @@ pointer capture
 focus
 keyboard routing
 modal-root filtering
-wheel routing to scroll infrastructure
+framework event generation
 ```
+
+Wheel scrolling is coordinated by `UIManager` and the internal `ScrollSystem`, which runs before ordinary `InputSystem::processEvent()` handling for wheel events.
 
 ## Coordinate normalization
 
-The framework consumes input in its UI coordinate space. The chess client currently configures a fixed logical presentation of:
+`UIManager::processEvent()` converts SDL events into renderer/framework render coordinates when a renderer is supplied. The chess client uses a fixed logical presentation of:
 
 ```text
 1920 × 1080
 ```
 
-using:
+with `SDL_LOGICAL_PRESENTATION_LETTERBOX`.
 
-```cpp
-SDL_LOGICAL_PRESENTATION_LETTERBOX
-```
+Physical window dimensions may differ. Framework hit testing and dispatch operate in the resulting logical/render coordinate space.
 
-Physical window dimensions may differ. Pointer coordinates are converted into the renderer/framework logical coordinate space before framework hit testing and dispatch.
-
-The distinction between physical window resolution and logical UI resolution is a presentation concern. Framework nodes operate in framework coordinates and do not need physical pixel dimensions.
-
-Scroll transforms are applied separately from the base logical coordinate conversion.
+Scrolling then applies its own accumulated coordinate transform without rewriting retained layout positions.
 
 ## Hit testing and clipping
 
-Hit testing uses current retained tree geometry and effective transformed coordinates.
+Hit testing uses retained geometry transformed by the active internal scroll coordinate transform. `Node::setClipToBounds(true)` is the Node-level clipping/interaction boundary.
 
-`clipToBounds` is a Node-level clipping contract. When enabled, hit testing must respect the same bounds that constrain the rendered subtree. Scrolling changes effective coordinates but does not rewrite retained layout positions.
+The current hit-test traversal follows effective paint order, searches overlays/roots with higher-priority entries first, and recursively tests visible/enabled children. When `clipToBounds` is enabled, descendant interaction is constrained by the node's bounds.
 
-There is no public `rebuildHitTest()` operation.
+There is no public `rebuildHitTest()` operation and no `Overflow` API.
 
 ## Hover
 
-Pointer movement updates the hovered target and generates the corresponding enter/leave behavior.
+Pointer movement updates the hovered target and generates enter/leave behavior.
 
-After a handled scroll operation, hover is refreshed using the same physical pointer position and the new effective transformed coordinates. This must not synthesize a mouse-move event or disturb pointer capture/drag state.
+After `ScrollSystem::handleWheel()` handles any wheel delta, `UIManager` refreshes hover using the same pointer coordinates and the updated scroll transform. Scrolling does not synthesize a mouse-move event or implicitly reset pointer capture.
 
 ## Pointer interaction
 
@@ -64,72 +60,81 @@ pressed node
 captured node
 focused node
 dragging state
+pointer position
 ```
 
-Pointer capture is framework-owned so controls can continue receiving the relevant interaction even when the pointer leaves their normal hit-test region.
+Pointer capture is framework-owned so a captured control can continue receiving movement/release events outside its ordinary hit-test region.
 
-When a modal opens, incompatible pointer capture outside the new modal boundary is cancelled so the previous interaction cannot leak through the modal.
+The default drag threshold is `5.0f`.
+
+When a modal opens, incompatible pointer interaction outside the modal boundary is cancelled.
 
 ## Focus
 
-Focus is framework state. Keyboard routing uses the focused node where appropriate.
+Focus is framework state. `InputSystem` validates focus against liveness, visibility, enabled state, focusability and the active modal boundary.
 
-Components expose focusability/capturability through Node-level properties; the input system owns actual focus/capture transitions.
+Focus transitions dispatch `FocusLostEvent` and `FocusGainedEvent`. Focus transitions are reentrancy-aware; requests made from focus callbacks are reconciled by the input system.
 
-When a modal opens, modality establishes the focus scope. The modal itself receives focus when focusable; otherwise the first focusable descendant is selected. `Tab` traversal wraps within the active modal subtree.
+When a modal opens, modality establishes the focus scope. The modal itself receives focus when focusable; otherwise the first valid focusable descendant is selected. `Tab` traversal is implemented by `ModalSystem` inside the active modal subtree.
 
 ## Modal filtering
 
-When a modal root is active, input routing is restricted to the active modal subtree and its configured outside-click behavior.
+When a modal root is active, normal input targeting is restricted to the active modal subtree. Outside pointer input is handled by `ModalSystem` according to `OutsideClickBehavior`.
 
-Lower modals and underlying application nodes may continue framework updates, but they cannot receive restricted pointer or keyboard input through normal dispatch.
-
-Escape is routed to the focused component first. If it does not consume the event, modality applies the active modal's Escape policy.
+For Escape/Tab, `UIManager` gives the key event to the focused node first and then lets `ModalSystem` apply the active modal policy if the event was not stopped.
 
 ## Wheel
 
-Wheel input is routed through the framework scroll service rather than being treated as ordinary pointer clicks.
+Wheel input is handled by the internal `ScrollSystem` before ordinary input dispatch:
 
-The nearest registered scroll ancestor receives the available delta first. If it reaches a scroll boundary, remaining delta may propagate to an outer scroll container.
+```text
+SDL wheel
+   ↓
+UIManager
+   ↓
+ScrollSystem
+   ↓
+hit-test target
+   ↓
+nearest registered scroll ancestor
+   ↓
+consume/clamp delta
+   ↓
+remaining delta → outer scroll ancestor
+```
 
-A handled scroll updates effective hit-test coordinates and hover state without changing retained layout geometry.
+A scroll container consumes only the delta it can apply. Remaining delta may chain to an outer registered scroll container.
+
+A handled scroll refreshes hover but does not change retained layout geometry or pointer capture state.
 
 ## Event generation
 
-The input system translates SDL input into framework event types such as:
+`InputSystem` translates SDL input into framework events including:
 
 ```text
 MouseMoveEvent
 MouseDownEvent
 MouseUpEvent
 MouseClickEvent
+MouseWheelEvent
 MouseEnterEvent
 MouseLeaveEvent
-MouseWheelEvent
+MouseDragBeginEvent
+MouseDragEvent
+MouseDragEndEvent
 KeyDownEvent
 KeyUpEvent
+FocusGainedEvent
+FocusLostEvent
+TextInputEvent
+TextEditingEvent
 ```
 
-The exact event payload contract lives in `events.hpp`; dispatching is a separate concern described by the Event Dispatching document.
+`TextInputEvent` carries committed SDL text input. `TextEditingEvent` carries temporary IME composition data. Dispatch propagation is a separate concern described by `EVENT_DISPATCHING.md`.
 
 ## Validation boundary
 
-The current regression suites cover the major input boundaries through focused and integration scenarios:
-
-```text
-MouseDown → MouseUp → MouseClick sequencing
-MouseEnter / MouseLeave
-pointer capture
-focus
-keyboard routing
-dragging
-modal restriction and keyboard isolation
-focus trap / Tab traversal
-outside-click policy
-scroll + clipping + hit-test interaction
-hover after scroll
-nested scroll wheel chaining
-```
+Regression suites cover pointer sequencing, hover, capture, focus, keyboard routing, dragging, modal filtering, scroll/hit-test interaction, hover refresh after scroll, nested wheel chaining, text input routing and text-input focus isolation.
 
 Visual rendering validation remains separate from input correctness validation.
 
