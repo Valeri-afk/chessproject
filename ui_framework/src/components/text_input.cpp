@@ -1,6 +1,5 @@
 #include "ui_framework/components/text_input.hpp"
 
-#include <algorithm>
 #include <utility>
 
 #include "../core/text_content.hpp"
@@ -8,48 +7,22 @@
 
 namespace ui
 {
-    namespace
-    {
-        constexpr float defaultFontSize = 16.0f;
-    }
-
     TextInput::TextInput()
         : editState_(std::make_unique<TextEditState>()),
           text_(std::make_unique<TextContent>())
     {
         setFocusable(true);
 
-        text_->setFontSize(defaultFontSize);
-
-        addHandler<FocusGainedEvent>(
-            [this](FocusGainedEvent &event, Node &node)
-            {
-                handleFocusGained(event, node);
-            });
-
-        addHandler<FocusLostEvent>(
-            [this](FocusLostEvent &event, Node &node)
-            {
-                handleFocusLost(event, node);
-            });
-
-        addHandler<KeyDownEvent>(
-            [this](KeyDownEvent &event, Node &node)
-            {
-                handleKeyDown(event, node);
-            });
-
-        addHandler<TextInputEvent>(
-            [this](TextInputEvent &event, Node &node)
-            {
-                handleTextInput(event, node);
-            });
-
-        addHandler<TextEditingEvent>(
-            [this](TextEditingEvent &event, Node &node)
-            {
-                handleTextEditing(event, node);
-            });
+        addHandler<FocusGainedEvent>([this](FocusGainedEvent &event, Node &node)
+                                     { handleFocusGained(event, node); });
+        addHandler<FocusLostEvent>([this](FocusLostEvent &event, Node &node)
+                                   { handleFocusLost(event, node); });
+        addHandler<KeyDownEvent>([this](KeyDownEvent &event, Node &node)
+                                 { handleKeyDown(event, node); });
+        addHandler<TextInputEvent>([this](TextInputEvent &event, Node &node)
+                                   { handleTextInput(event, node); });
+        addHandler<TextEditingEvent>([this](TextEditingEvent &event, Node &node)
+                                     { handleTextEditing(event, node); });
     }
 
     TextInput::~TextInput() = default;
@@ -58,16 +31,12 @@ namespace ui
     {
         if (editState_->text() == text)
             return;
-
         editState_->setText(std::move(text));
         syncTextContent();
         markTextChanged();
     }
 
-    const std::string &TextInput::getText() const noexcept
-    {
-        return editState_->text();
-    }
+    const std::string &TextInput::getText() const noexcept { return editState_->text(); }
 
     void TextInput::setPlaceholder(std::string text)
     {
@@ -75,89 +44,20 @@ namespace ui
         syncTextContent();
     }
 
-    const std::string &TextInput::getPlaceholder() const noexcept
-    {
-        return placeholder_;
-    }
+    const std::string &TextInput::getPlaceholder() const noexcept { return placeholder_; }
 
-    void TextInput::setFont(TTF_Font *font) noexcept
-    {
-        if (text_->getFont() == font)
-            return;
-
-        text_->setFont(font);
-        invalidateLayout();
-    }
-
-    TTF_Font *TextInput::getFont() const noexcept
-    {
-        return text_->getFont();
-    }
-
-    void TextInput::setFontSize(float logicalSize) noexcept
-    {
-        if (text_->getFontSize() == logicalSize)
-            return;
-
-        text_->setFontSize(logicalSize);
-        invalidateLayout();
-    }
-
-    float TextInput::getFontSize() const noexcept
-    {
-        return text_->getFontSize();
-    }
-
-    void TextInput::setTextColor(Color color) noexcept
-    {
-        text_->setColor(color);
-    }
-
-    Color TextInput::getTextColor() const noexcept
-    {
-        return text_->getColor();
-    }
-
-    std::size_t TextInput::getCaretPosition() const noexcept
-    {
-        return editState_->caret();
-    }
-
-    std::size_t TextInput::getSelectionStart() const noexcept
-    {
-        return editState_->selectionStart();
-    }
-
-    std::size_t TextInput::getSelectionEnd() const noexcept
-    {
-        return editState_->selectionEnd();
-    }
-
-    bool TextInput::hasSelection() const noexcept
-    {
-        return editState_->hasSelection();
-    }
-
-    void TextInput::setCaretPosition(std::size_t position) noexcept
-    {
-        editState_->setCaret(position);
-    }
-
-    void TextInput::selectAll() noexcept
-    {
-        editState_->selectAll();
-    }
-
-    void TextInput::clearSelection() noexcept
-    {
-        editState_->collapseSelectionToCaret();
-    }
+    std::size_t TextInput::getCaretPosition() const noexcept { return editState_->caret(); }
+    std::size_t TextInput::getSelectionStart() const noexcept { return editState_->selectionStart(); }
+    std::size_t TextInput::getSelectionEnd() const noexcept { return editState_->selectionEnd(); }
+    bool TextInput::hasSelection() const noexcept { return editState_->hasSelection(); }
+    void TextInput::setCaretPosition(std::size_t position) noexcept { editState_->setCaret(position); }
+    void TextInput::selectAll() noexcept { editState_->selectAll(); }
+    void TextInput::clearSelection() noexcept { editState_->collapseSelectionToCaret(); }
 
     void TextInput::insertText(std::string_view text)
     {
         if (text.empty())
             return;
-
         editState_->insertText(text);
         syncTextContent();
         markTextChanged();
@@ -169,7 +69,6 @@ namespace ui
         editState_->backspace();
         if (editState_->text() == before)
             return;
-
         syncTextContent();
         markTextChanged();
     }
@@ -180,54 +79,31 @@ namespace ui
         editState_->deleteForward();
         if (editState_->text() == before)
             return;
-
         syncTextContent();
         markTextChanged();
     }
 
-    void TextInput::moveCaretLeft(bool extendSelection) noexcept
-    {
-        editState_->moveLeft(extendSelection);
-    }
+    void TextInput::moveCaretLeft(bool extendSelection) noexcept { editState_->moveLeft(extendSelection); }
+    void TextInput::moveCaretRight(bool extendSelection) noexcept { editState_->moveRight(extendSelection); }
+    void TextInput::moveCaretHome(bool extendSelection) noexcept { editState_->moveHome(extendSelection); }
+    void TextInput::moveCaretEnd(bool extendSelection) noexcept { editState_->moveEnd(extendSelection); }
 
-    void TextInput::moveCaretRight(bool extendSelection) noexcept
-    {
-        editState_->moveRight(extendSelection);
-    }
-
-    void TextInput::moveCaretHome(bool extendSelection) noexcept
-    {
-        editState_->moveHome(extendSelection);
-    }
-
-    void TextInput::moveCaretEnd(bool extendSelection) noexcept
-    {
-        editState_->moveEnd(extendSelection);
-    }
-
-    void TextInput::setOnTextChanged(TextChangedCallback callback)
-    {
-        onTextChanged_ = std::move(callback);
-    }
+    void TextInput::setOnTextChanged(TextChangedCallback callback) { onTextChanged_ = std::move(callback); }
 
     LayoutSize TextInput::measureContent(const LayoutSize &availableContent) const
     {
         return text_->measure(availableContent.width);
     }
 
-    void TextInput::arrangeContent(
-        const LayoutPosition &contentPosition,
-        const LayoutSize &contentSize)
+    void TextInput::arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize)
     {
         text_->arrange(contentPosition, contentSize);
     }
 
     void TextInput::draw(SDL_Renderer *renderer)
     {
-        if (!renderer)
-            return;
-
-        text_->draw(renderer);
+        if (renderer)
+            text_->draw(renderer);
     }
 
     void TextInput::handleFocusGained(FocusGainedEvent &, Node &)
@@ -257,27 +133,13 @@ namespace ui
         bool handled = true;
         switch (event.key)
         {
-        case KeyCode::LEFT:
-            moveCaretLeft(event.modifiers.shift);
-            break;
-        case KeyCode::RIGHT:
-            moveCaretRight(event.modifiers.shift);
-            break;
-        case KeyCode::HOME:
-            moveCaretHome(event.modifiers.shift);
-            break;
-        case KeyCode::END:
-            moveCaretEnd(event.modifiers.shift);
-            break;
-        case KeyCode::BACKSPACE:
-            backspace();
-            break;
-        case KeyCode::DELETE:
-            deleteForward();
-            break;
-        default:
-            handled = false;
-            break;
+        case KeyCode::LEFT: moveCaretLeft(event.modifiers.shift); break;
+        case KeyCode::RIGHT: moveCaretRight(event.modifiers.shift); break;
+        case KeyCode::HOME: moveCaretHome(event.modifiers.shift); break;
+        case KeyCode::END: moveCaretEnd(event.modifiers.shift); break;
+        case KeyCode::BACKSPACE: backspace(); break;
+        case KeyCode::DELETE: deleteForward(); break;
+        default: handled = false; break;
         }
 
         if (handled)
@@ -288,41 +150,27 @@ namespace ui
     {
         if (!focused_ || event.text.empty())
             return;
-
         insertText(event.text);
         event.stopPropagation();
     }
 
     void TextInput::handleTextEditing(TextEditingEvent &, Node &)
     {
-        // IME composition is intentionally kept out of the committed text
-        // model until the committed TextInputEvent arrives. Rendering and
-        // composition presentation will be added in the IME integration step.
+        // Composition is not committed until TextInputEvent arrives.
     }
 
     void TextInput::markTextChanged()
     {
         invalidateLayout();
-
         if (onTextChanged_)
             onTextChanged_(*this);
     }
 
     void TextInput::syncTextContent()
     {
-        const bool showPlaceholder =
-            editState_->text().empty() &&
-            !focused_ &&
-            !placeholder_.empty();
-
-        if (showPlaceholder)
-        {
+        if (editState_->text().empty() && !focused_ && !placeholder_.empty())
             text_->setText(placeholder_);
-            text_->setColor(Color{160, 160, 160, 255});
-        }
         else
-        {
             text_->setText(editState_->text());
-        }
     }
 }
