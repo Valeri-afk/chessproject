@@ -241,6 +241,13 @@ namespace ui
             event.is_repeat = sdlEvent.key.repeat;
             event.key = convertSDLKeyCodeToKeyCode(sdlEvent.key.key);
 
+            const SDL_Keymod modifiers = SDL_GetModState();
+
+            event.modifiers.shift = (modifiers & SDL_KMOD_SHIFT) != 0;
+            event.modifiers.ctrl  = (modifiers & SDL_KMOD_CTRL) != 0;
+            event.modifiers.alt   = (modifiers & SDL_KMOD_ALT) != 0;
+            event.modifiers.gui   = (modifiers & SDL_KMOD_GUI) != 0;
+
             handleKeyDownEvent(nodeTree, event);
             break;
         }
@@ -251,6 +258,13 @@ namespace ui
 
             event.is_repeat = sdlEvent.key.repeat;
             event.key = convertSDLKeyCodeToKeyCode(sdlEvent.key.key);
+
+            const SDL_Keymod modifiers = SDL_GetModState();
+
+            event.modifiers.shift = (modifiers & SDL_KMOD_SHIFT) != 0;
+            event.modifiers.ctrl  = (modifiers & SDL_KMOD_CTRL) != 0;
+            event.modifiers.alt   = (modifiers & SDL_KMOD_ALT) != 0;
+            event.modifiers.gui   = (modifiers & SDL_KMOD_GUI) != 0;
 
             handleKeyUpEvent(nodeTree, event);
             break;
