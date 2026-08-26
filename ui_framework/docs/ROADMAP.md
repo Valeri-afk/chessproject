@@ -11,10 +11,10 @@ The source code remains authoritative. The focused subsystem documents describe 
 
 ### Scroll system
 
-- [ ] Complete and validate the scroll system behavior.
-- [ ] Validate nested scrolling and remaining wheel-delta propagation.
-- [ ] Validate scroll transforms together with clipping and hit testing.
-- [ ] Decide whether the current service-oriented scroll model is sufficient or whether a reusable public scroll component is justified.
+- [x] Complete and validate the scroll system behavior.
+- [x] Validate nested scrolling and remaining wheel-delta propagation.
+- [x] Validate scroll transforms together with clipping and hit testing.
+- [x] Decide whether the current service-oriented scroll model is sufficient or whether a reusable public scroll component is justified.
 
 Reference: `SCROLL_SYSTEM.md`
 
@@ -29,12 +29,12 @@ Reference: `TEXT_INPUT_SYSTEM.md`
 
 ### Modality
 
-- [ ] Complete remaining modal behavior validation.
-- [ ] Validate modal open/close sequencing.
-- [ ] Validate focus restoration and fallback focus selection.
-- [ ] Validate backdrop behavior and modal interaction boundaries.
-- [ ] Validate nested modal sessions where supported.
-- [ ] Reassess whether a standalone public `Modal` component is ever necessary; current architecture uses `ModalSystem` as framework infrastructure.
+- [x] Complete remaining modal behavior validation.
+- [x] Validate modal open/close sequencing.
+- [x] Validate focus restoration and fallback focus selection.
+- [x] Validate backdrop behavior and modal interaction boundaries.
+- [x] Validate nested modal sessions where supported.
+- [x] Reassess whether a standalone public `Modal` component is ever necessary; current architecture uses `ModalSystem` as framework infrastructure.
 
 Reference: `MODALITY_SYSTEM.md`
 
@@ -42,7 +42,7 @@ Reference: `MODALITY_SYSTEM.md`
 
 - [ ] Consider whether `TextLayout` can be hidden further behind `TextContent` / public text components without weakening the current architecture.
 - [ ] Keep logical text measurement/wrapping separate from backend SDL_ttf rendering.
-- [ ] Do not expose implementation types merely for convenience; expose them only when a concrete reusable contract requires it.
+- [ ] Do not expose implementation types merely for convenience; expose them only when a concrete reusable contract requires them.
 
 Reference: `TEXT_SYSTEM.md`
 
@@ -67,10 +67,10 @@ Reference: `LAYOUT_SYSTEM.md`
 
 ### Clipping
 
-- [ ] Complete clipping semantics and validation.
+- [x] Complete clipping semantics and validation.
 - [ ] Verify nested clipping intersections.
-- [ ] Verify clipping consistency between rendering and hit testing.
-- [ ] Verify clipping together with scrolling transforms.
+- [x] Verify clipping consistency between rendering and hit testing.
+- [x] Verify clipping together with scrolling transforms.
 
 Reference: `RENDERING_SYSTEM.md`, `INPUT_SYSTEM.md`, `SCROLL_SYSTEM.md`
 
@@ -113,19 +113,19 @@ Reference: `COMPONENT_DESIGN.md`, `LIFETIME_AND_MUTATIONS.md`, `DEFERRED_OPERATI
 
 ## Cross-system validation
 
-- [ ] Validate input/event behavior after structural changes.
-- [ ] Validate modal restrictions together with focus, capture and overlays.
-- [ ] Validate scroll behavior together with clipping and hit testing.
-- [ ] Validate layout invalidation followed by the next layout pass.
+- [x] Validate input/event behavior after structural changes.
+- [x] Validate modal restrictions together with focus, capture and overlays.
+- [x] Validate scroll behavior together with clipping and hit testing.
+- [x] Validate layout invalidation followed by the next layout pass.
 - [ ] Validate rendering after geometry changes and logical-presentation resize.
 
 ## Architectural guardrails
 
-- [ ] Keep `UIManager` as the public framework facade where that remains appropriate.
-- [ ] Keep `NodeTree` as the runtime authority for ownership, liveness, structural mutation and coordinated traversal.
-- [ ] Do not introduce a universal property/dependency system without a concrete requirement.
-- [ ] Do not introduce parallel input, event or rendering orchestration systems in components/client code.
-- [ ] Avoid unnecessary framework abstractions until a repeated reusable requirement proves their value.
+- [x] Keep `UIManager` as the public framework facade where that remains appropriate.
+- [x] Keep `NodeTree` as the runtime authority for ownership, liveness, structural mutation and coordinated traversal.
+- [x] Do not introduce a universal property/dependency system without a concrete requirement.
+- [x] Do not introduce parallel input, event or rendering orchestration systems in components/client code.
+- [x] Avoid unnecessary framework abstractions until a repeated reusable requirement proves their value.
 
 ## Large-file safety
 
