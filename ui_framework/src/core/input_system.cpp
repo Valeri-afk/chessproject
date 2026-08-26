@@ -260,6 +260,26 @@ namespace ui
             break;
         }
 
+        case SDL_EVENT_TEXT_INPUT:
+        {
+            TextInputEvent event;
+            event.text = sdlEvent.text.text ? sdlEvent.text.text : "";
+        
+            handleTextInputEvent(nodeTree, event);
+            break;
+        }
+
+        case SDL_EVENT_TEXT_EDITING:
+        {
+            TextEditingEvent event;
+            event.composition = sdlEvent.edit.text ? sdlEvent.edit.text : "";
+            event.cursor = sdlEvent.edit.start;
+            event.selectionLength = sdlEvent.edit.length;
+        
+            handleTextEditingEvent(nodeTree, event);
+            break;
+        }
+
         nodeTree.flushMutationQueue();
 
         validateInputState(nodeTree);
@@ -1661,6 +1681,38 @@ namespace ui
         {
             syncState(nodeTree);
         }
+    }
+
+    void InputSystem::handleTextInputEvent(
+        NodeTree &nodeTree,
+        TextInputEvent &event)
+    {
+        Node *focused = input_.focusedNode;
+        if (!focused)
+            return;
+    
+        dispatchEvent(
+            nodeTree,
+            focused,
+            event,
+            true,
+            true);
+    }
+
+    void InputSystem::handleTextEditingEvent(
+        NodeTree &nodeTree,
+        TextEditingEvent &event)
+    {
+        Node *focused = input_.focusedNode;
+        if (!focused)
+            return;
+    
+        dispatchEvent(
+            nodeTree,
+            focused,
+            event,
+            true,
+            true);
     }
 
     KeyCode InputSystem::convertSDLKeyCodeToKeyCode(
