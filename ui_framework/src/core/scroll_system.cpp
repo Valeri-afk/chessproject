@@ -112,20 +112,15 @@ namespace ui
     ScrollOffset ScrollSystem::getAccumulatedOffset(const Node &node) const noexcept
     {
         ScrollOffset result{};
-        const Node *current = &node;
-        bool first = true;
+        const Node *current = node.getParent();
         while (current)
         {
-            if (!first)
+            if (const auto it = states_.find(current->getId()); it != states_.end())
             {
-                if (const auto it = states_.find(current->getId()); it != states_.end())
-                {
-                    result.x += it->second.offset.x;
-                    result.y += it->second.offset.y;
-                }
+                result.x += it->second.offset.x;
+                result.y += it->second.offset.y;
             }
             current = current->getParent();
-            first = false;
         }
         return result;
     }
@@ -156,13 +151,13 @@ namespace ui
         float &maxRight,
         float &maxBottom) const noexcept
     {
-        if (&current != &root && isRegistered(current.getId()))
-            return;
-
         const LayoutPosition position = current.getActualPosition();
         const LayoutSize size = current.getActualSize();
         maxRight = std::max(maxRight, finiteOrZero(position.x) - originX + std::max(0.0f, finiteOrZero(size.width)));
         maxBottom = std::max(maxBottom, finiteOrZero(position.y) - originY + std::max(0.0f, finiteOrZero(size.height)));
+
+        if (&current != &root && isRegistered(current.getId()))
+            return;
 
         const auto *panel = dynamic_cast<const PanelNode *>(&current);
         if (!panel)
