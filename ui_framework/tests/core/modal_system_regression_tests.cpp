@@ -87,12 +87,15 @@ namespace
         expect(!manager.showModal(*upperNode), "the same node must not be pushed twice");
         expect(manager.getActiveModal() == upperNode, "top modal must own interaction");
 
+        const int updatesBeforeFrame = lowerUpdates;
+
         manager.processEvent(mouseDown(10.0f, 10.0f));
         expect(upperClicks == 1, "top modal must receive pointer input");
         expect(lowerClicks == 0, "lower modal must not receive pointer input");
 
         manager.runFrame(1.0f / 60.0f, nullptr);
-        expect(lowerUpdates == 1, "lower modal must continue updating while blocked");
+        expect(lowerUpdates == updatesBeforeFrame + 1,
+               "lower modal must continue updating while blocked");
     }
 
     void test_modal_focus_and_tab_trap()
