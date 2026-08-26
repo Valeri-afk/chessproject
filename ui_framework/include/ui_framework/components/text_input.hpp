@@ -19,6 +19,10 @@ namespace ui
     {
     };
 
+    struct TextInputSubmittedEvent : UIEvent
+    {
+    };
+
     class TextInput : public Node
     {
     public:
@@ -65,6 +69,7 @@ namespace ui
         void handleTextInput(TextInputEvent &event, Node &node);
         void handleTextEditing(TextEditingEvent &event, Node &node);
         void markTextChanged();
+        void emitSubmitted();
         void syncTextContent();
         void clearComposition() noexcept;
         void setCaretFromPointer(float x, bool extendSelection);
