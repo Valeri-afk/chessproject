@@ -985,7 +985,7 @@ namespace ui
 
         RendererStateScope state(renderer);
 
-        if (node.getOverflow() == Overflow::HIDDEN)
+        if (node.getClipToBounds())
         {
             SDL_Rect nodeRect =
                 toSDLRect(node);
@@ -1111,7 +1111,7 @@ namespace ui
         Node *selfHit =
             node.hitTest(x, y);
 
-        if (node.getOverflow() == Overflow::HIDDEN)
+        if (node.getClipToBounds())
         {
             const LayoutPosition position = node.getActualPosition();
             const LayoutSize size = node.getActualSize();
