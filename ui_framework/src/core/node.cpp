@@ -85,6 +85,8 @@ namespace ui
     void Node::setBottomBorder(float value){border_.bottom=finiteOrZero(value);}
     void Node::setOverflow(Overflow overflow){overflow_=overflow;}
     Overflow Node::getOverflow()const noexcept{return overflow_;}
+    void Node::setClipToBounds(bool clip) noexcept { clipToBounds_ = clip; }
+    bool Node::getClipToBounds() const noexcept { return clipToBounds_; }
     LayoutPosition Node::getActualPosition()const noexcept{const LayoutPosition position=actualPosition_;const CoordinateTransform&transform=coordinateTransform();return transform?transform(*this,position):position;}
     LayoutSize Node::getActualSize()const noexcept{return actualSize_;}
     Node*Node::getVisibleChild(size_t)const noexcept{return nullptr;}
