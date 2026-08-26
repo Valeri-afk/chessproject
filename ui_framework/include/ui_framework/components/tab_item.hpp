@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <string>
 
@@ -12,11 +11,11 @@
 namespace ui
 {
     class TextContent;
+    struct TabItemActivatedEvent : UIEvent {};
 
     class TabItem : public Node
     {
     public:
-        using ActivateCallback = std::function<void(TabItem &)>;
         TabItem();
         ~TabItem() override;
         TabItem(const TabItem &) = delete;
@@ -31,7 +30,6 @@ namespace ui
         Color getBackgroundColor() const noexcept;
         void setActive(bool active) noexcept;
         bool isActive() const noexcept;
-        void setOnActivate(ActivateCallback callback);
         void activate();
     protected:
         LayoutSize measureContent(const LayoutSize &availableContent) const override;
@@ -43,6 +41,5 @@ namespace ui
         Color textColor_ = Colors::white;
         Color backgroundColor_ = Colors::transparent;
         bool active_ = false;
-        ActivateCallback onActivate_;
     };
 }
