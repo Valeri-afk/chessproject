@@ -53,6 +53,38 @@ namespace
         assert(changes == 1);
     }
 
+    void testTextInputAllCommittedMutationsNotifyOnce()
+    {
+        ui::NodeTree tree;
+        ui::TextInput *input = attachTextInput(tree);
+
+        int changes = 0;
+        input->on<ui::TextChangedEvent>([&](ui::TextChangedEvent &, ui::Node &node)
+        {
+            ++changes;
+            assert(!static_cast<ui::TextInput &>(node).getText().empty());
+        });
+
+        input->setText("abc");
+        assert(changes == 1);
+
+        input->setCaretPosition(3);
+        input->backspace();
+        assert(input->getText() == "ab");
+        assert(changes == 2);
+
+        input->deleteForward();
+        assert(changes == 2);
+
+        input->setCaretPosition(1);
+        input->insertText("X");
+        assert(input->getText() == "aXb");
+        assert(changes == 3);
+
+        input->insertText("");
+        assert(changes == 3);
+    }
+
     void testTextInputHandlesFocusedTextEvent()
     {
         ui::NodeTree tree;
@@ -279,6 +311,7 @@ namespace
 int main()
 {
     testTextInputPublishesSemanticTextChanges();
+    testTextInputAllCommittedMutationsNotifyOnce();
     testTextInputHandlesFocusedTextEvent();
     testTextInputIgnoresTextEventWithoutFocus();
     testTextInputKeyboardEditingAndShiftSelection();
