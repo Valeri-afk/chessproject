@@ -217,6 +217,43 @@ namespace
                "auto size must preserve intrinsic desired size when cross-axis stretching is disabled");
     }
 
+    void test_nested_clipping_uses_intersection_of_ancestor_bounds()
+    {
+        LayoutFixture f(200.0f, 200.0f);
+
+        auto outer = std::make_unique<ui::PanelNode>();
+        outer->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
+        outer->setClipToBounds(true);
+        ui::PanelNode *outerPtr = outer.get();
+        f.tree.attachRoot(0, std::move(outer));
+
+        auto inner = std::make_unique<ui::PanelNode>();
+        inner->setSize(ui::LayoutSizeValue::fixed(60.0f, 60.0f));
+        inner->setPosition({40.0f, 40.0f});
+        inner->setPositionMode(ui::PositionMode::Absolute);
+        inner->setClipToBounds(true);
+        ui::PanelNode *innerPtr = inner.get();
+        f.tree.attachChild(*outerPtr, std::move(inner), 0);
+
+        auto child = std::make_unique<ui::Node>();
+        child->setSize(ui::LayoutSizeValue::fixed(80.0f, 80.0f));
+        child->setPosition({20.0f, 20.0f});
+        child->setPositionMode(ui::PositionMode::Absolute);
+        ui::Node *childPtr = child.get();
+        f.tree.attachChild(*innerPtr, std::move(child), 0);
+
+        f.process();
+
+        expect(f.tree.hitTest(60.0f, 60.0f) == childPtr,
+               "point inside both clipping bounds must reach the descendant");
+        expect(f.tree.hitTest(110.0f, 60.0f) == nullptr,
+               "outer clipping boundary must block the descendant");
+        expect(f.tree.hitTest(60.0f, 110.0f) == nullptr,
+               "outer clipping boundary must block the descendant vertically");
+        expect(f.tree.hitTest(95.0f, 95.0f) == childPtr,
+               "point near the far edge must remain hittable while inside both clip intersections");
+    }
+
     void test_relayout_commits_changed_geometry_only_after_processing()
     {
         LayoutFixture f;
@@ -255,6 +292,7 @@ int main()
         test_cross_axis_stretch_respects_child_maximum();
         test_absolute_child_is_excluded_from_linear_flow();
         test_auto_size_does_not_mean_fill_parent();
+        test_nested_clipping_uses_intersection_of_ancestor_bounds();
         test_relayout_commits_changed_geometry_only_after_processing();
     }
     catch (const TestFailure &failure)
