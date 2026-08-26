@@ -51,6 +51,8 @@ namespace ui
         if (renderer && !SDL_ConvertEventToRenderCoordinates(renderer, &event))
             return;
 
+        Node::ScopedCoordinateTransform scrollTransform(makeScrollTransform(scrollSystem_.get()));
+
         const Node *modalRoot =
             modalSystem_ ? modalSystem_->topModalNode(*nodeTree_) : nullptr;
 
