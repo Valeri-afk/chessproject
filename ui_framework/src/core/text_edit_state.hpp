@@ -25,6 +25,7 @@ namespace ui
         bool hasSelection() const noexcept;
 
         void setCaret(std::size_t position) noexcept;
+        void extendSelectionTo(std::size_t position) noexcept;
         void collapseSelectionToCaret() noexcept;
         void selectAll() noexcept;
 
