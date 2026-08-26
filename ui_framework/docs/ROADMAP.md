@@ -117,7 +117,7 @@ Reference: `COMPONENT_DESIGN.md`, `LIFETIME_AND_MUTATIONS.md`, `DEFERRED_OPERATI
 - [x] Validate modal restrictions together with focus, capture and overlays.
 - [x] Validate scroll behavior together with clipping and hit testing.
 - [x] Validate layout invalidation followed by the next layout pass.
-- [ ] Validate rendering after geometry changes and logical-presentation resize.
+- [x] Validate rendering after geometry changes and logical-presentation resize.
 
 ## Architectural guardrails
 
