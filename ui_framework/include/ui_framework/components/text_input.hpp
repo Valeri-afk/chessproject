@@ -5,6 +5,8 @@
 #include <string>
 #include <string_view>
 
+#include <SDL3_ttf/SDL_ttf.h>
+
 #include "ui_framework/events.hpp"
 #include "ui_framework/node.hpp"
 
@@ -29,6 +31,8 @@ namespace ui
         const std::string &getText() const noexcept;
         void setPlaceholder(std::string text);
         const std::string &getPlaceholder() const noexcept;
+        void setFont(TTF_Font *font) noexcept;
+        TTF_Font *getFont() const noexcept;
 
         std::size_t getCaretPosition() const noexcept;
         std::size_t getSelectionStart() const noexcept;
