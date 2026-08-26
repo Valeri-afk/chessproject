@@ -41,8 +41,8 @@ Reference: `MODALITY_SYSTEM.md`
 ### Text architecture boundary
 
 - [ ] Consider whether `TextLayout` can be hidden further behind `TextContent` / public text components without weakening the current architecture.
-- [ ] Keep logical text measurement/wrapping separate from backend SDL_ttf rendering.
-- [ ] Do not expose implementation types merely for convenience; expose them only when a concrete reusable contract requires them.
+- [x] Keep logical text measurement/wrapping separate from backend SDL_ttf rendering.
+- [x] Do not expose implementation types merely for convenience; expose them only when a concrete reusable contract requires them.
 
 Reference: `TEXT_SYSTEM.md`
 
