@@ -38,14 +38,18 @@ namespace
         ui::TextInput *input = attachTextInput(tree);
 
         int changes = 0;
-        input->setOnTextChanged([&](ui::TextInput &field)
+        input->on<ui::TextChangedEvent>([&](ui::TextChangedEvent &, ui::Node &node)
         {
             ++changes;
+            auto &field = static_cast<ui::TextInput &>(node);
             assert(field.getText() == "hello");
         });
 
         input->setText("hello");
         assert(input->getText() == "hello");
+        assert(changes == 1);
+
+        input->setText("hello");
         assert(changes == 1);
     }
 
