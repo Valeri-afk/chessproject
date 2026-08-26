@@ -16,6 +16,7 @@ namespace ui
     {
     public:
         InputSystem();
+
         InputSystem(const InputSystem &) = delete;
         InputSystem &operator=(const InputSystem &) = delete;
 
@@ -25,7 +26,6 @@ namespace ui
         void refreshHover(NodeTree &nodeTree, float x, float y, const Node *modalRoot);
         bool focus(NodeTree &nodeTree, Node &node);
         void clearFocus(NodeTree &nodeTree);
-        bool capture(NodeTree &node, std::optional<MousePosition> pressPosition = std::nullopt);
         bool capture(NodeTree &nodeTree, Node &node, std::optional<MousePosition> pressPosition = std::nullopt);
         void releaseCapture(NodeTree &nodeTree, std::optional<MousePosition> position = std::nullopt);
         void cancelPointerInteraction(NodeTree &nodeTree, std::optional<MousePosition> position = std::nullopt);
@@ -35,6 +35,10 @@ namespace ui
         Node *capturedNode() const noexcept;
         Node *pressedNode() const noexcept;
         bool isDragging() const noexcept;
+
+        // методы для тестов
+        Node *hoveredNode() const noexcept;
+        float getDragThreshhold() const noexcept { return input_.dragThreshold; };
 
     private:
         struct InputState
