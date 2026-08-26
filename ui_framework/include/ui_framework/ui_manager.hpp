@@ -24,9 +24,6 @@ namespace ui
         UIManager(const UIManager &) = delete;
         UIManager &operator=(const UIManager &) = delete;
 
-        void setWindow(SDL_Window *window) noexcept;
-        SDL_Window *getWindow() const noexcept;
-
         void processEvent(const SDL_Event &event, SDL_Renderer *renderer = nullptr);
         void runFrame(float dt, SDL_Renderer *renderer);
 
@@ -61,14 +58,11 @@ namespace ui
         void draw(SDL_Renderer *renderer);
         void prepareForTreeOperation();
         void syncState();
-        void syncTextInputState();
 
         std::unique_ptr<NodeTree> nodeTree_;
         std::unique_ptr<InputSystem> inputSystem_;
         std::unique_ptr<ModalSystem> modalSystem_;
         std::unique_ptr<LayoutSystem> layoutSystem_;
         std::unique_ptr<ScrollSystem> scrollSystem_;
-        SDL_Window *window_ = nullptr;
-        bool textInputActive_ = false;
     };
 }
