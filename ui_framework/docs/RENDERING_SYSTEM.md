@@ -40,7 +40,7 @@ This logical coordinate system is the basis for component/layout sizing and make
 
 ## Renderer state isolation
 
-Rendering code should preserve and restore renderer state when applying temporary state such as clipping. The current subtree clipping path uses RAII-style state scopes.
+Rendering code should preserve and restore renderer/texture state when applying temporary state such as clipping or texture modulation. Scoped state restoration is preferred whenever the backend exposes mutable state.
 
 ## Overflow and clipping
 
@@ -74,6 +74,22 @@ scroll transform
 effective render position
 ```
 
+## Image rendering
+
+`Image` is a thin component over an externally owned `SDL_Texture`.
+
+```text
+Image visual state
+    ↓
+fit geometry + tint
+    ↓
+SDL_RenderTexture
+```
+
+The component does not own or destroy the texture. `STRETCH`, `CONTAIN` and `COVER` affect how the texture is presented inside the already arranged box; they do not change intrinsic measurement semantics.
+
+Texture modulation is temporary and must be restored after drawing so shared textures do not leak visual state between components.
+
 ## Rendering primitives
 
 Low-level primitives remain deliberately narrow and below component semantics. They centralize reusable immediate SDL drawing algorithms such as rectangles, rounded rectangles, lines, circles and similar geometric operations.
@@ -81,6 +97,47 @@ Low-level primitives remain deliberately narrow and below component semantics. T
 A primitive must not know about Node lifecycle, component state, input, focus, modality or application semantics.
 
 Do not turn the primitive module into a general resource/graphics system merely because SDL can support a feature.
+
+## Non-rectangular geometry boundary
+
+The current framework uses rectangular layout bounds as the primary Measure/Arrange contract. Rounded rectangles, circles and other shapes are not yet a second layout model.
+
+Future non-rectangular support should preserve this separation:
+
+```text
+Layout
+  → rectangular bounds
+
+Shape geometry
+  → actual visual/interaction region
+
+Draw
+  → shape rendering
+
+Hit-test
+  → point-in-shape evaluation
+
+Clip
+  → shape-aware clipping where required
+```
+
+A general geometry abstraction should not be introduced until the minimum gameplay UI shape set is known. `border-radius` is therefore a shape/presentation concern first, while layout may continue to operate on its bounding rectangle.
+
+## Transform boundary
+
+Scale and rotation are not currently framework-wide layout semantics. If introduced globally, transforms must be represented consistently across drawing and input:
+
+```text
+local layout geometry
+        ↓
+forward transform → draw
+        ↑
+inverse transform ← hit-test
+```
+
+The design must also define transform origin/pivot, scroll ordering, clipping behavior and interaction with absolute positioning before a general transform API is added.
+
+Do not introduce a general transform stack merely because individual components can rotate or scale themselves.
 
 ## Text rendering
 
@@ -116,6 +173,7 @@ menus/dropdowns
 tabs
 stack/scroll presentation
 modal/backdrop presentation
+Image intrinsic sizing and fit-mode contract
 1920×1080 logical presentation
 resizable/fullscreen letterboxing
 ```
