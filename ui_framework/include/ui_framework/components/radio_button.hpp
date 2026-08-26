@@ -1,16 +1,15 @@
 #pragma once
 
-#include <functional>
-
 #include "ui_framework/node.hpp"
+#include "ui_framework/events.hpp"
 
 namespace ui
 {
+    struct RadioButtonSelectedEvent : UIEvent {};
+
     class RadioButton : public Node
     {
     public:
-        using SelectCallback = std::function<void(RadioButton &, bool)>;
-
         RadioButton();
         ~RadioButton() override = default;
 
@@ -18,7 +17,6 @@ namespace ui
         bool isSelected() const noexcept;
         void setRadius(float radius) noexcept;
         float getRadius() const noexcept;
-        void setOnSelect(SelectCallback callback);
         void select();
         void activate();
 
@@ -29,6 +27,5 @@ namespace ui
     private:
         bool selected_ = false;
         float radius_ = 10.0f;
-        SelectCallback onSelect_;
     };
 }
