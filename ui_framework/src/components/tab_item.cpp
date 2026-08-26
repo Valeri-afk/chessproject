@@ -1,6 +1,7 @@
 #include "ui_framework/components/tab_item.hpp"
 #include "ui_framework/primitives.hpp"
 #include "../core/text_content.hpp"
+#include <utility>
 namespace ui
 {
     TabItem::TabItem() : text_(std::make_unique<TextContent>()) { setPadding({12.0f,12.0f,8.0f,8.0f}); setFocusable(true); setCapturable(true); on<MouseClickEvent>([this](MouseClickEvent &event, Node &) { handleMouseClick(event); }); }
