@@ -54,16 +54,22 @@ namespace ui
     private:
         void handleFocusGained(FocusGainedEvent &event, Node &node);
         void handleFocusLost(FocusLostEvent &event, Node &node);
+        void handleMouseDown(MouseDownEvent &event, Node &node);
+        void handleMouseDrag(MouseDragEvent &event, Node &node);
+        void handleMouseDragEnd(MouseDragEndEvent &event, Node &node);
         void handleKeyDown(KeyDownEvent &event, Node &node);
         void handleTextInput(TextInputEvent &event, Node &node);
         void handleTextEditing(TextEditingEvent &event, Node &node);
         void markTextChanged();
         void syncTextContent();
+        void setCaretFromPointer(float x, bool extendSelection);
 
         std::unique_ptr<TextEditState> editState_;
         std::unique_ptr<TextContent> text_;
         std::string placeholder_;
         TextChangedCallback onTextChanged_;
+        std::size_t pointerSelectionAnchor_ = 0;
+        bool pointerSelecting_ = false;
         bool focused_ = false;
     };
 }
