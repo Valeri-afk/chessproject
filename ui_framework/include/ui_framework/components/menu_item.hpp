@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <string>
 
@@ -12,11 +11,11 @@
 namespace ui
 {
     class TextContent;
+    struct MenuItemActivatedEvent : UIEvent {};
 
     class MenuItem : public Node
     {
     public:
-        using ActivateCallback = std::function<void(MenuItem &)>;
         MenuItem();
         ~MenuItem() override;
         MenuItem(const MenuItem &) = delete;
@@ -33,7 +32,6 @@ namespace ui
         bool isHighlighted() const noexcept;
         void setSelected(bool selected) noexcept;
         bool isSelected() const noexcept;
-        void setOnActivate(ActivateCallback callback);
         void activate();
     protected:
         void update(float dt) override;
@@ -49,6 +47,5 @@ namespace ui
         Color backgroundColor_ = Colors::transparent;
         bool highlighted_ = false;
         bool selected_ = false;
-        ActivateCallback onActivate_;
     };
 }
