@@ -84,6 +84,7 @@ namespace
         prepare(manager, *upperNode);
         expect(manager.showModal(*lowerNode), "first modal must open");
         expect(manager.showModal(*upperNode), "second modal must open above first");
+        expect(!manager.showModal(*upperNode), "the same node must not be pushed twice");
         expect(manager.getActiveModal() == upperNode, "top modal must own interaction");
 
         manager.processEvent(mouseDown(10.0f, 10.0f));
@@ -115,19 +116,44 @@ namespace
         ui::Node *modalPtr = manager.addOverlay(std::move(modal));
         prepare(manager, *modalPtr);
 
+        int firstEscape = 0;
+        int secondEscape = 0;
+        firstPtr->on<ui::KeyDownEvent>([&](ui::KeyDownEvent &event, ui::Node &)
+        {
+            if (event.key == ui::KeyCode::ESCAPE)
+            {
+                ++firstEscape;
+                event.stopPropagation();
+            }
+        });
+        secondPtr->on<ui::KeyDownEvent>([&](ui::KeyDownEvent &event, ui::Node &)
+        {
+            if (event.key == ui::KeyCode::ESCAPE)
+            {
+                ++secondEscape;
+                event.stopPropagation();
+            }
+        });
+
         expect(manager.showModal(*modalPtr), "modal must open");
-        expect(manager.getActiveModal() == modalPtr, "opened modal must become active");
+        manager.processEvent(keyDown(SDLK_ESCAPE));
+        expect(firstEscape == 1 && secondEscape == 0,
+               "opening a non-focusable modal must focus its first focusable child");
 
-        // The modal root is not focusable, so the first focusable descendant is selected.
-        // The first TAB moves to the second, and the next TAB wraps to the first.
-        expect(firstPtr->isFocusable(), "first child must remain focusable");
         manager.processEvent(keyDown(SDLK_TAB));
-        manager.processEvent(keyDown(SDLK_TAB));
+        manager.processEvent(keyDown(SDLK_ESCAPE));
+        expect(secondEscape == 1,
+               "TAB must move focus to the next focusable child inside the modal");
 
-        expect(manager.getActiveModal() == modalPtr, "focus trap must keep modal active");
+        manager.processEvent(keyDown(SDLK_TAB));
+        manager.processEvent(keyDown(SDLK_ESCAPE));
+        expect(firstEscape == 2,
+               "TAB focus traversal must wrap back to the first focusable child");
+        expect(manager.getActiveModal() == modalPtr,
+               "a focused child consuming Escape must keep the modal open");
     }
 
-    void test_escape_can_be_consumed_by_focused_node()
+    void test_escape_can_be_consumed_or_disabled()
     {
         ui::UIManager manager;
         auto modal = std::make_unique<ui::Node>();
@@ -136,20 +162,16 @@ namespace
         ui::Node *modalPtr = manager.addOverlay(std::move(modal));
         prepare(manager, *modalPtr);
 
-        const auto handler = modalPtr->on<ui::KeyDownEvent>(
-            [](ui::KeyDownEvent &event, ui::Node &)
-            {
-                if (event.key == ui::KeyCode::ESCAPE)
-                    event.stopPropagation();
-            });
-
         expect(manager.showModal(*modalPtr), "modal must open");
         manager.processEvent(keyDown(SDLK_ESCAPE));
-        expect(manager.getActiveModal() == modalPtr, "consumed Escape must not close modal");
-
-        modalPtr->removeEventHandler<ui::KeyDownEvent>(handler);
-        manager.processEvent(keyDown(SDLK_ESCAPE));
         expect(manager.getActiveModal() == nullptr, "unconsumed Escape must close modal");
+
+        ui::ModalOptions options;
+        options.closeOnEscape = false;
+        expect(manager.showModal(*modalPtr, options), "modal must reopen with Escape disabled");
+        manager.processEvent(keyDown(SDLK_ESCAPE));
+        expect(manager.getActiveModal() == modalPtr,
+               "closeOnEscape=false must prevent Escape from closing the modal");
     }
 
     void test_outside_click_policy_is_independent_of_backdrop()
@@ -202,7 +224,7 @@ int main()
     {
         test_modal_owns_interaction_without_pausing_lower_modals();
         test_modal_focus_and_tab_trap();
-        test_escape_can_be_consumed_by_focused_node();
+        test_escape_can_be_consumed_or_disabled();
         test_outside_click_policy_is_independent_of_backdrop();
         test_removing_lower_modal_closes_entire_modal_branch();
     }
