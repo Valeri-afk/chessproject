@@ -8,11 +8,6 @@
 
 namespace ui
 {
-    struct MenuItemActivatedEvent : UIEvent
-    {
-        MenuItem *item = nullptr;
-    };
-
     class Menu : public StackPanelNode
     {
     public:
