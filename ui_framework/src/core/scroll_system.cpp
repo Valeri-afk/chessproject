@@ -36,13 +36,25 @@ namespace ui
             return false;
         if (states_.contains(node.getId()))
             return false;
-        states_.emplace(node.getId(), ScrollState{});
+
+        ScrollState state;
+        state.clipToBoundsBeforeRegistration = node.getClipToBounds();
+        node.setClipToBounds(true);
+        states_.emplace(node.getId(), state);
         return true;
     }
 
-    bool ScrollSystem::unregisterScrollNode(NodeTree &, Node::Id nodeId)
+    bool ScrollSystem::unregisterScrollNode(NodeTree &nodeTree, Node::Id nodeId)
     {
-        return states_.erase(nodeId) != 0;
+        const auto it = states_.find(nodeId);
+        if (it == states_.end())
+            return false;
+
+        if (Node *node = nodeTree.findNode(nodeId))
+            node->setClipToBounds(it->second.clipToBoundsBeforeRegistration);
+
+        states_.erase(it);
+        return true;
     }
 
     bool ScrollSystem::isRegistered(Node::Id nodeId) const noexcept
@@ -101,14 +113,19 @@ namespace ui
     {
         ScrollOffset result{};
         const Node *current = &node;
+        bool first = true;
         while (current)
         {
-            if (const auto it = states_.find(current->getId()); it != states_.end())
+            if (!first)
             {
-                result.x += it->second.offset.x;
-                result.y += it->second.offset.y;
+                if (const auto it = states_.find(current->getId()); it != states_.end())
+                {
+                    result.x += it->second.offset.x;
+                    result.y += it->second.offset.y;
+                }
             }
             current = current->getParent();
+            first = false;
         }
         return result;
     }
@@ -236,8 +253,13 @@ namespace ui
         }
     }
 
-    void ScrollSystem::clear(NodeTree &) noexcept
+    void ScrollSystem::clear(NodeTree &nodeTree) noexcept
     {
+        for (const auto &[nodeId, state] : states_)
+        {
+            if (Node *node = nodeTree.findNode(nodeId))
+                node->setClipToBounds(state.clipToBoundsBeforeRegistration);
+        }
         states_.clear();
     }
 }
