@@ -43,6 +43,7 @@ namespace ui
 
         bool showModal(Node &node);
         bool showModal(Node &node, BackdropClickBehavior behavior);
+        bool showModal(Node &node, const ModalOptions &options);
         bool closeModal();
         bool isModal(const Node &node) const noexcept;
         Node *getActiveModal() const noexcept;
