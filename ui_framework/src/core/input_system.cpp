@@ -931,6 +931,8 @@ namespace ui
             return;
         }
 
+        // DragEndEvent may have changed pointer capture.
+        // Never overwrite callback-established capture state.
         if (capturedId &&
             input_.capturedNode &&
             input_.capturedNode->getId() != *capturedId)
@@ -941,11 +943,45 @@ namespace ui
 
         Node *hovered = input_.hoveredNode;
 
+        const std::optional<Node::Id> hoveredId =
+            hovered
+                ? std::optional<Node::Id>(hovered->getId())
+                : std::nullopt;
+
         if (!dispatchMouseLeaveIfNeeded(
                 nodeTree,
                 hovered,
                 position))
         {
+            return;
+        }
+
+        // MouseLeaveEvent may mutate pointer state:
+        // - establish a new capture;
+        // - establish a new pressed node;
+        // - replace the hovered node.
+        //
+        // Never clear callback-established state.
+        if (capturedId &&
+            input_.capturedNode &&
+            input_.capturedNode->getId() != *capturedId)
+        {
+            syncState(nodeTree);
+            return;
+        }
+
+        if (!capturedId &&
+            input_.capturedNode)
+        {
+            syncState(nodeTree);
+            return;
+        }
+
+        if (hoveredId &&
+            input_.hoveredNode &&
+            input_.hoveredNode->getId() != *hoveredId)
+        {
+            syncState(nodeTree);
             return;
         }
 
@@ -975,6 +1011,11 @@ namespace ui
     Node *InputSystem::pressedNode() const noexcept
     {
         return input_.pressedNode;
+    }
+
+    Node *InputSystem::hoveredNode() const noexcept
+    {
+        return input_.hoveredNode;
     }
 
     bool InputSystem::isDragging() const noexcept
