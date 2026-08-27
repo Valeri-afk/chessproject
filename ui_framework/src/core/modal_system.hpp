@@ -53,7 +53,7 @@ namespace ui
         std::optional<Node::Id> backdropId_;
         LayoutSize viewportSize_{};
         Color backdropColor_{0, 0, 0, 160};
-        Animation backdropOpacity_{0.0f};
+        float backdropOpacity_ = 0.0f;
         float backdropTargetOpacity_ = 0.0f;
         float backdropFadeDuration_ = 0.15f;
         Node *findFirstFocusable(Node &node) const;
