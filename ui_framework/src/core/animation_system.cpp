@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 
 namespace ui
 {
@@ -45,20 +46,17 @@ namespace ui
     void AnimationSystem::animateFloat(
         Node &owner,
         PropertyKey property,
+        std::weak_ptr<void> lifetime,
         float currentValue,
         float targetValue,
         float duration,
         AnimationEasing easing,
         Setter setter)
     {
-        if (!property || !setter)
+        if (!property || lifetime.expired() || !setter)
             return;
 
         duration = std::max(0.0f, duration);
-
-        // A property has at most one active animation. A new transition
-        // replaces the old one and starts from the value currently visible
-        // to the component.
         removeFor(owner, property);
 
         if (duration <= 0.0f || nearlyEqual(currentValue, targetValue))
@@ -71,13 +69,13 @@ namespace ui
         animation.id = nextAnimationId_++;
         animation.owner = &owner;
         animation.property = property;
+        animation.lifetime = std::move(lifetime);
         animation.startValue = currentValue;
         animation.currentValue = currentValue;
         animation.targetValue = targetValue;
         animation.duration = duration;
         animation.easing = easing;
         animation.setter = std::move(setter);
-
         animations_.push_back(std::move(animation));
     }
 
@@ -94,11 +92,7 @@ namespace ui
         {
             ActiveAnimation &animation = animations_[index];
 
-            // Nodes can be removed while other deferred framework work is
-            // being processed. Never invoke a property setter after its Node
-            // has ceased to belong to this tree. The owning NodeTree removes
-            // the animation record on the next advance pass.
-            if (!animation.owner)
+            if (animation.lifetime.expired())
             {
                 animations_.erase(animations_.begin() + static_cast<std::ptrdiff_t>(index));
                 continue;
