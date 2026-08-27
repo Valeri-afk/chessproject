@@ -88,7 +88,7 @@ namespace ui
         if (owner_)
         {
             owner_->animationSystem_.animateFloat(
-                this,
+                *this,
                 propertyKey,
                 animationLifetimeToken_,
                 currentValue,
@@ -106,7 +106,7 @@ namespace ui
     void Node::cancelAnimation(const void *propertyKey) noexcept
     {
         if (owner_)
-            owner_->animationSystem_.cancel(this, propertyKey);
+            owner_->animationSystem_.cancel(*this, propertyKey);
     }
 
     void Node::dispatchEventImpl(UIEvent &event, const std::type_index &eventType, NodeTree &nodeTree)
