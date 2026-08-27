@@ -20,14 +20,16 @@ namespace ui
         explicit Animation(float initialValue = 0.0f) noexcept;
         ~Animation() = default;
 
-        Animation(const Animation &) = default;
-        Animation &operator=(const Animation &) = default;
+        Animation(const Animation &) = delete;
+        Animation &operator=(const Animation &) = delete;
         Animation(Animation &&) noexcept = default;
         Animation &operator=(Animation &&) noexcept = default;
 
         void setValue(float value) noexcept;
-        void setTarget(float target, float duration,
-                       AnimationEasing easing = AnimationEasing::Linear) noexcept;
+        void setTarget(
+            float target,
+            float duration,
+            AnimationEasing easing = AnimationEasing::Linear) noexcept;
         void advance(float dt) noexcept;
 
         float value() const noexcept;
