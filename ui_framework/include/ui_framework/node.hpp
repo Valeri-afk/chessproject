@@ -13,7 +13,6 @@
 
 #include <SDL3/SDL.h>
 
-#include "ui_framework/animation.hpp"
 #include "ui_framework/events.hpp"
 #include "ui_framework/layout_context.hpp"
 #include "ui_framework/types.hpp"
@@ -161,7 +160,6 @@ namespace ui
         }
 
         void invalidateLayout() noexcept;
-        void registerAnimation(Animation &animation) noexcept;
         virtual void draw(SDL_Renderer *renderer) { (void)renderer; }
         virtual LayoutSize measure(const MeasureContext &context) const { return measureContent(context.availableContentSize); }
         virtual void arrange(const ArrangeContext &context) { arrangeContent(context.contentPosition, context.contentSize); }
