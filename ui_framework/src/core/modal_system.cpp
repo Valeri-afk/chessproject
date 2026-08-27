@@ -47,13 +47,12 @@ namespace ui
         }
 
         modals_.push_back({modalId, previousFocusId, previousModalId, options});
-
         input.setModalRoot(liveModal);
 
         if (options.showBackdrop)
             ensureBackdrop(nodeTree);
 
-        updateBackdropState();
+        startBackdropAnimation(nodeTree);
 
         if (liveModal->isFocusable())
         {
@@ -86,7 +85,7 @@ namespace ui
             input.setModalRoot(nullptr);
 
         restoreFocusAfterClose(nodeTree, input, session);
-        updateBackdropState();
+        startBackdropAnimation(nodeTree);
         input.syncState(nodeTree);
         return true;
     }
