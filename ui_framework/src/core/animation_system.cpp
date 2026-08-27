@@ -8,6 +8,16 @@
 
 namespace ui
 {
+    FloatAnimationProperty FloatAnimationProperty::from(float &value) noexcept
+    {
+        return FloatAnimationProperty(
+            nullptr,
+            &value,
+            [&value]() noexcept { return value; },
+            [&value](float next) noexcept { value = next; },
+            {});
+    }
+
     bool AnimationSystem::nearlyEqual(float a, float b) noexcept
     {
         return std::fabs(a - b) <= 0.000001f;
@@ -30,53 +40,48 @@ namespace ui
         return t;
     }
 
-    void AnimationSystem::removeFor(Node &owner, PropertyKey property) noexcept
+    void AnimationSystem::removeFor(Node *owner, PropertyKey property) noexcept
     {
-        std::erase_if(animations_, [&owner, property](const ActiveAnimation &animation)
+        std::erase_if(animations_, [owner, property](const ActiveAnimation &animation)
         {
-            return animation.owner == &owner && animation.property == property;
+            return animation.owner == owner && animation.property == property;
         });
     }
 
-    void AnimationSystem::animateFloat(
-        Node &owner,
-        PropertyKey property,
-        std::weak_ptr<void> lifetime,
-        float currentValue,
-        float targetValue,
-        float duration,
-        AnimationEasing easing,
-        Setter setter)
+    void AnimationSystem::animate(const FloatAnimationProperty &property, float targetValue,
+                                  float duration, AnimationEasing easing)
     {
-        if (!property || lifetime.expired() || !setter)
+        if (!property || (property.owner_ && property.lifetime_.expired()))
             return;
 
         duration = std::max(0.0f, duration);
-        removeFor(owner, property);
+        removeFor(property.owner_, property.key_);
 
+        const float currentValue = property.getter_();
         if (duration <= 0.0f || nearlyEqual(currentValue, targetValue))
         {
-            setter(targetValue);
+            property.setter_(targetValue);
             return;
         }
 
         ActiveAnimation animation;
         animation.id = nextAnimationId_++;
-        animation.owner = &owner;
-        animation.property = property;
-        animation.lifetime = std::move(lifetime);
+        animation.owner = property.owner_;
+        animation.property = property.key_;
+        animation.lifetime = property.lifetime_;
         animation.startValue = currentValue;
         animation.currentValue = currentValue;
         animation.targetValue = targetValue;
         animation.duration = duration;
         animation.easing = easing;
-        animation.setter = std::move(setter);
+        animation.setter = property.setter_;
         animations_.push_back(std::move(animation));
     }
 
-    void AnimationSystem::cancel(Node &owner, PropertyKey property) noexcept
+    void AnimationSystem::cancel(const FloatAnimationProperty &property) noexcept
     {
-        removeFor(owner, property);
+        if (property)
+            removeFor(property.owner_, property.key_);
     }
 
     void AnimationSystem::advance(float dt) noexcept
@@ -90,18 +95,12 @@ namespace ui
 
         for (const AnimationId id : ids)
         {
-            auto current = std::find_if(
-                animations_.begin(),
-                animations_.end(),
-                [id](const ActiveAnimation &animation)
-                {
-                    return animation.id == id;
-                });
-
+            auto current = std::find_if(animations_.begin(), animations_.end(),
+                [id](const ActiveAnimation &animation) { return animation.id == id; });
             if (current == animations_.end())
                 continue;
 
-            if (current->lifetime.expired())
+            if (current->owner && current->lifetime.expired())
             {
                 animations_.erase(current);
                 continue;
@@ -109,29 +108,15 @@ namespace ui
 
             ActiveAnimation animation = *current;
             animation.elapsed = std::min(animation.duration, animation.elapsed + dt);
-
-            const float t = animation.duration > 0.0f
-                                ? animation.elapsed / animation.duration
-                                : 1.0f;
+            const float t = animation.duration > 0.0f ? animation.elapsed / animation.duration : 1.0f;
             const float eased = applyEasing(t, animation.easing);
             animation.currentValue = animation.startValue +
-                                     (animation.targetValue - animation.startValue) * eased;
+                                      (animation.targetValue - animation.startValue) * eased;
 
-            // The setter may mutate the animation system: it can replace this
-            // transition, cancel it, or start additional transitions. No
-            // references into animations_ survive the setter call.
             animation.setter(animation.currentValue);
 
-            current = std::find_if(
-                animations_.begin(),
-                animations_.end(),
-                [id](const ActiveAnimation &candidate)
-                {
-                    return candidate.id == id;
-                });
-
-            // The setter removed or replaced this animation. A replacement has
-            // a new id and is intentionally not processed during this tick.
+            current = std::find_if(animations_.begin(), animations_.end(),
+                [id](const ActiveAnimation &candidate) { return candidate.id == id; });
             if (current == animations_.end())
                 continue;
 
@@ -139,13 +124,8 @@ namespace ui
                 nearlyEqual(animation.currentValue, animation.targetValue))
             {
                 current->setter(animation.targetValue);
-                current = std::find_if(
-                    animations_.begin(),
-                    animations_.end(),
-                    [id](const ActiveAnimation &candidate)
-                    {
-                        return candidate.id == id;
-                    });
+                current = std::find_if(animations_.begin(), animations_.end(),
+                    [id](const ActiveAnimation &candidate) { return candidate.id == id; });
                 if (current != animations_.end())
                     animations_.erase(current);
                 continue;
