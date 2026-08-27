@@ -13,6 +13,7 @@
 
 #include <SDL3/SDL.h>
 
+#include "ui_framework/animation.hpp"
 #include "ui_framework/events.hpp"
 #include "ui_framework/layout_context.hpp"
 #include "ui_framework/types.hpp"
@@ -159,9 +160,6 @@ namespace ui
                 callback(static_cast<UIEvent &>(event), *this);
         }
 
-        // Starts a framework-owned transition for one component property.
-        // The component owns the value and decides when a transition is needed;
-        // AnimationSystem owns only the temporary timing state.
         void animateFloat(
             const void *propertyKey,
             float currentValue,
