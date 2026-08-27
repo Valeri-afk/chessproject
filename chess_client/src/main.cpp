@@ -291,7 +291,8 @@ int main()
 
             SDL_SetRenderDrawColor(renderer, 18, 18, 24, 255);
             SDL_RenderClear(renderer);
-            uiManager.runFrame(1.0f / 60.0f, renderer);
+            uiManager.advanceTime(1.0f / 60.0f);
+            uiManager.render(renderer);
             SDL_RenderPresent(renderer);
             SDL_Delay(8);
         }
