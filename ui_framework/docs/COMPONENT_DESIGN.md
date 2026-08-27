@@ -101,11 +101,12 @@ A Node/component is appropriate when it has independent semantic state, layout p
 
 ## Children and content
 
-There is no universal `content` model. Specialized components may define explicit child relationships such as:
+There is no universal `content` model. Specialized components define explicit child relationships where required:
 
 ```text
 Menu       → MenuItem
 TabControl → TabItem
+Dropdown   → Button trigger + Menu
 ```
 
 Structural ownership and semantic content are separate concepts.
@@ -119,6 +120,7 @@ Examples:
 ```text
 Menu       → active/selected MenuItem
 TabControl → selected/active TabItem
+Dropdown   → selected MenuItem
 ```
 
 Do not add generic `selected`, `active`, `highlighted` or similar Node properties merely because several components use the same word.
@@ -195,15 +197,15 @@ StackPanelNode / PanelNode
 
 ## Event registration
 
-There is one event-handler registration mechanism:
+The framework provides the generic Node event registration API:
 
 ```cpp
 node->on<ConcreteEvent>(callback);
 ```
 
-`on()` is used by both client code and component implementations. Components may use private helper methods for internal event handling; that is not a second event system.
+Components use the same mechanism for internal input handlers and clients may register additional handlers. Some existing components also expose convenience callback setters as part of their concrete API (for example `Button::setOnActivate()`); these are component-specific API, not a second global event-dispatch system.
 
-Semantic component events are also delivered through the same Node event mechanism.
+The documentation must therefore not treat the generic `on<Event>()` mechanism and all concrete callback APIs as mutually exclusive. New callback setters should only be introduced when a concrete component contract justifies them.
 
 ## Input events vs semantic component events
 
@@ -241,7 +243,7 @@ When a change has framework-derived consequences, the responsible operation must
 
 ## Presentation and client responsibility
 
-A component owns presentation derived from its own semantic/interaction state and configured visual properties. The client configures the component and reacts to semantic events; it should not mirror component interaction state merely to keep standard presentation correct.
+A component owns presentation derived from its own semantic/interaction state and configured visual properties. The client configures the component and reacts to semantic events or concrete component callbacks; it should not mirror component interaction state merely to keep standard presentation correct.
 
 ## Implementation style
 
@@ -254,7 +256,7 @@ participates in Measure/Arrange/Draw
 uses the existing event API
 coordinates intentionally owned specialized children
 implements its standard interaction behavior
-emits semantic events after meaningful transitions
+emits semantic events where its contract defines them
 ```
 
 It should not:
@@ -285,6 +287,6 @@ Before adding a component:
 10. Is the abstraction simple enough to keep the framework minimal?
 11. Which low-level input events are consumed internally?
 12. Which semantic state is public?
-13. Which semantic events should be emitted?
-14. Does the component need a public callback API beyond `on<Event>()`? If yes, why?
+13. Which semantic events or concrete callbacks should be exposed?
+14. Does a new public callback API duplicate an existing generic event relationship? If so, what concrete component requirement justifies it?
 15. Is default interaction behavior implemented by the component rather than reconstructed by client code?
