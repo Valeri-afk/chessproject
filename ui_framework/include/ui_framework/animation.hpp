@@ -61,16 +61,22 @@ namespace ui
         void to(const FloatAnimationProperty &property, float targetValue,
                 float duration, AnimationEasing easing = AnimationEasing::EaseOut) const
         {
-            if (property && !property.owner_ ? true : !property.lifetime_.expired())
-                if (property.animate_)
-                    property.animate_(targetValue, duration, easing);
+            if (!property)
+                return;
+            if (property.owner_ && property.lifetime_.expired())
+                return;
+            if (property.animate_)
+                property.animate_(targetValue, duration, easing);
         }
 
         void cancel(const FloatAnimationProperty &property) const noexcept
         {
-            if (property && !property.owner_ ? true : !property.lifetime_.expired())
-                if (property.cancel_)
-                    property.cancel_();
+            if (!property)
+                return;
+            if (property.owner_ && property.lifetime_.expired())
+                return;
+            if (property.cancel_)
+                property.cancel_();
         }
     };
 }
