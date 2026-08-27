@@ -8,7 +8,7 @@ enum class AnimationEasing { Linear, EaseIn, EaseOut, EaseInOut };
 class FloatAnimationProperty
 {
 public:
- using PropertyKey=const void*; using Getter=std::function<float()>; using Setter=std::function<void(float)>; using Animate=std::function<void(float,float,AnimationEasing)>; using Cancel=std::function<void()>;
+ using PropertyKey=const void*; using Getter=std::function<float()>; using Setter=std::function<void(float)>; using Animate=std::function<void(float,float,float,AnimationEasing)>; using Cancel=std::function<void()>;
  FloatAnimationProperty()=default;
  explicit operator bool()const noexcept{return key_!=nullptr&&static_cast<bool>(getter_)&&static_cast<bool>(setter_)&&(!owner_||!lifetime_.expired());}
  bool isValid()const noexcept{return static_cast<bool>(*this);}
@@ -22,7 +22,7 @@ private:
 class AnimationController
 {
 public:
- bool to(const FloatAnimationProperty& property,float targetValue,float duration,AnimationEasing easing=AnimationEasing::EaseOut)const{if(!property||!property.animate_)return false;property.animate_(targetValue,duration,easing);return true;}
+ bool to(const FloatAnimationProperty& property,float targetValue,float duration,AnimationEasing easing=AnimationEasing::EaseOut)const{if(!property||!property.animate_)return false;property.animate_(property.value(),targetValue,duration,easing);return true;}
  bool cancel(const FloatAnimationProperty& property)const noexcept{if(!property||!property.cancel_)return false;property.cancel_();return true;}
 };
 }
