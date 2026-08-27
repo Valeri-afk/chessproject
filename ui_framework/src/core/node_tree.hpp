@@ -25,8 +25,7 @@ namespace ui
             ~ScopedMutationGuard();
             ScopedMutationGuard(const ScopedMutationGuard &) = delete;
             ScopedMutationGuard &operator=(const ScopedMutationGuard &) = delete;
-        private:
-            NodeTree *tree_ = nullptr;
+        private: NodeTree *tree_ = nullptr;
         };
         NodeTree() = default;
         NodeTree(const NodeTree &) = delete;
@@ -59,17 +58,16 @@ namespace ui
         void insertLayoutQueueById(NodeId id);
         void flushMutationQueue();
         void requestFullLayout();
-        void advanceTime(float dt) noexcept;
+        void update(float dt);
+        void advanceTime(float dt) noexcept { animationSystem_.advance(dt); }
         void registerAnimation(Animation &animation) noexcept { animationSystem_.registerAnimation(animation); }
         void draw(SDL_Renderer *renderer, std::optional<NodeId> topModalId = std::nullopt);
         bool isDescendant(const Node *node, const Node *ancestor) const noexcept;
         void drawSubtree(Node &node, SDL_Renderer *renderer);
         Node *hitTestSubtree(Node &node, float x, float y);
-
     private:
         struct Mutation { virtual ~Mutation() = default; virtual void operator()() = 0; };
-        template <typename Fn> struct MutationImpl final : Mutation
-        { explicit MutationImpl(Fn &&function) : function(std::move(function)) {} void operator()() override { function(); } Fn function; };
+        template <typename Fn> struct MutationImpl final : Mutation { explicit MutationImpl(Fn &&function):function(std::move(function)){} void operator()() override {function();} Fn function; };
         enum class TraversalResult { Continue, SkipChildren, Stop };
         using TraversalCallback = std::function<TraversalResult(Node &)>;
         TraversalResult traversePreOrder(Node &node, const TraversalCallback &callback, bool reverse = false);
@@ -112,15 +110,10 @@ namespace ui
         friend class Node;
         friend class PanelNode;
     };
-    template <typename Callback> void NodeTree::forEachRoot(Callback &&cb)
-    { { ScopedMutationGuard guard(*this); std::vector<NodeId> ids; ids.reserve(roots_.size()); for (const auto &root : roots_) if (root) ids.push_back(root->getId()); for (NodeId id : ids) if (Node *node = findNode(id)) if (cb(*node)) break; } flushMutationQueue(); }
-    template <typename Callback> void NodeTree::rForEachRoot(Callback &&cb)
-    { { ScopedMutationGuard guard(*this); std::vector<NodeId> ids; ids.reserve(roots_.size()); for (auto it = roots_.rbegin(); it != roots_.rend(); ++it) if (*it) ids.push_back((*it)->getId()); for (NodeId id : ids) if (Node *node = findNode(id)) if (cb(*node)) break; } flushMutationQueue(); }
-    template <typename Callback> void NodeTree::forEachOverlay(Callback &&cb)
-    { { ScopedMutationGuard guard(*this); std::vector<NodeId> ids; ids.reserve(overlays_.size()); for (const auto &overlay : overlays_) if (overlay) ids.push_back(overlay->getId()); for (NodeId id : ids) if (Node *node = findNode(id)) if (cb(*node)) break; } flushMutationQueue(); }
-    template <typename Callback> void NodeTree::rForEachOverlay(Callback &&cb)
-    { { ScopedMutationGuard guard(*this); std::vector<NodeId> ids; ids.reserve(overlays_.size()); for (auto it = overlays_.rbegin(); it != overlays_.rend(); ++it) if (*it) ids.push_back((*it)->getId()); for (NodeId id : ids) if (Node *node = findNode(id)) if (cb(*node)) break; } flushMutationQueue(); }
-    template <typename Fn> void NodeTree::enqueueMutation(Fn &&fn)
-    { using DecayedFn = std::decay_t<Fn>; mutationQueue_.push_back(std::make_unique<MutationImpl<DecayedFn>>(std::forward<Fn>(fn))); }
+    template <typename Callback> void NodeTree::forEachRoot(Callback &&cb) { { ScopedMutationGuard guard(*this); std::vector<NodeId> ids; ids.reserve(roots_.size()); for(const auto &root:roots_) if(root) ids.push_back(root->getId()); for(NodeId id:ids) if(Node *node=findNode(id)) if(cb(*node)) break; } flushMutationQueue(); }
+    template <typename Callback> void NodeTree::rForEachRoot(Callback &&cb) { { ScopedMutationGuard guard(*this); std::vector<NodeId> ids; ids.reserve(roots_.size()); for(auto it=roots_.rbegin();it!=roots_.rend();++it) if(*it) ids.push_back((*it)->getId()); for(NodeId id:ids) if(Node *node=findNode(id)) if(cb(*node)) break; } flushMutationQueue(); }
+    template <typename Callback> void NodeTree::forEachOverlay(Callback &&cb) { { ScopedMutationGuard guard(*this); std::vector<NodeId> ids; ids.reserve(overlays_.size()); for(const auto &overlay:overlays_) if(overlay) ids.push_back(overlay->getId()); for(NodeId id:ids) if(Node *node=findNode(id)) if(cb(*node)) break; } flushMutationQueue(); }
+    template <typename Callback> void NodeTree::rForEachOverlay(Callback &&cb) { { ScopedMutationGuard guard(*this); std::vector<NodeId> ids; ids.reserve(overlays_.size()); for(auto it=overlays_.rbegin();it!=overlays_.rend();++it) if(*it) ids.push_back((*it)->getId()); for(NodeId id:ids) if(Node *node=findNode(id)) if(cb(*node)) break; } flushMutationQueue(); }
+    template <typename Fn> void NodeTree::enqueueMutation(Fn &&fn) { using DecayedFn=std::decay_t<Fn>; mutationQueue_.push_back(std::make_unique<MutationImpl<DecayedFn>>(std::forward<Fn>(fn))); }
     template <typename Fn> void NodeTree::enqueueNodeMutation(Node &, Fn &&fn) { enqueueMutation(std::forward<Fn>(fn)); }
 }
