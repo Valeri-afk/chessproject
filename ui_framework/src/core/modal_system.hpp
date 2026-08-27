@@ -26,7 +26,6 @@ namespace ui
         bool handleKeyDown(NodeTree &nodeTree, InputSystem &input, KeyCode key);
         bool handleKeyEvent(NodeTree &nodeTree, InputSystem &input, KeyCode key, bool propagationStopped);
         bool handlePointerDown(NodeTree &nodeTree, InputSystem &input, const MousePosition &position, MouseButton button);
-        void update(NodeTree &nodeTree, float dt) noexcept;
         void setViewportSize(const LayoutSize &size) noexcept;
         void setBackdropColor(const Color &color) noexcept;
         Color getBackdropColor() const noexcept;
@@ -56,7 +55,7 @@ namespace ui
         std::optional<Node::Id> backdropId_;
         LayoutSize viewportSize_{};
         Color backdropColor_{0, 0, 0, 160};
-        float backdropOpacity_ = 0.0f;
+        Animation backdropOpacity_{0.0f};
         float backdropTargetOpacity_ = 0.0f;
         float backdropFadeDuration_ = 0.15f;
 
@@ -75,5 +74,6 @@ namespace ui
         void ensureBackdrop(NodeTree &nodeTree);
         void removeBackdrop(NodeTree &nodeTree) noexcept;
         void updateBackdropState() noexcept;
+        void startBackdropAnimation(NodeTree &nodeTree) noexcept;
     };
 }
