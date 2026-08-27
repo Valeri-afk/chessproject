@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <memory>
 
 namespace
 {
@@ -10,62 +11,74 @@ namespace
     {
         assert(std::fabs(actual - expected) < 0.0001f);
     }
+
+    class AnimatedNode final : public ui::Node
+    {
+    public:
+        float value() const noexcept { return value_; }
+
+        void animateTo(float target, float duration, ui::AnimationEasing easing = ui::AnimationEasing::Linear)
+        {
+            animateFloat(
+                &value_,
+                value_,
+                target,
+                duration,
+                easing,
+                [this](float value)
+                {
+                    value_ = value;
+                });
+        }
+
+        void cancelValueAnimation() noexcept
+        {
+            cancelAnimation(&value_);
+        }
+
+    private:
+        float value_ = 0.0f;
+    };
 }
 
 int main()
 {
-    ui::Animation animation(0.0f);
-    assert(!animation.isActive());
-    expectNear(animation.value(), 0.0f);
-
-    animation.setTarget(1.0f, 1.0f, ui::AnimationEasing::Linear);
-    assert(animation.isActive());
-    animation.advance(0.25f);
-    expectNear(animation.value(), 0.25f);
-    animation.advance(0.75f);
-    expectNear(animation.value(), 1.0f);
-    assert(!animation.isActive());
-    assert(animation.isAtTarget());
-
-    animation.setTarget(0.0f, 1.0f, ui::AnimationEasing::EaseOut);
-    animation.advance(0.5f);
-    expectNear(animation.value(), 0.25f);
-
-    animation.setValue(0.0f);
-    animation.setTarget(1.0f, 1.0f);
-    animation.advance(-0.5f);
-    expectNear(animation.value(), 0.0f);
-    animation.advance(0.5f);
-    expectNear(animation.value(), 0.5f);
-
-    animation.setValue(3.0f);
-    animation.setTarget(7.0f, 0.0f);
-    expectNear(animation.value(), 7.0f);
-    assert(!animation.isActive());
-    assert(animation.isAtTarget());
-
     ui::NodeTree tree;
-    ui::Animation registered(0.0f);
-    registered.setTarget(10.0f, 1.0f);
-    tree.registerAnimation(registered);
-    tree.registerAnimation(registered);
-    tree.advanceTime(0.5f);
-    expectNear(registered.value(), 5.0f);
-    tree.advanceTime(0.5f);
-    expectNear(registered.value(), 10.0f);
-    assert(!registered.isActive());
+    auto node = std::make_unique<AnimatedNode>();
+    AnimatedNode *animated = node.get();
+    assert(tree.attachRoot(0, std::move(node)) == animated);
 
-    registered.setTarget(20.0f, 1.0f);
-    tree.registerAnimation(registered);
+    animated->animateTo(10.0f, 1.0f);
     tree.advanceTime(0.25f);
-    expectNear(registered.value(), 12.5f);
+    expectNear(animated->value(), 2.5f);
     tree.advanceTime(0.75f);
-    expectNear(registered.value(), 20.0f);
+    expectNear(animated->value(), 10.0f);
 
-    ui::Animation inactive(0.0f);
-    tree.registerAnimation(inactive);
+    animated->animateTo(0.0f, 1.0f, ui::AnimationEasing::EaseOut);
+    tree.advanceTime(0.5f);
+    expectNear(animated->value(), 2.5f);
+
+    // Starting another transition for the same property replaces the old
+    // transition and starts from the value currently visible to the node.
+    animated->animateTo(20.0f, 1.0f);
+    tree.advanceTime(0.25f);
+    expectNear(animated->value(), 6.875f);
+
+    animated->animateTo(30.0f, 0.0f);
+    expectNear(animated->value(), 30.0f);
+
+    animated->animateTo(40.0f, 1.0f);
+    animated->cancelValueAnimation();
     tree.advanceTime(1.0f);
-    expectNear(inactive.value(), 0.0f);
+    expectNear(animated->value(), 30.0f);
+
+    // A destroyed node leaves no live target for its deferred animation.
+    auto temporary = std::make_unique<AnimatedNode>();
+    AnimatedNode *temporaryRaw = temporary.get();
+    assert(tree.attachRoot(1, std::move(temporary)) == temporaryRaw);
+    temporaryRaw->animateTo(100.0f, 1.0f);
+    tree.removeRoot(temporaryRaw);
+    tree.advanceTime(1.0f);
 
     return 0;
 }
