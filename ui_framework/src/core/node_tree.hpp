@@ -66,7 +66,6 @@ namespace ui
         void flushMutationQueue();
         void requestFullLayout();
         void advanceTime(float dt) noexcept;
-        void registerAnimation(Animation &animation) noexcept;
         void draw(SDL_Renderer *renderer, std::optional<NodeId> topModalId = std::nullopt);
         bool isDescendant(const Node *node, const Node *ancestor) const noexcept;
         void drawSubtree(Node &node, SDL_Renderer *renderer);
