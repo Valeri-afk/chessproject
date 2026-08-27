@@ -15,26 +15,24 @@ namespace ui
         EaseInOut
     };
 
-    // A small capability describing one float value that can be transitioned.
-    // Properties created by Nodes carry the Node lifetime automatically. Properties
-    // created for client-owned values are intentionally non-owning: the caller must
-    // keep the referenced value alive while the animation is active.
     class FloatAnimationProperty
     {
     public:
         using PropertyKey = const void *;
         using Getter = std::function<float()>;
         using Setter = std::function<void(float)>;
+        using Animate = std::function<void(float, float, AnimationEasing)>;
+        using Cancel = std::function<void()>;
 
         FloatAnimationProperty() = default;
 
-        static FloatAnimationProperty from(float &value) noexcept;
-
-        explicit operator bool() const noexcept { return key_ != nullptr && static_cast<bool>(setter_); }
+        explicit operator bool() const noexcept
+        {
+            return key_ != nullptr && static_cast<bool>(getter_) && static_cast<bool>(setter_);
+        }
 
     private:
         friend class Node;
-        friend class AnimationSystem;
         friend class AnimationController;
 
         FloatAnimationProperty(
@@ -42,13 +40,37 @@ namespace ui
             PropertyKey key,
             Getter getter,
             Setter setter,
+            Animate animate,
+            Cancel cancel,
             std::weak_ptr<void> lifetime)
-            : owner_(owner), key_(key), getter_(std::move(getter)), setter_(std::move(setter)), lifetime_(std::move(lifetime)) {}
+            : owner_(owner), key_(key), getter_(std::move(getter)), setter_(std::move(setter)),
+              animate_(std::move(animate)), cancel_(std::move(cancel)), lifetime_(std::move(lifetime)) {}
 
         Node *owner_ = nullptr;
         PropertyKey key_ = nullptr;
         Getter getter_;
         Setter setter_;
+        Animate animate_;
+        Cancel cancel_;
         std::weak_ptr<void> lifetime_;
+    };
+
+    class AnimationController
+    {
+    public:
+        void to(const FloatAnimationProperty &property, float targetValue,
+                float duration, AnimationEasing easing = AnimationEasing::EaseOut) const
+        {
+            if (property && !property.owner_ ? true : !property.lifetime_.expired())
+                if (property.animate_)
+                    property.animate_(targetValue, duration, easing);
+        }
+
+        void cancel(const FloatAnimationProperty &property) const noexcept
+        {
+            if (property && !property.owner_ ? true : !property.lifetime_.expired())
+                if (property.cancel_)
+                    property.cancel_();
+        }
     };
 }
