@@ -14,25 +14,17 @@ namespace ui
     class AnimationSystem
     {
     public:
-        using PropertyKey = const void *;
+        using PropertyKey = FloatAnimationProperty::PropertyKey;
         using AnimationId = std::uint64_t;
-        using Setter = std::function<void(float)>;
+        using Setter = FloatAnimationProperty::Setter;
 
         AnimationSystem() = default;
         AnimationSystem(const AnimationSystem &) = delete;
         AnimationSystem &operator=(const AnimationSystem &) = delete;
 
-        void animateFloat(
-            Node &owner,
-            PropertyKey property,
-            std::weak_ptr<void> lifetime,
-            float currentValue,
-            float targetValue,
-            float duration,
-            AnimationEasing easing,
-            Setter setter);
-
-        void cancel(Node &owner, PropertyKey property) noexcept;
+        void animate(const FloatAnimationProperty &property, float targetValue,
+                     float duration, AnimationEasing easing);
+        void cancel(const FloatAnimationProperty &property) noexcept;
         void advance(float dt) noexcept;
 
     private:
@@ -56,6 +48,6 @@ namespace ui
 
         static float applyEasing(float t, AnimationEasing easing) noexcept;
         static bool nearlyEqual(float a, float b) noexcept;
-        void removeFor(Node &owner, PropertyKey property) noexcept;
+        void removeFor(Node *owner, PropertyKey property) noexcept;
     };
 }
