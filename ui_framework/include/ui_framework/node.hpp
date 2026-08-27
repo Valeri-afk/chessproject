@@ -78,9 +78,8 @@ namespace ui
         float getMinWidth() const noexcept;
         float getMinHeight() const noexcept;
         float getMaxWidth() const noexcept;
-        float getMaxHeight() const noexcept;
-        void setPadding(const Padding &padding);
         Padding getPadding() const noexcept;
+        void setPadding(const Padding &padding);
         void setLeftPadding(float value);
         void setRightPadding(float value);
         void setTopPadding(float value);
@@ -132,9 +131,12 @@ namespace ui
             for (auto &callback : callbacks) callback(static_cast<UIEvent &>(event), *this);
         }
 
-        void animateFloat(const void *propertyKey, float currentValue, float targetValue,
-                          float duration, AnimationEasing easing, std::function<void(float)> setter);
-        void cancelAnimation(const void *propertyKey) noexcept;
+        // Expose a semantic animation property from a component without exposing
+        // its storage or the animation runtime itself.
+        FloatAnimationProperty makeFloatAnimationProperty(float &value, const void *propertyKey) noexcept;
+        void animate(const FloatAnimationProperty &property, float targetValue,
+                     float duration, AnimationEasing easing);
+        void cancelAnimation(const FloatAnimationProperty &property) noexcept;
 
         void invalidateLayout() noexcept;
         virtual void draw(SDL_Renderer *renderer) { (void)renderer; }
