@@ -48,22 +48,20 @@ protected:
  bool animateProperty(const FloatAnimationProperty &property, float targetValue, float duration,
                       AnimationEasing easing = AnimationEasing::Linear) noexcept
  {
-     if (!property || property.value() != property.value())
+     if (!property || property.owner_ != this)
          return false;
-     if (!animationPropertyBelongsToThisNode(property))
-         return false;
-     return animationController().to(property, targetValue, duration, easing);
+     property.animate_(property.value(), targetValue, duration, easing);
+     return true;
  }
  bool cancelProperty(const FloatAnimationProperty &property) noexcept
  {
-     if (!property || !animationPropertyBelongsToThisNode(property))
+     if (!property || property.owner_ != this)
          return false;
-     return animationController().cancel(property);
+     property.cancel_();
+     return true;
  }
  virtual void draw(SDL_Renderer* renderer){(void)renderer;} virtual LayoutSize measure(const MeasureContext& context)const{return measureContent(context.availableContentSize);} virtual void arrange(const ArrangeContext& context){arrangeContent(context.contentPosition,context.contentSize);} virtual LayoutSize measureContent(const LayoutSize& availableContent)const{(void)availableContent;return{};} virtual void arrangeContent(const LayoutPosition& contentPosition,const LayoutSize& contentSize){(void)contentPosition;(void)contentSize;} virtual void onMount(){} virtual void onUnmount(){} virtual Node* hitTest(float,float)noexcept;
 private:
- static AnimationController& animationController() noexcept { static AnimationController controller; return controller; }
- bool animationPropertyBelongsToThisNode(const FloatAnimationProperty &property) const noexcept { return property.owner_ == this; }
  void animateFloat(const void*,float,float,float,AnimationEasing,std::function<void(float)>); void cancelAnimation(const void*)noexcept; void invalidateLayout()noexcept;
  struct EventHandlerRecord{EventHandlerId token=0;std::type_index eventType=typeid(void);std::function<void(UIEvent&,Node&)> callback;};
  static CoordinateTransform& coordinateTransform(){static thread_local CoordinateTransform transform;return transform;} static EventHandlerId nextEventHandlerId()noexcept{static std::atomic<EventHandlerId> next{1};return next.fetch_add(1,std::memory_order_relaxed);}
