@@ -53,9 +53,7 @@ namespace
     void prepare(ui::UIManager &manager, ui::Node &node)
     {
         manager.invalidateLayout(node);
-        manager.advanceTime(0.0f);
-        // render() is the phase that commits layout used by hit-testing/focus traversal.
-        (void)node;
+        manager.render(nullptr);
     }
 
     void test_modal_owns_interaction_without_pausing_lower_modals()
@@ -84,6 +82,7 @@ namespace
         expect(!manager.showModal(*upperNode), "the same node must not be pushed twice");
         expect(manager.getActiveModal() == upperNode, "top modal must own interaction");
 
+        prepare(manager, *upperNode);
         manager.processEvent(mouseDown(10.0f, 10.0f));
         expect(upperClicks == 1, "top modal must receive pointer input");
         expect(lowerClicks == 0, "lower modal must not receive pointer input");
@@ -110,7 +109,7 @@ namespace
         modal->addChild(std::move(second), 1);
 
         ui::Node *modalPtr = manager.addOverlay(std::move(modal));
-        manager.advanceTime(0.0f);
+        prepare(manager, *modalPtr);
 
         int firstEscape = 0;
         int secondEscape = 0;
