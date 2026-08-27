@@ -6,6 +6,29 @@ This is a global checklist, not a strict implementation sequence. The source cod
 
 ## Core completion checklist
 
+### Lifecycle
+
+- [x] Separate external event processing, time advancement and rendering into independent `UIManager` operations.
+- [x] Remove the universal per-Node `update(dt)` lifecycle.
+- [x] Keep `NodeTree::advanceTime(dt)` limited to explicitly time-dependent framework systems.
+- [x] Keep `Node::draw()` as an internal rendering hook while exposing `UIManager::render()` as the public rendering phase.
+
+Reference: `FRAMEWORK_SCOPE.md`, `RENDERING_SYSTEM.md`
+
+### Animation system
+
+- [x] Add a small internal float property animation runtime owned by `NodeTree`.
+- [x] Support multiple animated properties on one Node.
+- [x] Replace an active transition when the same property is animated again.
+- [x] Support cancellation and zero-duration transitions.
+- [x] Protect animation targets from destroyed Nodes through the Node lifetime mechanism.
+- [x] Use animation for Button press presentation scale.
+- [x] Use animation for ModalSystem backdrop opacity.
+- [x] Keep Animation objects out of component/client ownership.
+- [x] Keep universal animation configuration, callbacks and property registration out of the current contract.
+
+Reference: `ANIMATION_SYSTEM.md`
+
 ### Scroll system
 
 - [x] Implement and validate scroll-container registration and state.
@@ -35,7 +58,7 @@ Reference: `TEXT_INPUT_SYSTEM.md`
 - [x] Validate nested modal sessions and focus trapping where supported.
 - [x] Keep modality as `ModalSystem` infrastructure exposed through `UIManager`; no standalone public `Modal` component is currently required.
 
-Reference: `MODALITY_SYSTEM.md`
+Reference: `MODALITY_SYSTEM.md`, `ANIMATION_SYSTEM.md`
 
 ### Text architecture boundary
 
@@ -133,6 +156,7 @@ Reference: `COMPONENT_DESIGN.md`, `LIFETIME_AND_MUTATIONS.md`, `DEFERRED_OPERATI
 - [x] Keep `UIManager` as the public framework facade.
 - [x] Keep `NodeTree` as the runtime authority for ownership, liveness, structural mutation and coordinated traversal.
 - [x] Keep `ScrollSystem` and `ModalSystem` as internal services.
+- [x] Keep animation runtime internal to the framework; components request property transitions rather than owning animation objects.
 - [x] Do not introduce a universal property/dependency system without a concrete requirement.
 - [x] Do not introduce parallel input, event or rendering orchestration systems in components/client code.
 - [x] Avoid unnecessary abstractions until a repeated reusable requirement proves their value.
