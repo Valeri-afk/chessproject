@@ -74,24 +74,18 @@ The components/ directories are an active framework layer.
 They contain the current standard UI component set:
 
 Button
-
 ToggleButton
-
 Menu
-
 MenuItem
-
 TabControl
-
 TabItem
-
 Checkbox
-
 RadioButton
-
 Slider
-
 Dropdown
+Typography
+TextInput
+Image
 
 The component layer is intentionally small and does not imply a universal
 component hierarchy or a requirement to reproduce a complete widget toolkit.
@@ -203,7 +197,7 @@ padding;
 
 border;
 
-overflow mode;
+clipToBounds;
 
 event handlers.
 
@@ -243,7 +237,7 @@ Node is the base runtime/component object. Its framework-recognized state is
 not intended to encode every component-specific semantic property.
 
 Generic properties such as visibility, enabled state, geometry, padding,
-border and overflow are interpreted by framework subsystems. Concrete
+border and clipToBounds are interpreted by framework subsystems. Concrete
 components keep their domain state in the component itself.
 
 3.1 Node Ownership
@@ -740,7 +734,7 @@ top modal acting as the highest-priority interaction boundary when active.
 Within a subtree, children are traversed in reverse structural paint order and
 the deepest valid descendant is selected.
 
-Overflow::HIDDEN acts as an ancestor clipping boundary during hit-testing.
+clipToBounds acts as an ancestor clipping boundary during hit-testing.
 
 17. Focus
 Focus is managed by InputSystem.
@@ -1073,7 +1067,7 @@ Animation is not a current global rendering subsystem. It is a mechanism
 for changing semantic/visual state through normal framework semantics.
 
 25. Clipping
-Overflow::HIDDEN defines a subtree clipping/interaction boundary.
+clipToBounds defines a subtree clipping/interaction boundary..
 
 Clipping is a framework-level mechanism implemented during rendering traversal.
 Nested clipping rectangles are intersected.
@@ -1084,14 +1078,14 @@ coordinate space of descendant content. The two mechanisms are composed during
 framework traversal.
 
 Scrolling is a separate framework-level concern implemented through
-ScrollManager. The framework does not model scrolling as a simple
-Overflow::SCROLL property.
+ScrollSystem. The framework does not model scrolling as a simple
+clipToBounds property.
 
 26. Scrolling
 Scrolling is a framework-level behavior rather than a required standalone UI
 component.
 
-ScrollManager owns scroll state and coordinates with UIManager and
+ScrollSystem owns scroll state and coordinates with UIManager and
 NodeTree.
 
 The current source-level responsibilities include:
@@ -1117,7 +1111,7 @@ Scrolling does not rewrite the original layout positions of descendants.
 The effective descendant coordinates are obtained by applying the accumulated
 scroll offset during framework traversal.
 
-Overflow::HIDDEN remains the existing clipping mechanism. It is a clipping
+clipToBounds remains the existing clipping mechanism. It is a clipping
 primitive and is not itself equivalent to a complete scrolling subsystem.
 
 A standalone Scroll / ScrollArea component and scrollbar presentation are
@@ -1147,19 +1141,24 @@ The normal frame flow is approximately:
 text
 UIManager::runFrame()
         |
-        +-- synchronize viewport
-        |
-        +-- prepare for tree operation
-        |
-        +-- NodeTree::update()
-        |
-        +-- LayoutSystem::processLayoutQueue()
-        |
-        +-- synchronize input/modal state
-        |
-        +-- NodeTree::draw()
-        |
-        +-- synchronize state
+        sync renderer-derived viewport
+            ↓
+        request full layout if viewport changed
+            ↓
+        sync input state
+            ↓
+        flush pending tree mutations
+            ↓
+        process layout queue
+            ↓
+        sync scrolling
+            ↓
+        sync/update modality
+            ↓
+        NodeTree update
+            ↓
+        draw
+        
 Input events follow a separate path:
 
 text
@@ -1189,18 +1188,14 @@ UIManager is the main public runtime facade.
 It currently exposes operations including:
 
 frame execution;
-
 SDL event processing;
-
 root attachment/detachment;
-
 overlay attachment/detachment;
-
-viewport configuration;
-
+renderer-derived viewport synchronization;
 modal open/close;
-
 modal queries.
+scroll enable/disable;
+scroll offset queries and mutation;
 
 It owns the major runtime managers through std::unique_ptr:
 
@@ -1212,7 +1207,7 @@ ModalSystem
 
 LayoutSystem
 
-ScrollManager
+ScrollSystem
 
 It also synchronizes renderer-derived viewport state before frame processing.
 
@@ -1276,7 +1271,7 @@ UIManager
   -> InputSystem
   -> LayoutSystem
   -> ModalSystem
-  -> ScrollManager
+  -> ScrollSystem
 
 InputSystem
   -> NodeTree
@@ -1398,7 +1393,7 @@ ModalSystem owns modal stack semantics and coordinates modal-related focus
 behavior.
 
 Scrolling
-ScrollManager owns scroll state and coordinates with UIManager and NodeTree.
+ScrollSystem owns scroll state and coordinates with UIManager and NodeTree.
 Scrolling is a framework-level behavior rather than a component property.
 
 Rendering
@@ -1448,23 +1443,66 @@ TextRenderer does not form part of the public component API.
 
 future resource ownership infrastructure
 
-34. Deferred / Not Currently Required
+34. TextInput
+
+`TextInput` is a public single-line, game-oriented editing component.
+It derives from `Node` and owns its editing state and `TextContent`.
+
+The current public editing API includes:
+
+text
+text / placeholder / font
+caret position
+selection start/end
+selection queries and control
+insertText
+backspace
+deleteForward
+left/right/home/end movement
+selectAll
+clearSelection
+
+TextInput integrates with the framework input system for:
+
+focus;
+keyboard editing;
+SDL text input;
+SDL text-editing/IME composition;
+mouse caret positioning;
+mouse drag selection.
+
+Committed text changes emit TextChangedEvent.
+Enter emits TextInputSubmittedEvent.
+
+IME composition is temporary state and does not modify committed text
+until SDL committed text input is received.
+
+The current component intentionally does not provide:
+
+clipboard integration;
+undo/redo;
+word-wise navigation;
+multiline editing;
+text viewport scrolling;
+framework-owned window-level SDL text-input lifecycle.
+
+35. Deferred / Not Currently Required
 The following areas exist in the repository or are represented by current
 types, but are not currently stabilized architectural layers:
 
-advanced alignment;
-
-Grid;
-
-complete component hierarchy;
-
-rendering abstraction;
-
-backend abstraction;
-
-second rendering backend;
-
-resource abstraction.
+advanced flex/grid layout;
+non-rectangular hit-testing/clipping;
+framework-wide scale/rotation transforms;
+reparenting;
+scrollbar presentation;
+standalone Scroll / ScrollArea component;
+standalone Modal component;
+clipboard / rich TextInput editing;
+undo/redo;
+word-wise text navigation;
+multiline TextInput;
+backend-independent typography abstraction;
+framework-wide resource manager.
 
 ControlNode was a historical/experimental WPF-inspired abstraction.
 It is no longer part of the active source tree and is not an accepted universal
@@ -1488,7 +1526,7 @@ container. Its behavior is considered complete at source level.
 These areas are not necessarily architectural problems.
 They are simply not part of the currently stabilized runtime foundation.
 
-35. Current Architecture Summary
+36. Current Architecture Summary
 The current framework should be understood as a centralized runtime architecture
 built around NodeTree:
 
@@ -1535,7 +1573,7 @@ The current source code remains the authoritative definition of all behavior.
 
 Component architecture cross-reference
 Component architecture is documented separately in
-docs/PHASE5_COMPONENT_ARCHITECTURE.md.
+docs/COMPONENT_DESIGN.md.
 
 That document defines the current component-design rules, including the
 Node/PanelNode boundary, semantic content vs structural children, component
