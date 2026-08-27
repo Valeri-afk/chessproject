@@ -22,7 +22,7 @@ private:
 class AnimationController
 {
 public:
- bool to(const FloatAnimationProperty& property,float targetValue,float duration,AnimationEasing easing=AnimationEasing::EaseOut)const{if(!property||!property.animate_)return false;property.animate_(property.value(),targetValue,duration,easing);return true;}
+ bool to(const FloatAnimationProperty& property,float targetValue,float duration,AnimationEasing easing=AnimationEasing::Linear)const{if(!property||!property.animate_)return false;property.animate_(property.value(),targetValue,duration,easing);return true;}
  bool cancel(const FloatAnimationProperty& property)const noexcept{if(!property||!property.cancel_)return false;property.cancel_();return true;}
 };
 }
