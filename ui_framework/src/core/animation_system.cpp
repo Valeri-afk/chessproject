@@ -1,127 +1,128 @@
 #include "animation_system.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 namespace ui
 {
-    Animation::Animation(float initialValue) noexcept
-        : state_(std::make_shared<State>())
+    bool AnimationSystem::nearlyEqual(float a, float b) noexcept
     {
-        state_->currentValue = initialValue;
-        state_->startValue = initialValue;
-        state_->targetValue = initialValue;
+        return std::fabs(a - b) <= 0.000001f;
     }
 
-    void Animation::setValue(float value) noexcept
-    {
-        if (!state_)
-            return;
-        state_->currentValue = value;
-        state_->startValue = value;
-        state_->targetValue = value;
-        state_->elapsed = 0.0f;
-        state_->duration = 0.0f;
-        state_->active = false;
-    }
-
-    void Animation::setTarget(float target, float duration, AnimationEasing easing) noexcept
-    {
-        if (!state_)
-            return;
-        duration = std::max(0.0f, duration);
-        if (nearlyEqual(state_->targetValue, target) &&
-            nearlyEqual(state_->duration, duration) &&
-            state_->easing == easing)
-            return;
-        state_->targetValue = target;
-        state_->duration = duration;
-        state_->easing = easing;
-        state_->startValue = state_->currentValue;
-        state_->elapsed = 0.0f;
-        if (duration <= 0.0f || nearlyEqual(state_->currentValue, target))
-        {
-            state_->currentValue = target;
-            state_->active = false;
-            return;
-        }
-        state_->active = true;
-    }
-
-    void Animation::advance(float dt) noexcept
-    {
-        if (!state_)
-            return;
-        advanceState(*state_, dt);
-    }
-
-    void Animation::advanceState(State &state, float dt) noexcept
-    {
-        if (!state.active)
-            return;
-        dt = std::max(0.0f, dt);
-        state.elapsed = std::min(state.duration, state.elapsed + dt);
-        const float t = state.duration > 0.0f ? state.elapsed / state.duration : 1.0f;
-        const float eased = applyEasing(t, state.easing);
-        state.currentValue = state.startValue + (state.targetValue - state.startValue) * eased;
-        if (state.elapsed >= state.duration || nearlyEqual(state.currentValue, state.targetValue))
-        {
-            state.currentValue = state.targetValue;
-            state.active = false;
-        }
-    }
-
-    float Animation::value() const noexcept { return state_ ? state_->currentValue : 0.0f; }
-    float Animation::target() const noexcept { return state_ ? state_->targetValue : 0.0f; }
-    bool Animation::isActive() const noexcept { return state_ && state_->active; }
-    bool Animation::isAtTarget() const noexcept { return !state_ || nearlyEqual(state_->currentValue, state_->targetValue); }
-
-    bool Animation::nearlyEqual(float a, float b) noexcept { return std::fabs(a - b) <= 0.000001f; }
-
-    float Animation::applyEasing(float t, AnimationEasing easing) noexcept
+    float AnimationSystem::applyEasing(float t, AnimationEasing easing) noexcept
     {
         t = std::clamp(t, 0.0f, 1.0f);
+
         switch (easing)
         {
-        case AnimationEasing::Linear: return t;
-        case AnimationEasing::EaseIn: return t * t;
+        case AnimationEasing::Linear:
+            return t;
+        case AnimationEasing::EaseIn:
+            return t * t;
         case AnimationEasing::EaseOut:
         {
             const float inverse = 1.0f - t;
             return 1.0f - inverse * inverse;
         }
-        case AnimationEasing::EaseInOut: return t * t * (3.0f - 2.0f * t);
+        case AnimationEasing::EaseInOut:
+            return t * t * (3.0f - 2.0f * t);
         }
+
         return t;
     }
 
-    void AnimationSystem::registerAnimation(Animation &animation)
+    void AnimationSystem::removeFor(Node &owner, PropertyKey property) noexcept
     {
-        if (!animation.state_ || !animation.isActive())
+        std::erase_if(
+            animations_,
+            [&owner, property](const ActiveAnimation &animation)
+            {
+                return animation.owner == &owner && animation.property == property;
+            });
+    }
+
+    void AnimationSystem::animateFloat(
+        Node &owner,
+        PropertyKey property,
+        float currentValue,
+        float targetValue,
+        float duration,
+        AnimationEasing easing,
+        Setter setter)
+    {
+        if (!property || !setter)
             return;
-        for (const auto &weak : animations_)
+
+        duration = std::max(0.0f, duration);
+
+        // A property has at most one active animation. A new transition
+        // replaces the old one and starts from the value currently visible
+        // to the component.
+        removeFor(owner, property);
+
+        if (duration <= 0.0f || nearlyEqual(currentValue, targetValue))
         {
-            if (auto state = weak.lock(); state && state == animation.state_)
-                return;
+            setter(targetValue);
+            return;
         }
-        animations_.push_back(animation.state_);
+
+        ActiveAnimation animation;
+        animation.id = nextAnimationId_++;
+        animation.owner = &owner;
+        animation.property = property;
+        animation.startValue = currentValue;
+        animation.currentValue = currentValue;
+        animation.targetValue = targetValue;
+        animation.duration = duration;
+        animation.easing = easing;
+        animation.setter = std::move(setter);
+
+        animations_.push_back(std::move(animation));
+    }
+
+    void AnimationSystem::cancel(Node &owner, PropertyKey property) noexcept
+    {
+        removeFor(owner, property);
     }
 
     void AnimationSystem::advance(float dt) noexcept
     {
-        for (auto it = animations_.begin(); it != animations_.end();)
+        dt = std::max(0.0f, dt);
+
+        for (std::size_t index = 0; index < animations_.size();)
         {
-            if (auto state = it->lock())
+            ActiveAnimation &animation = animations_[index];
+
+            // Nodes can be removed while other deferred framework work is
+            // being processed. Never invoke a property setter after its Node
+            // has ceased to belong to this tree. The owning NodeTree removes
+            // the animation record on the next advance pass.
+            if (!animation.owner)
             {
-                Animation::advanceState(*state, dt);
-                if (state->active)
-                    ++it;
-                else
-                    it = animations_.erase(it);
+                animations_.erase(animations_.begin() + static_cast<std::ptrdiff_t>(index));
+                continue;
             }
-            else
+
+            animation.elapsed = std::min(animation.duration, animation.elapsed + dt);
+            const float t = animation.duration > 0.0f
+                                ? animation.elapsed / animation.duration
+                                : 1.0f;
+            const float eased = applyEasing(t, animation.easing);
+            animation.currentValue = animation.startValue +
+                                     (animation.targetValue - animation.startValue) * eased;
+
+            animation.setter(animation.currentValue);
+
+            if (animation.elapsed >= animation.duration ||
+                nearlyEqual(animation.currentValue, animation.targetValue))
             {
-                it = animations_.erase(it);
+                animation.setter(animation.targetValue);
+                animations_.erase(animations_.begin() + static_cast<std::ptrdiff_t>(index));
+                continue;
             }
+
+            ++index;
         }
     }
 }
