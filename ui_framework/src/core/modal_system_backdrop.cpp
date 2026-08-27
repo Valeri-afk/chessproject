@@ -53,7 +53,7 @@ namespace ui
     {
         backdropColor_ = color;
         if (backdropNode_)
-            backdropNode_->setBackdrop(backdropColor_, backdropOpacity_.value());
+            backdropNode_->setBackdrop(backdropColor_, backdropOpacity_);
     }
 
     Color ModalSystem::getBackdropColor() const noexcept { return backdropColor_; }
@@ -71,7 +71,7 @@ namespace ui
                 if (backdropNode_)
                 {
                     backdropNode_->setViewport(viewportSize_);
-                    backdropNode_->setBackdrop(backdropColor_, backdropOpacity_.value());
+                    backdropNode_->setBackdrop(backdropColor_, backdropOpacity_);
                     return;
                 }
             }
@@ -82,7 +82,7 @@ namespace ui
         backdrop->setFocusable(false);
         backdrop->setCapturable(false);
         backdrop->setViewport(viewportSize_);
-        backdrop->setBackdrop(backdropColor_, backdropOpacity_.value());
+        backdrop->setBackdrop(backdropColor_, backdropOpacity_);
         backdropId_ = backdrop->getId();
         Node *raw = nodeTree.attachOverlay(nodeTree.overlaysCount(), std::move(backdrop));
         if (!raw)
@@ -110,24 +110,35 @@ namespace ui
         if (backdropNode_)
         {
             backdropNode_->setViewport(viewportSize_);
-            backdropNode_->setBackdrop(backdropColor_, backdropOpacity_.value());
+            backdropNode_->setBackdrop(backdropColor_, backdropOpacity_);
         }
     }
 
     void ModalSystem::startBackdropAnimation(NodeTree &nodeTree) noexcept
     {
         updateBackdropState();
-        backdropOpacity_.setTarget(backdropTargetOpacity_, backdropFadeDuration_, AnimationEasing::EaseOut);
-        if (backdropOpacity_.isActive())
-            nodeTree.registerAnimation(backdropOpacity_);
 
         if (backdropTargetOpacity_ > 0.0f)
             ensureBackdrop(nodeTree);
-        else if (!backdropOpacity_.isActive() && backdropOpacity_.value() <= 0.0f)
-            removeBackdrop(nodeTree);
 
-        if (backdropNode_)
-            backdropNode_->setBackdrop(backdropColor_, backdropOpacity_.value());
+        if (!backdropNode_)
+            return;
+
+        backdropNode_->animateFloat(
+            &backdropOpacity_,
+            backdropOpacity_,
+            backdropTargetOpacity_,
+            backdropFadeDuration_,
+            AnimationEasing::EaseOut,
+            [this](float value)
+            {
+                backdropOpacity_ = std::clamp(value, 0.0f, 1.0f);
+                if (backdropNode_)
+                    backdropNode_->setBackdrop(backdropColor_, backdropOpacity_);
+            });
+
+        if (backdropTargetOpacity_ <= 0.0f && backdropOpacity_ <= 0.0f)
+            removeBackdrop(nodeTree);
     }
 
     void ModalSystem::clear(NodeTree &nodeTree, InputSystem &input) noexcept
@@ -136,7 +147,9 @@ namespace ui
         input.cancelPointerInteraction(nodeTree);
         input.clearFocus(nodeTree);
         backdropTargetOpacity_ = 0.0f;
-        backdropOpacity_.setValue(0.0f);
+        backdropOpacity_ = 0.0f;
+        if (backdropNode_)
+            backdropNode_->cancelAnimation(&backdropOpacity_);
         removeBackdrop(nodeTree);
     }
 }
