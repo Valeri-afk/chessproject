@@ -32,7 +32,6 @@ protected:
  {
      if (!propertyKey)
          return FloatAnimationProperty{};
-
      return FloatAnimationProperty(
          this,
          propertyKey,
@@ -46,11 +45,29 @@ protected:
          [this, propertyKey]() noexcept { cancelAnimation(propertyKey); },
          animationLifetimeToken_);
  }
- void animateFloat(const void*,float,float,float,AnimationEasing,std::function<void(float)>); void cancelAnimation(const void*)noexcept; void invalidateLayout()noexcept; virtual void draw(SDL_Renderer* renderer){(void)renderer;} virtual LayoutSize measure(const MeasureContext& context)const{return measureContent(context.availableContentSize);} virtual void arrange(const ArrangeContext& context){arrangeContent(context.contentPosition,context.contentSize);} virtual LayoutSize measureContent(const LayoutSize& availableContent)const{(void)availableContent;return{};} virtual void arrangeContent(const LayoutPosition& contentPosition,const LayoutSize& contentSize){(void)contentPosition;(void)contentSize;} virtual void onMount(){} virtual void onUnmount(){} virtual Node* hitTest(float,float)noexcept;
+ bool animateProperty(const FloatAnimationProperty &property, float targetValue, float duration,
+                      AnimationEasing easing = AnimationEasing::Linear) noexcept
+ {
+     if (!property || property.value() != property.value())
+         return false;
+     if (!animationPropertyBelongsToThisNode(property))
+         return false;
+     return animationController().to(property, targetValue, duration, easing);
+ }
+ bool cancelProperty(const FloatAnimationProperty &property) noexcept
+ {
+     if (!property || !animationPropertyBelongsToThisNode(property))
+         return false;
+     return animationController().cancel(property);
+ }
+ virtual void draw(SDL_Renderer* renderer){(void)renderer;} virtual LayoutSize measure(const MeasureContext& context)const{return measureContent(context.availableContentSize);} virtual void arrange(const ArrangeContext& context){arrangeContent(context.contentPosition,context.contentSize);} virtual LayoutSize measureContent(const LayoutSize& availableContent)const{(void)availableContent;return{};} virtual void arrangeContent(const LayoutPosition& contentPosition,const LayoutSize& contentSize){(void)contentPosition;(void)contentSize;} virtual void onMount(){} virtual void onUnmount(){} virtual Node* hitTest(float,float)noexcept;
 private:
+ static AnimationController& animationController() noexcept { static AnimationController controller; return controller; }
+ bool animationPropertyBelongsToThisNode(const FloatAnimationProperty &property) const noexcept { return property.owner_ == this; }
+ void animateFloat(const void*,float,float,float,AnimationEasing,std::function<void(float)>); void cancelAnimation(const void*)noexcept; void invalidateLayout()noexcept;
  struct EventHandlerRecord{EventHandlerId token=0;std::type_index eventType=typeid(void);std::function<void(UIEvent&,Node&)> callback;};
  static CoordinateTransform& coordinateTransform(){static thread_local CoordinateTransform transform;return transform;} static EventHandlerId nextEventHandlerId()noexcept{static std::atomic<EventHandlerId> next{1};return next.fetch_add(1,std::memory_order_relaxed);}
  Node* parent_=nullptr; NodeTree* owner_=nullptr; LayoutSizeValue size_{}; LayoutPosition position_{}; PositionMode positionMode_=PositionMode::Layout; LayoutPosition actualPosition_; LayoutSize actualSize_; LayoutSize desiredSize_; LayoutSize minSize_{}; LayoutSize maxSize_{std::numeric_limits<float>::max(),std::numeric_limits<float>::max()}; Padding padding_; Border border_; bool clipToBounds_=false; bool visible_=true; bool enabled_=true; bool focusable_=false; bool capturable_=false; std::vector<EventHandlerRecord> eventHandlers_; std::shared_ptr<void> animationLifetimeToken_=std::make_shared<int>(0); const Id id_=nextId();
- static Id nextId()noexcept{static std::atomic<Id> next{1};return next.fetch_add(1,std::memory_order_relaxed);} LayoutSize clampSize(LayoutSize,LayoutSize,LayoutSize)const; template<typename Event> void dispatchEvent(Event& event,NodeTree& nodeTree){dispatchEventImpl(static_cast<UIEvent&>(event),std::type_index(typeid(Event)),nodeTree);} void dispatchEventImpl(UIEvent&,const std::type_index&,NodeTree&); friend class NodeTree; friend class PanelNode; friend class LayoutSystem; friend class EventDispatcher; friend class ModalSystem;
+ static Id nextId()noexcept{static std::atomic<Id> next{1};return next.fetch_add(1,std::memory_order_relaxed);} LayoutSize clampSize(LayoutSize,LayoutSize,LayoutSize)const; template<typename Event> void dispatchEvent(Event& event,NodeTree& nodeTree){dispatchEventImpl(static_cast<UIEvent&>(event),std::type_index(typeid(Event)),nodeTree);} void dispatchEventImpl(UIEvent&,const std::type_index&,NodeTree&); friend class NodeTree; friend class PanelNode; friend class LayoutSystem; friend class EventDispatcher; friend class ModalSystem; friend class FloatAnimationProperty; friend class AnimationController;
 };
 }
