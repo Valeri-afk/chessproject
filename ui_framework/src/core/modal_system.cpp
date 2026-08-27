@@ -208,14 +208,10 @@ namespace ui
 
         if (backdropNode_)
         {
-            backdropNode_->setBackdrop(backdropColor_, backdropOpacity_.value());
+            backdropNode_->setBackdrop(backdropColor_, backdropOpacity_);
 
-            if (backdropTargetOpacity_ <= 0.0f &&
-                !backdropOpacity_.isActive() &&
-                backdropOpacity_.value() <= 0.0f)
-            {
+            if (backdropTargetOpacity_ <= 0.0f && backdropOpacity_ <= 0.0f)
                 removeBackdrop(nodeTree);
-            }
         }
 
         if (Node *topModal = topModalNode(nodeTree))
