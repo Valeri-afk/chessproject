@@ -40,7 +40,7 @@ namespace ui
         pressAnimationEnabled_=e;
         if(!e)
         {
-            cancelAnimation(&presentationScale_);
+            cancelProperty(pressScaleProperty());
             presentationScale_=1.0f;
         }
     }
@@ -73,13 +73,12 @@ namespace ui
     {
         if(!pressAnimationEnabled_)
         {
-            cancelAnimation(&presentationScale_);
+            cancelProperty(pressScaleProperty());
             presentationScale_=1.0f;
             return;
         }
         static constexpr float duration=0.08f;
-        animateFloat(&presentationScale_,presentationScale_,target,duration,AnimationEasing::EaseOut,
-                     [this](float value){ presentationScale_=value; });
+        animateProperty(pressScaleProperty(),target,duration,AnimationEasing::EaseOut);
     }
     void Button::handleMouseDown(MouseDownEvent &e)
     {
