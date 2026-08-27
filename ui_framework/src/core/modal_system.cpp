@@ -377,6 +377,7 @@ namespace ui
         input.cancelPointerInteraction(nodeTree);
         input.clearFocus(nodeTree);
         restoreFocusAfterClose(nodeTree, input, session);
+        startBackdropAnimation(nodeTree);
         return true;
     }
 
