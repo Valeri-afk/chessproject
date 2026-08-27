@@ -206,6 +206,18 @@ namespace ui
 
         updateBackdropState();
 
+        if (backdropNode_)
+        {
+            backdropNode_->setBackdrop(backdropColor_, backdropOpacity_.value());
+
+            if (backdropTargetOpacity_ <= 0.0f &&
+                !backdropOpacity_.isActive() &&
+                backdropOpacity_.value() <= 0.0f)
+            {
+                removeBackdrop(nodeTree);
+            }
+        }
+
         if (Node *topModal = topModalNode(nodeTree))
         {
             input.setModalRoot(topModal);
