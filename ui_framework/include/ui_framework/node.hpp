@@ -24,6 +24,7 @@ namespace ui
     class PanelNode;
     class LayoutSystem;
     class EventDispatcher;
+    class ModalSystem;
 
     class Node
     {
@@ -36,19 +37,10 @@ namespace ui
         {
         public:
             explicit ScopedCoordinateTransform(CoordinateTransform transform)
-                : previous_(coordinateTransform())
-            {
-                coordinateTransform() = std::move(transform);
-            }
-
-            ~ScopedCoordinateTransform()
-            {
-                coordinateTransform() = std::move(previous_);
-            }
-
+                : previous_(coordinateTransform()) { coordinateTransform() = std::move(transform); }
+            ~ScopedCoordinateTransform() { coordinateTransform() = std::move(previous_); }
             ScopedCoordinateTransform(const ScopedCoordinateTransform &) = delete;
             ScopedCoordinateTransform &operator=(const ScopedCoordinateTransform &) = delete;
-
         private:
             CoordinateTransform previous_;
         };
@@ -108,18 +100,10 @@ namespace ui
         template <typename Event>
         EventHandlerId on(std::function<void(Event &, Node &)> handler)
         {
-            if (!handler)
-                return 0;
-
+            if (!handler) return 0;
             const EventHandlerId token = nextEventHandlerId();
-            eventHandlers_.push_back(
-                EventHandlerRecord{
-                    token,
-                    std::type_index(typeid(Event)),
-                    [handler = std::move(handler)](UIEvent &event, Node &node)
-                    {
-                        handler(static_cast<Event &>(event), node);
-                    }});
+            eventHandlers_.push_back(EventHandlerRecord{token, std::type_index(typeid(Event)),
+                [handler = std::move(handler)](UIEvent &event, Node &node) { handler(static_cast<Event &>(event), node); }});
             return token;
         }
 
@@ -127,14 +111,8 @@ namespace ui
         void removeEventHandler(EventHandlerId handlerId)
         {
             const std::type_index eventType(typeid(Event));
-            eventHandlers_.erase(
-                std::remove_if(
-                    eventHandlers_.begin(),
-                    eventHandlers_.end(),
-                    [eventType, handlerId](const EventHandlerRecord &record)
-                    {
-                        return record.eventType == eventType && record.token == handlerId;
-                    }),
+            eventHandlers_.erase(std::remove_if(eventHandlers_.begin(), eventHandlers_.end(),
+                [eventType, handlerId](const EventHandlerRecord &record) { return record.eventType == eventType && record.token == handlerId; }),
                 eventHandlers_.end());
         }
 
@@ -146,43 +124,24 @@ namespace ui
             event.currentTarget = this;
             event.phase = UIEvent::Phase::TARGET;
             event.propagationStopped = false;
-
             std::vector<std::function<void(UIEvent &, Node &)>> callbacks;
             callbacks.reserve(eventHandlers_.size());
             const std::type_index eventType(typeid(Event));
             for (const EventHandlerRecord &record : eventHandlers_)
-            {
-                if (record.eventType == eventType)
-                    callbacks.push_back(record.callback);
-            }
-
-            for (auto &callback : callbacks)
-                callback(static_cast<UIEvent &>(event), *this);
+                if (record.eventType == eventType) callbacks.push_back(record.callback);
+            for (auto &callback : callbacks) callback(static_cast<UIEvent &>(event), *this);
         }
 
-        void animateFloat(
-            const void *propertyKey,
-            float currentValue,
-            float targetValue,
-            float duration,
-            AnimationEasing easing,
-            std::function<void(float)> setter);
+        void animateFloat(const void *propertyKey, float currentValue, float targetValue,
+                          float duration, AnimationEasing easing, std::function<void(float)> setter);
         void cancelAnimation(const void *propertyKey) noexcept;
 
         void invalidateLayout() noexcept;
         virtual void draw(SDL_Renderer *renderer) { (void)renderer; }
         virtual LayoutSize measure(const MeasureContext &context) const { return measureContent(context.availableContentSize); }
         virtual void arrange(const ArrangeContext &context) { arrangeContent(context.contentPosition, context.contentSize); }
-        virtual LayoutSize measureContent(const LayoutSize &availableContent) const
-        {
-            (void)availableContent;
-            return {};
-        }
-        virtual void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize)
-        {
-            (void)contentPosition;
-            (void)contentSize;
-        }
+        virtual LayoutSize measureContent(const LayoutSize &availableContent) const { (void)availableContent; return {}; }
+        virtual void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize) { (void)contentPosition; (void)contentSize; }
         virtual void onMount() {}
         virtual void onUnmount() {}
         virtual Node *hitTest(float x, float y) noexcept;
@@ -200,7 +159,6 @@ namespace ui
             static thread_local CoordinateTransform transform;
             return transform;
         }
-
         static EventHandlerId nextEventHandlerId() noexcept
         {
             static std::atomic<EventHandlerId> next{1};
@@ -228,24 +186,15 @@ namespace ui
         std::shared_ptr<void> animationLifetimeToken_ = std::make_shared<int>(0);
         const Id id_ = nextId();
 
-        static Id nextId() noexcept
-        {
-            static std::atomic<Id> next{1};
-            return next.fetch_add(1, std::memory_order_relaxed);
-        }
-
+        static Id nextId() noexcept { static std::atomic<Id> next{1}; return next.fetch_add(1, std::memory_order_relaxed); }
         LayoutSize clampSize(LayoutSize size, LayoutSize minSize, LayoutSize maxSize) const;
-
         template <typename Event>
-        void dispatchEvent(Event &event, NodeTree &nodeTree)
-        {
-            dispatchEventImpl(static_cast<UIEvent &>(event), std::type_index(typeid(Event)), nodeTree);
-        }
-
+        void dispatchEvent(Event &event, NodeTree &nodeTree) { dispatchEventImpl(static_cast<UIEvent &>(event), std::type_index(typeid(Event)), nodeTree); }
         void dispatchEventImpl(UIEvent &event, const std::type_index &eventType, NodeTree &nodeTree);
         friend class NodeTree;
         friend class PanelNode;
         friend class LayoutSystem;
         friend class EventDispatcher;
+        friend class ModalSystem;
     };
 }
