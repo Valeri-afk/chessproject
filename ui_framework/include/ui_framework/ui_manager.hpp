@@ -27,7 +27,6 @@ namespace ui
         void processEvent(const SDL_Event &event, SDL_Renderer *renderer = nullptr);
         void advanceTime(float dt);
         void render(SDL_Renderer *renderer);
-        void runFrame(float dt, SDL_Renderer *renderer);
 
         Node *addRoot(std::unique_ptr<Node> node);
         Node *addOverlay(std::unique_ptr<Node> node);
