@@ -20,6 +20,7 @@ Start with:
 - [Scroll System](docs/SCROLL_SYSTEM.md)
 - [Text System](docs/TEXT_SYSTEM.md)
 - [Text Input System](docs/TEXT_INPUT_SYSTEM.md)
+- [Animation System](docs/ANIMATION_SYSTEM.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Development Instructions](docs/INSTRUCTIONS.md)
 
@@ -29,6 +30,6 @@ The source code is the authoritative source of truth for current behavior. The f
 
 ## Current state
 
-The framework currently provides retained-node ownership and lifecycle, deferred structural mutation, Measure → Arrange layout with explicit invalidation, SDL input routing, event dispatch, focus/capture, rendering/clipping, modality, scrolling, text rendering/layout and a single-line game-oriented `TextInput` control.
+The framework currently provides retained-node ownership and lifecycle, deferred structural mutation, Measure → Arrange layout with explicit invalidation, SDL input routing, event dispatch, focus/capture, rendering/clipping, modality, scrolling, text rendering/layout, a small internal property-based animation runtime and a single-line game-oriented `TextInput` control.
 
 The framework remains intentionally small. Advanced geometry, a general resource manager, richer text editing, scrollbar presentation and standalone `Scroll` / `ScrollArea` or `Modal` components remain outside the current stabilized scope.
