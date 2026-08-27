@@ -26,10 +26,7 @@ namespace ui
         Animation &operator=(Animation &&) noexcept = default;
 
         void setValue(float value) noexcept;
-        void setTarget(
-            float target,
-            float duration,
-            AnimationEasing easing = AnimationEasing::Linear) noexcept;
+        void setTarget(float target, float duration, AnimationEasing easing = AnimationEasing::Linear) noexcept;
         void advance(float dt) noexcept;
 
         float value() const noexcept;
@@ -53,6 +50,7 @@ namespace ui
 
         static bool nearlyEqual(float a, float b) noexcept;
         static float applyEasing(float t, AnimationEasing easing) noexcept;
+        static void advanceState(State &state, float dt) noexcept;
 
         friend class AnimationSystem;
     };
