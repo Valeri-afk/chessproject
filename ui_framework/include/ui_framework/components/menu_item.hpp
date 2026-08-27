@@ -35,7 +35,6 @@ namespace ui
         bool isSelected() const noexcept;
         void activate();
     protected:
-        void update(float dt) override;
         LayoutSize measureContent(const LayoutSize &availableContent) const override;
         void arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize) override;
         void draw(SDL_Renderer *renderer) override;
