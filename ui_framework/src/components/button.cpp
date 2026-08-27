@@ -35,10 +35,16 @@ namespace ui
     float Button::getBorderRadius() const noexcept { return borderRadius_; }
     void Button::setPressScale(float s) noexcept { pressScale_=std::clamp(s,0.0f,1.0f); }
     float Button::getPressScale() const noexcept { return pressScale_; }
-    void Button::setPressAnimationEnabled(bool e) noexcept { pressAnimationEnabled_=e; if(!e) pressAnimation_.setValue(1.0f); }
+    void Button::setPressAnimationEnabled(bool e) noexcept
+    {
+        pressAnimationEnabled_=e;
+        if(!e)
+        {
+            cancelAnimation(&presentationScale_);
+            presentationScale_=1.0f;
+        }
+    }
     bool Button::isPressAnimationEnabled() const noexcept { return pressAnimationEnabled_; }
-    void Button::setPressAnimationSpeed(float s) noexcept { pressAnimationSpeed_=std::max(0.0f,s); }
-    float Button::getPressAnimationSpeed() const noexcept { return pressAnimationSpeed_; }
     bool Button::isPressed() const noexcept { return pressed_; }
     bool Button::isHovered() const noexcept { return hovered_; }
     void Button::activate() { if(!isVisible()||!isEnabled())return; onActivate(); }
@@ -52,25 +58,49 @@ namespace ui
     {
         if(!renderer)return;
         const auto p=getActualPosition(); const auto s=getActualSize(); const auto bg=presentationBackgroundColor(); const auto border=presentationBorderColor();
-        if(variant_!=Variant::TEXT) primitives::roundedBoxRGBA(renderer,p.x,p.y,p.x+s.width,p.y+s.height,borderRadius_,bg.r,bg.g,bg.b,bg.a);
-        if(variant_==Variant::OUTLINED) primitives::roundedRectangleRGBA(renderer,p.x,p.y,p.x+s.width,p.y+s.height,borderRadius_,border.r,border.g,border.b,border.a);
+        const float scale=std::clamp(presentationScale_,0.0f,1.0f);
+        const float drawWidth=s.width*scale;
+        const float drawHeight=s.height*scale;
+        const float drawX=p.x+(s.width-drawWidth)*0.5f;
+        const float drawY=p.y+(s.height-drawHeight)*0.5f;
+        if(variant_!=Variant::TEXT)
+            primitives::roundedBoxRGBA(renderer,drawX,drawY,drawX+drawWidth,drawY+drawHeight,borderRadius_,bg.r,bg.g,bg.b,bg.a);
+        if(variant_==Variant::OUTLINED)
+            primitives::roundedRectangleRGBA(renderer,drawX,drawY,drawX+drawWidth,drawY+drawHeight,borderRadius_,border.r,border.g,border.b,border.a);
         text_->draw(renderer);
+    }
+    void Button::animatePressScale(float target) noexcept
+    {
+        if(!pressAnimationEnabled_)
+        {
+            cancelAnimation(&presentationScale_);
+            presentationScale_=1.0f;
+            return;
+        }
+        static constexpr float duration=0.08f;
+        animateFloat(&presentationScale_,presentationScale_,target,duration,AnimationEasing::EaseOut,
+                     [this](float value){ presentationScale_=value; });
     }
     void Button::handleMouseDown(MouseDownEvent &e)
     {
         if(e.button!=MouseButton::Left||!isEnabled())return;
         pressed_=true;
-        if(pressAnimationEnabled_){pressAnimation_.setTarget(pressScale_,3.0f/std::max(pressAnimationSpeed_,0.001f),AnimationEasing::EaseOut);registerAnimation(pressAnimation_);}else pressAnimation_.setValue(1.0f);
+        animatePressScale(pressScale_);
     }
     void Button::handleMouseUp(MouseUpEvent &e)
     {
         if(e.button!=MouseButton::Left)return;
         pressed_=false;
-        if(pressAnimationEnabled_){pressAnimation_.setTarget(1.0f,3.0f/std::max(pressAnimationSpeed_,0.001f),AnimationEasing::EaseOut);registerAnimation(pressAnimation_);}else pressAnimation_.setValue(1.0f);
+        animatePressScale(1.0f);
     }
     void Button::handleMouseClick(MouseClickEvent &e) { if(e.button==MouseButton::Left)activate(); }
     void Button::handleMouseEnter(MouseEnterEvent &) { hovered_=true; }
-    void Button::handleMouseLeave(MouseLeaveEvent &) { hovered_=false; pressed_=false; if(pressAnimationEnabled_){pressAnimation_.setTarget(1.0f,3.0f/std::max(pressAnimationSpeed_,0.001f),AnimationEasing::EaseOut);registerAnimation(pressAnimation_);} }
+    void Button::handleMouseLeave(MouseLeaveEvent &)
+    {
+        hovered_=false;
+        pressed_=false;
+        animatePressScale(1.0f);
+    }
     Color Button::multiplyAlpha(Color c,float f) noexcept { c.a=static_cast<uint8_t>(std::clamp(c.a*f,0.0f,255.0f)); return c; }
     Color Button::lighten(Color c,float a) noexcept { a=std::clamp(a,0.0f,1.0f); c.r=static_cast<uint8_t>(c.r+(255-c.r)*a); c.g=static_cast<uint8_t>(c.g+(255-c.g)*a); c.b=static_cast<uint8_t>(c.b+(255-c.b)*a); return c; }
 }
