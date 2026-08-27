@@ -83,17 +83,33 @@ namespace ui
     {
         dt = std::max(0.0f, dt);
 
-        for (std::size_t index = 0; index < animations_.size();)
-        {
-            ActiveAnimation animation = animations_[index];
+        std::vector<AnimationId> ids;
+        ids.reserve(animations_.size());
+        for (const ActiveAnimation &animation : animations_)
+            ids.push_back(animation.id);
 
-            if (animation.lifetime.expired())
+        for (const AnimationId id : ids)
+        {
+            auto current = std::find_if(
+                animations_.begin(),
+                animations_.end(),
+                [id](const ActiveAnimation &animation)
+                {
+                    return animation.id == id;
+                });
+
+            if (current == animations_.end())
+                continue;
+
+            if (current->lifetime.expired())
             {
-                animations_.erase(animations_.begin() + static_cast<std::ptrdiff_t>(index));
+                animations_.erase(current);
                 continue;
             }
 
+            ActiveAnimation animation = *current;
             animation.elapsed = std::min(animation.duration, animation.elapsed + dt);
+
             const float t = animation.duration > 0.0f
                                 ? animation.elapsed / animation.duration
                                 : 1.0f;
@@ -101,22 +117,23 @@ namespace ui
             animation.currentValue = animation.startValue +
                                      (animation.targetValue - animation.startValue) * eased;
 
+            // The setter may mutate the animation system: it can replace this
+            // transition, cancel it, or start additional transitions. No
+            // references into animations_ survive the setter call.
             animation.setter(animation.currentValue);
 
-            auto current = std::find_if(
+            current = std::find_if(
                 animations_.begin(),
                 animations_.end(),
-                [id = animation.id](const ActiveAnimation &candidate)
+                [id](const ActiveAnimation &candidate)
                 {
                     return candidate.id == id;
                 });
 
+            // The setter removed or replaced this animation. A replacement has
+            // a new id and is intentionally not processed during this tick.
             if (current == animations_.end())
-            {
-                if (index < animations_.size())
-                    ++index;
                 continue;
-            }
 
             if (animation.elapsed >= animation.duration ||
                 nearlyEqual(animation.currentValue, animation.targetValue))
@@ -125,9 +142,9 @@ namespace ui
                 current = std::find_if(
                     animations_.begin(),
                     animations_.end(),
-                    [id = animation.id](const ActiveAnimation &candidate)
+                    [id](const ActiveAnimation &candidate)
                     {
-                        return candidate.id == animation.id;
+                        return candidate.id == id;
                     });
                 if (current != animations_.end())
                     animations_.erase(current);
@@ -136,7 +153,6 @@ namespace ui
 
             current->elapsed = animation.elapsed;
             current->currentValue = animation.currentValue;
-            ++index;
         }
     }
 }
