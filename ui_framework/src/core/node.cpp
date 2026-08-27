@@ -77,10 +77,36 @@ namespace ui
             owner_->insertLayoutQueue(this);
     }
 
-    void Node::registerAnimation(Animation &animation) noexcept
+    void Node::animateFloat(
+        const void *propertyKey,
+        float currentValue,
+        float targetValue,
+        float duration,
+        AnimationEasing easing,
+        std::function<void(float)> setter)
     {
         if (owner_)
-            owner_->registerAnimation(animation);
+        {
+            owner_->animationSystem_.animateFloat(
+                *this,
+                propertyKey,
+                animationLifetimeToken_,
+                currentValue,
+                targetValue,
+                duration,
+                easing,
+                std::move(setter));
+        }
+        else if (setter)
+        {
+            setter(targetValue);
+        }
+    }
+
+    void Node::cancelAnimation(const void *propertyKey) noexcept
+    {
+        if (owner_)
+            owner_->animationSystem_.cancel(*this, propertyKey);
     }
 
     void Node::dispatchEventImpl(UIEvent &event, const std::type_index &eventType, NodeTree &nodeTree)
