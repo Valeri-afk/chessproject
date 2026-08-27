@@ -39,8 +39,6 @@ namespace ui
         if(!nodeTree_)return;
         prepareForTreeOperation();
         nodeTree_->advanceTime(dt);
-        if(modalSystem_)
-            modalSystem_->advanceTime(*nodeTree_);
         prepareForTreeOperation();
     }
     void UIManager::render(SDL_Renderer *renderer)
