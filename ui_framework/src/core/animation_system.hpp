@@ -9,11 +9,10 @@
 
 namespace ui
 {
-    class Node;
-
     class AnimationSystem
     {
     public:
+        using OwnerKey = void *;
         using PropertyKey = const void *;
         using AnimationId = std::uint64_t;
         using Setter = std::function<void(float)>;
@@ -23,7 +22,7 @@ namespace ui
         AnimationSystem &operator=(const AnimationSystem &) = delete;
 
         void animateFloat(
-            Node &owner,
+            OwnerKey owner,
             PropertyKey property,
             std::weak_ptr<void> lifetime,
             float currentValue,
@@ -32,14 +31,14 @@ namespace ui
             AnimationEasing easing,
             Setter setter);
 
-        void cancel(Node &owner, PropertyKey property) noexcept;
+        void cancel(OwnerKey owner, PropertyKey property) noexcept;
         void advance(float dt) noexcept;
 
     private:
         struct ActiveAnimation
         {
             AnimationId id = 0;
-            Node *owner = nullptr;
+            OwnerKey owner = nullptr;
             PropertyKey property = nullptr;
             std::weak_ptr<void> lifetime;
             float startValue = 0.0f;
@@ -56,6 +55,6 @@ namespace ui
 
         static float applyEasing(float t, AnimationEasing easing) noexcept;
         static bool nearlyEqual(float a, float b) noexcept;
-        void removeFor(Node &owner, PropertyKey property) noexcept;
+        void removeFor(OwnerKey owner, PropertyKey property) noexcept;
     };
 }
