@@ -22,7 +22,6 @@ namespace ui
     void MenuItem::setSelected(bool v) noexcept { selected_=v; }
     bool MenuItem::isSelected() const noexcept { return selected_; }
     void MenuItem::activate() { if (!isVisible() || !isEnabled()) return; MenuItemActivatedEvent event; event.item = this; emit(event); }
-    void MenuItem::update(float) { if (!isEnabled()) highlighted_=false; }
     LayoutSize MenuItem::measureContent(const LayoutSize &a) const { return text_->measure(a.width); }
     void MenuItem::arrangeContent(const LayoutPosition &contentPosition, const LayoutSize &contentSize) { text_->setHorizontalAlignment(TextAlignment::START); text_->setVerticalAlignment(TextAlignment::CENTER); text_->arrange(contentPosition, contentSize); }
     void MenuItem::draw(SDL_Renderer *r) { if (!r) return; const auto p=getActualPosition(); const auto s=getActualSize(); Color bg=backgroundColor_; if(highlighted_) bg=lighten(bg,0.12f); if(selected_) bg=lighten(bg,0.18f); if(!isEnabled()) bg=multiplyAlpha(bg,0.5f); if(bg.a) primitives::boxRGBA(r,p.x,p.y,p.x+s.width,p.y+s.height,bg.r,bg.g,bg.b,bg.a); text_->draw(r); }
