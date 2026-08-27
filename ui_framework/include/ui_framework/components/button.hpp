@@ -4,7 +4,6 @@
 #include <SDL3_ttf/SDL_ttf.h>
 #include "ui_framework/node.hpp"
 #include "ui_framework/events.hpp"
-#include "ui_framework/animation.hpp"
 namespace ui
 {
     class TextContent;
@@ -24,7 +23,6 @@ namespace ui
         void setBorderRadius(float radius) noexcept; float getBorderRadius() const noexcept;
         void setPressScale(float scale) noexcept; float getPressScale() const noexcept;
         void setPressAnimationEnabled(bool enabled) noexcept; bool isPressAnimationEnabled() const noexcept;
-        void setPressAnimationSpeed(float speed) noexcept; float getPressAnimationSpeed() const noexcept;
         bool isPressed() const noexcept; bool isHovered() const noexcept; virtual void activate();
     protected:
         virtual void onActivate(); virtual Color presentationBackgroundColor() const noexcept; virtual Color presentationBorderColor() const noexcept; virtual Color presentationTextColor() const noexcept;
@@ -33,10 +31,11 @@ namespace ui
         void draw(SDL_Renderer *renderer) override;
     private:
         void setDefaultGeometry(); void handleMouseDown(MouseDownEvent &event); void handleMouseUp(MouseUpEvent &event); void handleMouseClick(MouseClickEvent &event); void handleMouseEnter(MouseEnterEvent &event); void handleMouseLeave(MouseLeaveEvent &event);
+        void animatePressScale(float target) noexcept;
         static Color multiplyAlpha(Color color,float factor) noexcept; static Color lighten(Color color,float amount) noexcept;
         std::unique_ptr<TextContent> text_;
         Color textColor_=Colors::white; Variant variant_=Variant::FILLED; Color backgroundColor_=Colors::gray; Color borderColor_=Colors::black;
-        float borderRadius_=4.0f; float pressScale_=0.96f; bool pressAnimationEnabled_=true; float pressAnimationSpeed_=14.0f;
-        Animation pressAnimation_{1.0f}; bool pressed_=false; bool hovered_=false;
+        float borderRadius_=4.0f; float pressScale_=0.96f; bool pressAnimationEnabled_=true; float presentationScale_=1.0f;
+        bool pressed_=false; bool hovered_=false;
     };
 }
