@@ -58,7 +58,6 @@ namespace ui
         void insertLayoutQueueById(NodeId id);
         void flushMutationQueue();
         void requestFullLayout();
-        void update(float dt);
         void advanceTime(float dt) noexcept { animationSystem_.advance(dt); }
         void registerAnimation(Animation &animation) noexcept { animationSystem_.registerAnimation(animation); }
         void draw(SDL_Renderer *renderer, std::optional<NodeId> topModalId = std::nullopt);
