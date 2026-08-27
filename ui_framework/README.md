@@ -30,6 +30,8 @@ The source code is the authoritative source of truth for current behavior. The f
 
 ## Current state
 
-The framework currently provides retained-node ownership and lifecycle, deferred structural mutation, Measure → Arrange layout with explicit invalidation, SDL input routing, event dispatch, focus/capture, rendering/clipping, modality, scrolling, text rendering/layout, a small internal property-based animation runtime and a single-line game-oriented `TextInput` control.
+The framework currently provides retained-node ownership and lifecycle, deferred structural mutation, Measure → Arrange layout with explicit invalidation, SDL input routing, event dispatch, focus/capture, rendering/clipping, modality, scrolling, text rendering/layout, a small property-based animation runtime with a public `UIManager::animations()` facade, and a single-line game-oriented `TextInput` control.
+
+Animation is intentionally property-based rather than a separate object/timeline system. Components keep semantic state separate from presentation state and expose only presentation values that are meaningful animation capabilities.
 
 The framework remains intentionally small. Advanced geometry, a general resource manager, richer text editing, scrollbar presentation and standalone `Scroll` / `ScrollArea` or `Modal` components remain outside the current stabilized scope.
