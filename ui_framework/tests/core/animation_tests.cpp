@@ -55,5 +55,17 @@ int main()
     expectNear(registered.value(), 10.0f);
     assert(!registered.isActive());
 
+    registered.setTarget(20.0f, 1.0f);
+    tree.registerAnimation(registered);
+    tree.advanceTime(0.25f);
+    expectNear(registered.value(), 12.5f);
+    tree.advanceTime(0.75f);
+    expectNear(registered.value(), 20.0f);
+
+    ui::Animation inactive(0.0f);
+    tree.registerAnimation(inactive);
+    tree.advanceTime(1.0f);
+    expectNear(inactive.value(), 0.0f);
+
     return 0;
 }
