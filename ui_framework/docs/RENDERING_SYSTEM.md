@@ -16,6 +16,26 @@ SDL renderer
 
 Components draw their own visual content. `NodeTree` owns render traversal, ordering, clipping and traversal safety.
 
+## Runtime entry point
+
+The application invokes rendering through `UIManager::render()`. Rendering is an independent framework phase; it is not coupled to a public per-node `update()` phase.
+
+Conceptually:
+
+```text
+UIManager::render()
+       ↓
+layout synchronization
+       ↓
+scroll/modal synchronization
+       ↓
+NodeTree render traversal
+       ↓
+Node/component draw hooks
+```
+
+The outer application loop remains client-owned. The framework owns the work performed after `render()` is invoked.
+
 ## SDL logical presentation
 
 The chess client uses a fixed logical UI space:
@@ -34,7 +54,7 @@ SDL_SetRenderLogicalPresentation(
     SDL_LOGICAL_PRESENTATION_LETTERBOX);
 ```
 
-The framework reads the current logical presentation from the renderer during `runFrame()` and uses the resulting size as its layout viewport. Physical window/output dimensions are not the framework UI coordinate system when logical presentation is active.
+The framework reads the current logical presentation from the renderer during `render()` and uses the resulting size as its layout viewport. Physical window/output dimensions are not the framework UI coordinate system when logical presentation is active.
 
 ## Renderer state isolation
 
@@ -134,7 +154,7 @@ SDL_ttf / SDL renderer
 
 ## Rendering cadence
 
-Rendering executes every frame. There is no public paint invalidation queue.
+Rendering executes whenever the application invokes `UIManager::render()`. There is no public paint invalidation queue.
 
 Render-only state may change without forcing Measure/Arrange. A dedicated paint-dirty API should only be introduced if the rendering architecture later requires explicit scheduling.
 
