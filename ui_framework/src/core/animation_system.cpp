@@ -1,5 +1,7 @@
 #include "animation_system.hpp"
 
+#include "ui_framework/node.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -28,16 +30,16 @@ namespace ui
         return t;
     }
 
-    void AnimationSystem::removeFor(OwnerKey owner, PropertyKey property) noexcept
+    void AnimationSystem::removeFor(Node &owner, PropertyKey property) noexcept
     {
-        std::erase_if(animations_, [owner, property](const ActiveAnimation &animation)
+        std::erase_if(animations_, [&owner, property](const ActiveAnimation &animation)
         {
-            return animation.owner == owner && animation.property == property;
+            return animation.owner == &owner && animation.property == property;
         });
     }
 
     void AnimationSystem::animateFloat(
-        OwnerKey owner,
+        Node &owner,
         PropertyKey property,
         std::weak_ptr<void> lifetime,
         float currentValue,
@@ -46,7 +48,7 @@ namespace ui
         AnimationEasing easing,
         Setter setter)
     {
-        if (!owner || !property || lifetime.expired() || !setter)
+        if (!property || lifetime.expired() || !setter)
             return;
 
         duration = std::max(0.0f, duration);
@@ -60,7 +62,7 @@ namespace ui
 
         ActiveAnimation animation;
         animation.id = nextAnimationId_++;
-        animation.owner = owner;
+        animation.owner = &owner;
         animation.property = property;
         animation.lifetime = std::move(lifetime);
         animation.startValue = currentValue;
@@ -72,7 +74,7 @@ namespace ui
         animations_.push_back(std::move(animation));
     }
 
-    void AnimationSystem::cancel(OwnerKey owner, PropertyKey property) noexcept
+    void AnimationSystem::cancel(Node &owner, PropertyKey property) noexcept
     {
         removeFor(owner, property);
     }
@@ -83,9 +85,6 @@ namespace ui
 
         for (std::size_t index = 0; index < animations_.size();)
         {
-            // The setter belongs to component code and can start, replace, or
-            // cancel animations. Work from a copy so vector reallocation cannot
-            // invalidate the animation currently being advanced.
             ActiveAnimation animation = animations_[index];
 
             if (animation.lifetime.expired())
@@ -112,8 +111,6 @@ namespace ui
                     return candidate.id == id;
                 });
 
-            // The setter replaced or cancelled this animation. The replacement
-            // must not be advanced again during this same tick.
             if (current == animations_.end())
             {
                 if (index < animations_.size())
