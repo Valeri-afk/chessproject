@@ -26,7 +26,6 @@ namespace ui
         bool handleKeyDown(NodeTree &nodeTree, InputSystem &input, KeyCode key);
         bool handleKeyEvent(NodeTree &nodeTree, InputSystem &input, KeyCode key, bool propagationStopped);
         bool handlePointerDown(NodeTree &nodeTree, InputSystem &input, const MousePosition &position, MouseButton button);
-        void advanceTime(NodeTree &nodeTree) noexcept;
         void setViewportSize(const LayoutSize &size) noexcept;
         void setBackdropColor(const Color &color) noexcept;
         Color getBackdropColor() const noexcept;
