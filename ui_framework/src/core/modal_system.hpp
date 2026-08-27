@@ -26,7 +26,7 @@ namespace ui
         bool handleKeyDown(NodeTree &nodeTree, InputSystem &input, KeyCode key);
         bool handleKeyEvent(NodeTree &nodeTree, InputSystem &input, KeyCode key, bool propagationStopped);
         bool handlePointerDown(NodeTree &nodeTree, InputSystem &input, const MousePosition &position, MouseButton button);
-        void advanceTime(NodeTree &nodeTree) noexcept;
+        void syncBackdropAnimation(NodeTree &nodeTree) noexcept;
         void setViewportSize(const LayoutSize &size) noexcept;
         void setBackdropColor(const Color &color) noexcept;
         Color getBackdropColor() const noexcept;
@@ -42,7 +42,6 @@ namespace ui
 
     private:
         class BackdropNode;
-
         struct ModalSession
         {
             Node::Id modalId{};
@@ -50,7 +49,6 @@ namespace ui
             std::optional<Node::Id> previousModalId;
             ModalOptions options{};
         };
-
         std::vector<ModalSession> modals_;
         BackdropNode *backdropNode_ = nullptr;
         std::optional<Node::Id> backdropId_;
@@ -59,7 +57,6 @@ namespace ui
         Animation backdropOpacity_{0.0f};
         float backdropTargetOpacity_ = 0.0f;
         float backdropFadeDuration_ = 0.15f;
-
         Node *findFirstFocusable(Node &node) const;
         Node *findFirstFocusableInTree(NodeTree &nodeTree) const;
         Node *findValidFocus(NodeTree &nodeTree, std::optional<Node::Id> preferredFocusId) const;
