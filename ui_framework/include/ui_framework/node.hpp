@@ -63,9 +63,6 @@ namespace ui
         }
         void invalidateLayout()noexcept;
         void registerAnimation(Animation&animation)noexcept;
-        // Transitional compatibility hook. UIManager no longer drives per-node updates;
-        // this hook remains until the legacy NodeTree::update implementation is removed.
-        virtual void update(float dt){(void)dt;}
         virtual void draw(SDL_Renderer*renderer){(void)renderer;}
         virtual LayoutSize measure(const MeasureContext&context)const{return measureContent(context.availableContentSize);}
         virtual void arrange(const ArrangeContext&context){arrangeContent(context.contentPosition,context.contentSize);}
