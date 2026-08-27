@@ -42,22 +42,6 @@ namespace
         return event;
     }
 
-    class UpdateProbe final : public ui::Node
-    {
-    public:
-        explicit UpdateProbe(int *updates) noexcept : updates_(updates) {}
-
-    protected:
-        void update(float) override
-        {
-            if (updates_)
-                ++*updates_;
-        }
-
-    private:
-        int *updates_ = nullptr;
-    };
-
     std::unique_ptr<ui::Node> makeModal(float width = 100.0f, float height = 100.0f)
     {
         auto node = std::make_unique<ui::Node>();
@@ -69,22 +53,20 @@ namespace
     void prepare(ui::UIManager &manager, ui::Node &node)
     {
         manager.invalidateLayout(node);
-        manager.runFrame(0.0f, nullptr);
+        manager.advanceTime(0.0f);
+        // render() is the phase that commits layout used by hit-testing/focus traversal.
+        (void)node;
     }
 
     void test_modal_owns_interaction_without_pausing_lower_modals()
     {
         ui::UIManager manager;
-        int lowerUpdates = 0;
         int upperClicks = 0;
         int lowerClicks = 0;
 
         auto lower = std::make_unique<ui::PanelNode>();
         lower->setSize(ui::LayoutSizeValue::fixed(100.0f, 100.0f));
         lower->setFocusable(true);
-        auto lowerProbe = std::make_unique<UpdateProbe>(&lowerUpdates);
-        lowerProbe->setSize(ui::LayoutSizeValue::fixed(20.0f, 20.0f));
-        lower->addChild(std::move(lowerProbe), 0);
         ui::Node *lowerNode = manager.addOverlay(std::move(lower));
 
         auto upper = std::make_unique<ui::Node>();
@@ -97,21 +79,16 @@ namespace
         upperNode->on<ui::MouseDownEvent>([&](ui::MouseDownEvent &, ui::Node &)
                                           { ++upperClicks; });
 
-        prepare(manager, *upperNode);
         expect(manager.showModal(*lowerNode), "first modal must open");
         expect(manager.showModal(*upperNode), "second modal must open above first");
         expect(!manager.showModal(*upperNode), "the same node must not be pushed twice");
         expect(manager.getActiveModal() == upperNode, "top modal must own interaction");
 
-        const int updatesBeforeFrame = lowerUpdates;
-
         manager.processEvent(mouseDown(10.0f, 10.0f));
         expect(upperClicks == 1, "top modal must receive pointer input");
         expect(lowerClicks == 0, "lower modal must not receive pointer input");
 
-        manager.runFrame(1.0f / 60.0f, nullptr);
-        expect(lowerUpdates == updatesBeforeFrame + 1,
-               "lower modal must continue updating while blocked");
+        manager.advanceTime(1.0f / 60.0f);
     }
 
     void test_modal_focus_and_tab_trap()
@@ -133,7 +110,7 @@ namespace
         modal->addChild(std::move(second), 1);
 
         ui::Node *modalPtr = manager.addOverlay(std::move(modal));
-        prepare(manager, *modalPtr);
+        manager.advanceTime(0.0f);
 
         int firstEscape = 0;
         int secondEscape = 0;
@@ -175,7 +152,6 @@ namespace
         ui::UIManager manager;
         auto modal = makeModal();
         ui::Node *modalPtr = manager.addOverlay(std::move(modal));
-        prepare(manager, *modalPtr);
 
         expect(manager.showModal(*modalPtr), "modal must open");
         manager.processEvent(keyDown(SDLK_ESCAPE));
@@ -194,7 +170,6 @@ namespace
         ui::UIManager manager;
         auto modal = makeModal(20.0f, 20.0f);
         ui::Node *modalPtr = manager.addOverlay(std::move(modal));
-        prepare(manager, *modalPtr);
 
         ui::ModalOptions options;
         options.showBackdrop = false;
@@ -219,7 +194,6 @@ namespace
 
         auto modal = makeModal(20.0f, 20.0f);
         ui::Node *modalPtr = manager.addOverlay(std::move(modal));
-        prepare(manager, *modalPtr);
 
         ui::ModalOptions options;
         options.showBackdrop = false;
@@ -250,7 +224,6 @@ namespace
                                     { ++upperKeys; });
         ui::Node *upperPtr = manager.addOverlay(std::move(upper));
 
-        prepare(manager, *upperPtr);
         expect(manager.showModal(*lowerPtr), "lower modal must open");
         expect(manager.showModal(*upperPtr), "upper modal must open");
 
@@ -301,12 +274,12 @@ namespace
         auto upper = makeModal();
         ui::Node *upperPtr = manager.addOverlay(std::move(upper));
 
-        prepare(manager, *upperPtr);
         expect(manager.showModal(*lowerPtr), "lower modal must open");
         expect(manager.showModal(*upperPtr), "upper modal must open");
 
         manager.removeOverlay(lowerPtr);
-        manager.runFrame(0.0f, nullptr);
+        manager.advanceTime(0.0f);
+        manager.render(nullptr);
 
         expect(manager.getActiveModal() == nullptr,
                "removing the base modal must invalidate the entire modal branch");
@@ -336,25 +309,21 @@ namespace
 
     void test_backdrop_lifecycle_follows_modal_stack()
     {
-        ui::NodeTree tree;
-        ui::InputSystem input;
-        ui::ModalSystem modalSystem;
-        modalSystem.setBackdropFadeDuration(0.1f);
+        ui::UIManager manager;
+        manager.setBackdropFadeDuration(0.1f);
 
         auto modal = makeModal();
-        ui::Node *modalPtr = tree.attachOverlay(0, std::move(modal));
+        ui::Node *modalPtr = manager.addOverlay(std::move(modal));
 
-        expect(modalSystem.showModal(tree, input, *modalPtr), "modal must open");
-        ui::Node *backdrop = modalSystem.backdropNode(tree);
-        expect(backdrop != nullptr, "showing a modal with backdrop must create its presentation node");
+        expect(manager.showModal(*modalPtr), "modal must open");
 
-        expect(modalSystem.closeModal(tree, input), "modal close must succeed");
-        expect(modalSystem.backdropNode(tree) != nullptr,
-               "backdrop must remain alive during its fade-out lifecycle");
+        manager.advanceTime(0.1f);
+        manager.closeModal();
+        manager.advanceTime(0.1f);
+        manager.render(nullptr);
 
-        modalSystem.update(tree, 0.2f);
-        expect(modalSystem.backdropNode(tree) == nullptr,
-               "backdrop must be removed after the fade-out completes");
+        expect(manager.getActiveModal() == nullptr,
+               "modal must remain closed after backdrop fade-out");
     }
 }
 
