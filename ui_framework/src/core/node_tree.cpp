@@ -670,6 +670,16 @@ namespace ui
         // when this function returns.
     }
 
+    void NodeTree::advanceTime(float dt) noexcept
+    {
+        animationSystem_.advance(dt);
+    }
+    
+    void NodeTree::registerAnimation(Animation &animation) noexcept
+    {
+        animationSystem_.registerAnimation(animation);
+    }
+
     NodeTree::TraversalResult NodeTree::traversePreOrder(
         Node &node,
         const TraversalCallback &callback,
