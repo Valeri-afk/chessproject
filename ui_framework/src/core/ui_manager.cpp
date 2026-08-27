@@ -53,12 +53,6 @@ namespace ui
         if(modalSystem_&&inputSystem_)modalSystem_->sync(*nodeTree_,*inputSystem_);
         draw(renderer);
     }
-    void UIManager::runFrame(float dt,SDL_Renderer *renderer)
-    {
-        if(!nodeTree_)return;
-        advanceTime(dt);
-        render(renderer);
-    }
     void UIManager::draw(SDL_Renderer *renderer)
     {
         if(!renderer||!nodeTree_)return; Node::ScopedCoordinateTransform scrollTransform(makeScrollTransform(scrollSystem_.get()));
@@ -72,7 +66,7 @@ namespace ui
     void UIManager::removeOverlay(Node *node){if(nodeTree_&&node)nodeTree_->removeOverlay(node);}
     void UIManager::invalidateLayout(Node &node){if(nodeTree_)nodeTree_->insertLayoutQueue(&node);}
     bool UIManager::enableScrolling(Node &node){return scrollSystem_&&nodeTree_&&scrollSystem_->registerScrollNode(*nodeTree_,node);}
-    bool UIManager::disableScrolling(Node &node){return scrollSystem_&&nodeTree_&&scrollSystem_->unregisterScrollNode(*nodeTree_,node.getId());}
+    bool UIManager::disableScrolling(Node &node){return scrollSystem_&&scrollSystem_->unregisterScrollNode(*nodeTree_,node.getId());}
     bool UIManager::isScrollingEnabled(const Node &node)const noexcept{return scrollSystem_&&scrollSystem_->isRegistered(node.getId());}
     bool UIManager::setScrollOffset(Node &node,const ScrollOffset &offset){return scrollSystem_&&nodeTree_&&scrollSystem_->setOffset(*nodeTree_,node.getId(),offset);}
     ScrollOffset UIManager::getScrollOffset(const Node &node)const noexcept{return scrollSystem_?scrollSystem_->getOffset(node.getId()):ScrollOffset{};}
