@@ -59,7 +59,7 @@ namespace
     void prepare(ui::UIManager &manager, ui::Node &node)
     {
         manager.invalidateLayout(node);
-        manager.runFrame(0.0f, nullptr);
+        manager.render(nullptr);
     }
 
     void test_boundary_chaining_in_both_directions()

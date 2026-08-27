@@ -60,7 +60,7 @@ namespace
     void layoutAndSync(ui::UIManager &manager, ui::Node &node)
     {
         manager.invalidateLayout(node);
-        manager.runFrame(1.0f / 60.0f, nullptr);
+        manager.render(nullptr);
     }
 
     void test_only_panels_can_be_scroll_containers()
@@ -333,7 +333,8 @@ namespace
         expect(manager.enableScrolling(*root), "panel must register");
 
         manager.removeRoot(root);
-        manager.runFrame(0.0f, nullptr);
+        manager.advanceTime(0.0f);
+        manager.render(nullptr);
 
         expect(!manager.isScrollingEnabled(*root),
                "removed scroll node must not remain registered after synchronization");
