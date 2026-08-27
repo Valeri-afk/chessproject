@@ -22,7 +22,7 @@ namespace ui
         bool showModal(Node &node); bool showModal(Node &node,BackdropClickBehavior behavior); bool showModal(Node &node,const ModalOptions &options); bool closeModal(); bool isModal(const Node &node) const noexcept; Node *getActiveModal() const noexcept;
         void setBackdropColor(const Color &color)noexcept; Color getBackdropColor()const noexcept; void setBackdropFadeDuration(float seconds)noexcept; float getBackdropFadeDuration()const noexcept;
     private:
-        void update(float dt); void draw(SDL_Renderer *renderer); void prepareForTreeOperation(); void syncState();
+        void draw(SDL_Renderer *renderer); void prepareForTreeOperation(); void syncState();
         std::unique_ptr<NodeTree> nodeTree_; std::unique_ptr<InputSystem> inputSystem_; std::unique_ptr<ModalSystem> modalSystem_; std::unique_ptr<LayoutSystem> layoutSystem_; std::unique_ptr<ScrollSystem> scrollSystem_;
     };
 }
