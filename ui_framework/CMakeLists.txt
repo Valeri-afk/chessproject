@@ -46,6 +46,7 @@ add_library(ui_framework STATIC
     src/core/layout_constraints.cpp
     src/core/linear_layout.cpp
     src/core/scroll_system.cpp
+    src/core/animation_system.cpp
 )
 
 target_include_directories(ui_framework
@@ -55,30 +56,22 @@ target_include_directories(ui_framework
 
 target_compile_features(ui_framework PUBLIC cxx_std_20)
 
-target_link_libraries(ui_framework
-    PUBLIC
-        SDL3::SDL3
-        SDL3_image::SDL3_image
-        SDL3_ttf::SDL3_ttf
-)
+target_link_libraries(ui_framework PUBLIC SDL3::SDL3 SDL3_image::SDL3_image SDL3_ttf::SDL3_ttf)
 
 option(UI_FRAMEWORK_BUILD_TESTS "Build ui_framework tests" OFF)
 
 if(UI_FRAMEWORK_BUILD_TESTS)
     enable_testing()
-
     set(UI_FRAMEWORK_SDL_DLLS
         "${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3/bin/SDL3.dll"
         "${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3_image/bin/SDL3_image.dll"
         "${CMAKE_CURRENT_SOURCE_DIR}/external/SDL3_ttf/bin/SDL3_ttf.dll"
     )
-
     foreach(SDL_DLL IN LISTS UI_FRAMEWORK_SDL_DLLS)
         if(NOT EXISTS "${SDL_DLL}")
             message(FATAL_ERROR "Required SDL runtime DLL not found: ${SDL_DLL}")
         endif()
     endforeach()
-
     add_executable(ui_framework_input_tests tests/core/input_system_tests.cpp)
     add_executable(ui_framework_input_mutation_tests tests/core/input_system_mutation_tests.cpp)
     add_executable(ui_framework_node_tree_tests tests/core/node_tree_tests.cpp)
@@ -94,7 +87,6 @@ if(UI_FRAMEWORK_BUILD_TESTS)
     add_executable(ui_framework_text_input_submission_tests tests/core/text_input_submission_tests.cpp)
     add_executable(ui_framework_image_tests tests/core/image_tests.cpp)
     add_executable(ui_framework_event_system_behavior_tests tests/core/event_system_behavior_tests.cpp)
-
     target_include_directories(ui_framework_input_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
     target_include_directories(ui_framework_input_mutation_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
     target_include_directories(ui_framework_node_tree_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
@@ -110,47 +102,11 @@ if(UI_FRAMEWORK_BUILD_TESTS)
     target_include_directories(ui_framework_text_input_submission_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
     target_include_directories(ui_framework_image_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
     target_include_directories(ui_framework_event_system_behavior_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/src/core)
-
-    target_link_libraries(ui_framework_input_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_input_mutation_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_node_tree_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_node_tree_regression_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_ui_manager_regression_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_modal_system_regression_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_scroll_system_regression_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_scroll_system_behavior_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_layout_system_regression_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_text_edit_state_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_text_input_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_text_input_pointer_capture_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_text_input_submission_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_image_tests PRIVATE ui_framework)
-    target_link_libraries(ui_framework_event_system_behavior_tests PRIVATE ui_framework)
-
-    add_test(NAME ui_framework_input_tests COMMAND ui_framework_input_tests)
-    add_test(NAME ui_framework_input_mutation_tests COMMAND ui_framework_input_mutation_tests)
-    add_test(NAME ui_framework_node_tree_tests COMMAND ui_framework_node_tree_tests)
-    add_test(NAME ui_framework_node_tree_regression_tests COMMAND ui_framework_node_tree_regression_tests)
-    add_test(NAME ui_framework_ui_manager_regression_tests COMMAND ui_framework_ui_manager_regression_tests)
-    add_test(NAME ui_framework_modal_system_regression_tests COMMAND ui_framework_modal_system_regression_tests)
-    add_test(NAME ui_framework_scroll_system_regression_tests COMMAND ui_framework_scroll_system_regression_tests)
-    add_test(NAME ui_framework_scroll_system_behavior_tests COMMAND ui_framework_scroll_system_behavior_tests)
-    add_test(NAME ui_framework_layout_system_regression_tests COMMAND ui_framework_layout_system_regression_tests)
-    add_test(NAME ui_framework_text_edit_state_tests COMMAND ui_framework_text_edit_state_tests)
-    add_test(NAME ui_framework_text_input_tests COMMAND ui_framework_text_input_tests)
-    add_test(NAME ui_framework_text_input_pointer_capture_tests COMMAND ui_framework_text_input_pointer_capture_tests)
-    add_test(NAME ui_framework_text_input_submission_tests COMMAND ui_framework_text_input_submission_tests)
-    add_test(NAME ui_framework_image_tests COMMAND ui_framework_image_tests)
-    add_test(NAME ui_framework_event_system_behavior_tests COMMAND ui_framework_event_system_behavior_tests)
-
     foreach(TEST_TARGET IN ITEMS ui_framework_input_tests ui_framework_input_mutation_tests ui_framework_node_tree_tests ui_framework_node_tree_regression_tests ui_framework_ui_manager_regression_tests ui_framework_modal_system_regression_tests ui_framework_scroll_system_regression_tests ui_framework_scroll_system_behavior_tests ui_framework_layout_system_regression_tests ui_framework_text_edit_state_tests ui_framework_text_input_tests ui_framework_text_input_pointer_capture_tests ui_framework_text_input_submission_tests ui_framework_image_tests ui_framework_event_system_behavior_tests)
+        target_link_libraries(${TEST_TARGET} PRIVATE ui_framework)
         foreach(SDL_DLL IN LISTS UI_FRAMEWORK_SDL_DLLS)
-            add_custom_command(TARGET ${TEST_TARGET} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${SDL_DLL}"
-                    "$<TARGET_FILE_DIR:${TEST_TARGET}>"
-                VERBATIM
-            )
+            add_custom_command(TARGET ${TEST_TARGET} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SDL_DLL}" "$<TARGET_FILE_DIR:${TEST_TARGET}>" VERBATIM)
         endforeach()
+        add_test(NAME ${TEST_TARGET} COMMAND ${TEST_TARGET})
     endforeach()
 endif()
