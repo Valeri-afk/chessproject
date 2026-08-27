@@ -37,14 +37,19 @@ namespace ui
     void UIManager::advanceTime(float dt)
     {
         if(!nodeTree_)return;
-        syncState(); prepareForTreeOperation(); update(dt); nodeTree_->advanceTime(dt);
+        syncState();
+        prepareForTreeOperation();
+        nodeTree_->advanceTime(dt);
+        if(modalSystem_)
+            modalSystem_->advanceTime(*nodeTree_);
     }
     void UIManager::render(SDL_Renderer *renderer)
     {
         if(!renderer||!nodeTree_)return;
         if(layoutSystem_&&layoutSystem_->syncViewportFromRenderer(renderer))layoutSystem_->requestFullLayout(*nodeTree_);
         if(layoutSystem_&&modalSystem_)modalSystem_->setViewportSize(layoutSystem_->getViewportSize());
-        syncState(); prepareForTreeOperation();
+        syncState();
+        prepareForTreeOperation();
         if(layoutSystem_)layoutSystem_->processLayoutQueue(*nodeTree_);
         if(scrollSystem_)scrollSystem_->sync(*nodeTree_);
         if(modalSystem_&&inputSystem_)modalSystem_->sync(*nodeTree_,*inputSystem_);
@@ -53,18 +58,8 @@ namespace ui
     void UIManager::runFrame(float dt,SDL_Renderer *renderer)
     {
         if(!nodeTree_)return;
-        if(layoutSystem_&&layoutSystem_->syncViewportFromRenderer(renderer))layoutSystem_->requestFullLayout(*nodeTree_);
-        if(layoutSystem_&&modalSystem_)modalSystem_->setViewportSize(layoutSystem_->getViewportSize());
-        syncState(); prepareForTreeOperation(); update(dt); nodeTree_->advanceTime(dt); draw(renderer);
-    }
-    void UIManager::update(float dt)
-    {
-        if(!nodeTree_)return;
-        if(layoutSystem_)layoutSystem_->processLayoutQueue(*nodeTree_);
-        if(scrollSystem_)scrollSystem_->sync(*nodeTree_);
-        if(modalSystem_&&inputSystem_)modalSystem_->sync(*nodeTree_,*inputSystem_);
-        if(modalSystem_)modalSystem_->update(*nodeTree_,dt);
-        nodeTree_->update(dt);
+        advanceTime(dt);
+        render(renderer);
     }
     void UIManager::draw(SDL_Renderer *renderer)
     {
