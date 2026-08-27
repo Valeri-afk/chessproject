@@ -159,6 +159,18 @@ namespace ui
                 callback(static_cast<UIEvent &>(event), *this);
         }
 
+        // Starts a framework-owned transition for one component property.
+        // The component owns the value and decides when a transition is needed;
+        // AnimationSystem owns only the temporary timing state.
+        void animateFloat(
+            const void *propertyKey,
+            float currentValue,
+            float targetValue,
+            float duration,
+            AnimationEasing easing,
+            std::function<void(float)> setter);
+        void cancelAnimation(const void *propertyKey) noexcept;
+
         void invalidateLayout() noexcept;
         virtual void draw(SDL_Renderer *renderer) { (void)renderer; }
         virtual LayoutSize measure(const MeasureContext &context) const { return measureContent(context.availableContentSize); }
@@ -215,6 +227,7 @@ namespace ui
         bool focusable_ = false;
         bool capturable_ = false;
         std::vector<EventHandlerRecord> eventHandlers_;
+        std::shared_ptr<void> animationLifetimeToken_ = std::make_shared<int>(0);
         const Id id_ = nextId();
 
         static Id nextId() noexcept
