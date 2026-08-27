@@ -37,11 +37,11 @@ namespace ui
     void UIManager::advanceTime(float dt)
     {
         if(!nodeTree_)return;
-        syncState();
         prepareForTreeOperation();
         nodeTree_->advanceTime(dt);
         if(modalSystem_)
             modalSystem_->advanceTime(*nodeTree_);
+        prepareForTreeOperation();
     }
     void UIManager::render(SDL_Renderer *renderer)
     {
