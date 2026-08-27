@@ -925,57 +925,6 @@ namespace ui
         }
     }
 
-    void NodeTree::update(float dt)
-    {
-        {
-            ScopedMutationGuard guard(*this);
-
-            auto updateNode =
-                [dt](Node &node)
-            {
-                if (!node.isVisible() ||
-                    !node.isEnabled())
-                {
-                    return TraversalResult::SkipChildren;
-                }
-
-                node.update(dt);
-
-                return TraversalResult::Continue;
-            };
-
-            bool stop = false;
-
-            forEachRoot(
-                [this, &updateNode, &stop](Node &root)
-                {
-                    if (traversePreOrder(
-                            root,
-                            updateNode) == TraversalResult::Stop)
-                    {
-                        stop = true;
-                        return true;
-                    }
-
-                    return false;
-                });
-
-            if (!stop)
-            {
-                forEachOverlay(
-                    [this, &updateNode](Node &overlay)
-                    {
-                        return traversePreOrder(
-                                   overlay,
-                                   updateNode) ==
-                               TraversalResult::Stop;
-                    });
-            }
-        }
-
-        flushMutationQueue();
-    }
-
     void NodeTree::drawSubtree(
         Node &node,
         SDL_Renderer *renderer)
