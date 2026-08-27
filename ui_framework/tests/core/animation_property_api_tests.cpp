@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <string>
 
 namespace
@@ -14,7 +15,7 @@ void expectNear(float actual,float expected,float epsilon,const char* message){i
 class PropertyNode final : public ui::Node
 {
 public:
-    FloatAnimationProperty valueProperty() noexcept { return makeFloatAnimationProperty(value_, &value_); }
+    ui::FloatAnimationProperty valueProperty() noexcept { return makeFloatAnimationProperty(value_, &value_); }
     float value() const noexcept { return value_; }
 private:
     float value_ = 0.0f;
