@@ -674,11 +674,6 @@ namespace ui
     {
         animationSystem_.advance(dt);
     }
-    
-    void NodeTree::registerAnimation(Animation &animation) noexcept
-    {
-        animationSystem_.registerAnimation(animation);
-    }
 
     NodeTree::TraversalResult NodeTree::traversePreOrder(
         Node &node,
