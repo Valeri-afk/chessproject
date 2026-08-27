@@ -3,6 +3,7 @@
 #include "ui_framework/types.hpp"
 #include "ui_framework/events.hpp"
 #include "ui_framework/primitives.hpp"
+#include "ui_framework/animation.hpp"
 #include "ui_framework/node.hpp"
 #include "ui_framework/panel_node.hpp"
 #include "ui_framework/stack_panel_node.hpp"
