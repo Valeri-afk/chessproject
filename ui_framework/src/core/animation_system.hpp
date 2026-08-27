@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <vector>
 
 #include "ui_framework/animation.hpp"
@@ -24,6 +25,7 @@ namespace ui
         void animateFloat(
             Node &owner,
             PropertyKey property,
+            std::weak_ptr<void> lifetime,
             float currentValue,
             float targetValue,
             float duration,
@@ -39,6 +41,7 @@ namespace ui
             AnimationId id = 0;
             Node *owner = nullptr;
             PropertyKey property = nullptr;
+            std::weak_ptr<void> lifetime;
             float startValue = 0.0f;
             float currentValue = 0.0f;
             float targetValue = 0.0f;
