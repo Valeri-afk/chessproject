@@ -45,7 +45,9 @@ namespace ui
 
             SDL_Color previousColor{};
             Uint8 previousAlpha = 255;
+            SDL_BlendMode previousBlendMode = SDL_BLENDMODE_NONE;
             SDL_GetRenderDrawColor(renderer, &previousColor.r, &previousColor.g, &previousColor.b, &previousAlpha);
+            SDL_GetRenderDrawBlendMode(renderer, &previousBlendMode);
 
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
             SDL_SetRenderDrawColor(
@@ -66,6 +68,7 @@ namespace ui
                 previousColor.g,
                 previousColor.b,
                 previousAlpha);
+            SDL_SetRenderDrawBlendMode(renderer, previousBlendMode);
         }
 
     private:
@@ -319,8 +322,12 @@ namespace ui
 
         updateBackdropState();
 
-        if (!backdropNode_ && backdropId_)
-            backdropId_.reset();
+        if (backdropTargetOpacity_ > 0.0f && !backdropNode_)
+        {
+            ensureBackdrop(nodeTree);
+            if (backdropNode_)
+                startBackdropAnimation(nodeTree);
+        }
 
         if (backdropNode_)
         {
