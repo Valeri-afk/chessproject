@@ -15,13 +15,14 @@ The framework provides generic infrastructure for:
 - hierarchical UI ownership and lifetime;
 - lifecycle and safe traversal;
 - deferred structural mutation;
-- update and rendering traversal;
+- event-driven input and interaction;
 - input coordination, focus, capture and hit testing;
 - event dispatching;
-- Measure → Arrange layout and explicit invalidation;
+- Measure → Arrange layout with explicit invalidation;
 - scrolling and modality as framework services;
 - low-level rendering primitives;
 - a small standard component set;
+- time advancement for framework systems that are explicitly time-dependent;
 - custom `Node` and `PanelNode` extension points;
 - single-line game-oriented text input/editing.
 
@@ -29,15 +30,25 @@ It is intentionally narrower than Qt, WPF or a universal application toolkit.
 
 ## Runtime model
 
-The framework combines three properties that should be preserved together:
+The framework participates in an execution loop owned by the application. It does not own the application's main loop and does not impose a game-loop policy on clients.
+
+The public runtime boundary consists of three independent operations:
 
 ```text
-imperative C++ API
-        +
-declarative semantics
-        +
-framework-owned execution
+processEvent(event)
+        ↓
+handle external input and dispatch UI events
+
+advanceTime(dt)
+        ↓
+advance explicitly time-dependent framework systems
+
+render(renderer)
+        ↓
+perform layout synchronization and rendering traversal
 ```
+
+Application code may call these operations from whatever outer loop is appropriate for the application. A game may call `advanceTime(dt)` every iteration; an event-driven desktop application may use it only when time-dependent UI behavior is active. Rendering cadence is likewise an application concern, while the framework owns render traversal when `render()` is invoked.
 
 Application code may mutate retained objects directly:
 
@@ -65,6 +76,7 @@ input routing
 event propagation
 render traversal
 service coordination
+time advancement of framework-managed systems
 ```
 
 A component/client owns:
@@ -108,6 +120,9 @@ interaction
 rendering
   render traversal / clipping / ordering / renderer-state safety
 
+time-dependent services
+  explicit advanceTime() processing for framework-owned behavior
+
 services
   modality / scrolling
 ```
@@ -122,7 +137,8 @@ The client owns application-specific state and meaning, for example:
 - game state and clocks;
 - navigation intent;
 - application-specific semantics and callbacks;
-- custom component behavior.
+- custom component behavior;
+- ownership of the outer application loop.
 
 ## Current standard components
 
@@ -257,6 +273,6 @@ These are requirements to evaluate, not commitments to implement blindly.
 
 `INSTRUCTIONS.md` defines repository-analysis, implementation-safety and documentation workflow rules.
 
-`ARCHITECTURE.md` remains the large current-architecture document.
+`ARCHITECTURE.md` remains the large current-architecture document and is maintained separately from this focused scope document.
 
 `README.md` is the entry point to the focused subsystem contracts.
