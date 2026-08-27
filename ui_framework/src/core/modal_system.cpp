@@ -3,12 +3,76 @@
 #include "input_system.hpp"
 #include "ui_framework/panel_node.hpp"
 
+#include <SDL3/SDL.h>
+
 #include <algorithm>
 #include <cstddef>
+#include <memory>
 #include <optional>
 
 namespace ui
 {
+    class ModalSystem::BackdropNode final : public Node
+    {
+    public:
+        BackdropNode() = default;
+
+        void setBackdrop(const Color &color, float opacity) noexcept
+        {
+            color_ = color;
+            opacity_ = std::clamp(opacity, 0.0f, 1.0f);
+        }
+
+        LayoutSize measureContent(const LayoutSize &) const override
+        {
+            return getActualSize();
+        }
+
+        void arrangeContent(const LayoutPosition &, const LayoutSize &) override
+        {
+        }
+
+        Node *hitTest(float, float) noexcept override
+        {
+            return nullptr;
+        }
+
+    protected:
+        void draw(SDL_Renderer *renderer) override
+        {
+            if (!renderer || opacity_ <= 0.0f)
+                return;
+
+            SDL_Color previousColor{};
+            Uint8 previousAlpha = 255;
+            SDL_GetRenderDrawColor(renderer, &previousColor.r, &previousColor.g, &previousColor.b, &previousAlpha);
+
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor(
+                renderer,
+                color_.r,
+                color_.g,
+                color_.b,
+                static_cast<Uint8>(std::clamp(color_.a * opacity_, 0.0f, 255.0f)));
+
+            const LayoutPosition position = getActualPosition();
+            const LayoutSize size = getActualSize();
+            SDL_FRect rect{position.x, position.y, size.width, size.height};
+            SDL_RenderFillRect(renderer, &rect);
+
+            SDL_SetRenderDrawColor(
+                renderer,
+                previousColor.r,
+                previousColor.g,
+                previousColor.b,
+                previousAlpha);
+        }
+
+    private:
+        Color color_{0, 0, 0, 160};
+        float opacity_ = 0.0f;
+    };
+
     ModalSystem::ModalSystem() = default;
 
     bool ModalSystem::showModal(NodeTree &nodeTree, InputSystem &input, Node &node)
@@ -196,6 +260,55 @@ namespace ui
         return nodeTree.findNode(*backdropId_);
     }
 
+    void ModalSystem::setViewportSize(const LayoutSize &size) noexcept
+    {
+        viewportSize_.width = std::max(0.0f, size.width);
+        viewportSize_.height = std::max(0.0f, size.height);
+
+        if (backdropNode_)
+        {
+            backdropNode_->setPosition({0.0f, 0.0f});
+            backdropNode_->setSize(LayoutSizeValue::fixed(viewportSize_.width, viewportSize_.height));
+        }
+    }
+
+    void ModalSystem::setBackdropColor(const Color &color) noexcept
+    {
+        backdropColor_ = color;
+        if (backdropNode_)
+            backdropNode_->setBackdrop(backdropColor_, backdropOpacity_);
+    }
+
+    Color ModalSystem::getBackdropColor() const noexcept
+    {
+        return backdropColor_;
+    }
+
+    void ModalSystem::setBackdropFadeDuration(float seconds) noexcept
+    {
+        backdropFadeDuration_ = std::max(0.0f, seconds);
+    }
+
+    float ModalSystem::getBackdropFadeDuration() const noexcept
+    {
+        return backdropFadeDuration_;
+    }
+
+    void ModalSystem::clear(NodeTree &nodeTree, InputSystem &input) noexcept
+    {
+        modals_.clear();
+        input.cancelPointerInteraction(nodeTree);
+        input.clearFocus(nodeTree);
+        input.setModalRoot(nullptr);
+
+        if (backdropNode_)
+            backdropNode_->cancelAnimation(&backdropOpacity_);
+
+        removeBackdrop(nodeTree);
+        backdropOpacity_ = 0.0f;
+        backdropTargetOpacity_ = 0.0f;
+    }
+
     void ModalSystem::sync(NodeTree &nodeTree, InputSystem &input)
     {
         for (size_t i = modals_.size(); i > 0; --i)
@@ -206,9 +319,14 @@ namespace ui
 
         updateBackdropState();
 
+        if (!backdropNode_ && backdropId_)
+            backdropId_.reset();
+
         if (backdropNode_)
         {
             backdropNode_->setBackdrop(backdropColor_, backdropOpacity_);
+            backdropNode_->setPosition({0.0f, 0.0f});
+            backdropNode_->setSize(LayoutSizeValue::fixed(viewportSize_.width, viewportSize_.height));
 
             if (backdropTargetOpacity_ <= 0.0f && backdropOpacity_ <= 0.0f)
                 removeBackdrop(nodeTree);
@@ -395,5 +513,92 @@ namespace ui
             input.focus(nodeTree, *focus);
         else
             input.clearFocus(nodeTree);
+    }
+
+    void ModalSystem::ensureBackdrop(NodeTree &nodeTree)
+    {
+        if (backdropNode_ && backdropId_ && nodeTree.findNode(*backdropId_) == backdropNode_)
+            return;
+
+        backdropNode_ = nullptr;
+        backdropId_.reset();
+
+        auto backdrop = std::make_unique<BackdropNode>();
+        backdrop->setVisible(true);
+        backdrop->setEnabled(true);
+        backdrop->setFocusable(false);
+        backdrop->setCapturable(false);
+        backdrop->setPosition({0.0f, 0.0f});
+        backdrop->setPositionMode(PositionMode::Absolute);
+        backdrop->setSize(LayoutSizeValue::fixed(viewportSize_.width, viewportSize_.height));
+        backdrop->setBackdrop(backdropColor_, backdropOpacity_);
+
+        Node *raw = nodeTree.attachOverlay(0, std::move(backdrop));
+        if (!raw)
+            return;
+
+        backdropNode_ = dynamic_cast<BackdropNode *>(raw);
+        if (!backdropNode_)
+            return;
+
+        backdropId_ = backdropNode_->getId();
+    }
+
+    void ModalSystem::removeBackdrop(NodeTree &nodeTree) noexcept
+    {
+        if (!backdropId_)
+        {
+            backdropNode_ = nullptr;
+            return;
+        }
+
+        if (Node *liveBackdrop = nodeTree.findNode(*backdropId_))
+        {
+            liveBackdrop->cancelAnimation(&backdropOpacity_);
+            nodeTree.removeOverlay(liveBackdrop);
+        }
+
+        backdropNode_ = nullptr;
+        backdropId_.reset();
+    }
+
+    void ModalSystem::updateBackdropState() noexcept
+    {
+        bool shouldShow = false;
+        for (const ModalSession &session : modals_)
+        {
+            if (session.options.showBackdrop)
+            {
+                shouldShow = true;
+                break;
+            }
+        }
+
+        backdropTargetOpacity_ = shouldShow ? 1.0f : 0.0f;
+    }
+
+    void ModalSystem::startBackdropAnimation(NodeTree &nodeTree) noexcept
+    {
+        updateBackdropState();
+
+        if (backdropTargetOpacity_ > 0.0f)
+            ensureBackdrop(nodeTree);
+
+        if (!backdropNode_)
+            return;
+
+        backdropNode_->setBackdrop(backdropColor_, backdropOpacity_);
+        backdropNode_->animateFloat(
+            &backdropOpacity_,
+            backdropOpacity_,
+            backdropTargetOpacity_,
+            backdropFadeDuration_,
+            AnimationEasing::EaseOut,
+            [this](float value)
+            {
+                backdropOpacity_ = std::clamp(value, 0.0f, 1.0f);
+                if (backdropNode_)
+                    backdropNode_->setBackdrop(backdropColor_, backdropOpacity_);
+            });
     }
 }
