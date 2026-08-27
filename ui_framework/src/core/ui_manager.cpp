@@ -43,15 +43,15 @@ namespace ui
     }
     void UIManager::render(SDL_Renderer *renderer)
     {
-        if(!renderer||!nodeTree_)return;
-        if(layoutSystem_&&layoutSystem_->syncViewportFromRenderer(renderer))layoutSystem_->requestFullLayout(*nodeTree_);
+        if(!nodeTree_)return;
+        if(renderer&&layoutSystem_&&layoutSystem_->syncViewportFromRenderer(renderer))layoutSystem_->requestFullLayout(*nodeTree_);
         if(layoutSystem_&&modalSystem_)modalSystem_->setViewportSize(layoutSystem_->getViewportSize());
         if(nodeTree_&&inputSystem_)inputSystem_->syncState(*nodeTree_);
         prepareForTreeOperation();
         if(layoutSystem_)layoutSystem_->processLayoutQueue(*nodeTree_);
         if(scrollSystem_)scrollSystem_->sync(*nodeTree_);
         if(modalSystem_&&inputSystem_)modalSystem_->sync(*nodeTree_,*inputSystem_);
-        draw(renderer);
+        if(renderer)draw(renderer);
     }
     void UIManager::draw(SDL_Renderer *renderer)
     {
