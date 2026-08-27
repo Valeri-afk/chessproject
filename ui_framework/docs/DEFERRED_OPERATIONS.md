@@ -4,29 +4,27 @@
 
 Framework runtime phases must remain traversal-safe. Structural operations that would mutate the hierarchy while it is being traversed are deferred through `NodeTree` mutation handling.
 
-## Framework-controlled frame
+## Public runtime phases
 
-`UIManager::runFrame()` currently performs the major work in this order:
+The application owns the outer loop and calls the framework through three independent operations:
 
 ```text
-synchronize input state
+UIManager::processEvent(...)
     ↓
-flush pending tree mutations
+input routing and event propagation
+
+UIManager::advanceTime(dt)
     ↓
-process layout queue
+time-dependent framework systems
+
+UIManager::render(...)
     ↓
-synchronize scrolling
-    ↓
-synchronize/update modality
-    ↓
-NodeTree update traversal
-    ↓
-draw traversal
+layout synchronization and render traversal
 ```
 
-If the renderer's logical presentation size changes, a full layout is requested before the layout queue is processed.
+These are separate operations rather than one public `runFrame()` operation. The client does not schedule internal layout, mutation, scrolling, modality or render traversal phases individually.
 
-Exact private helper behavior remains an implementation detail; clients do not schedule these phases.
+When rendering uses a different logical presentation size, `render()` requests the required layout work before rendering proceeds.
 
 ## Structural operations
 
@@ -38,7 +36,7 @@ The queue uses snapshot-swap draining. Mutations generated while a batch is exec
 
 `invalidateLayout()` schedules layout; it does not execute Measure/Arrange immediately.
 
-NodeTree promotes invalidation to the containing root/overlay and deduplicates queued roots. LayoutSystem consumes the queued roots during its layout phase.
+NodeTree promotes invalidation to the containing root/overlay and deduplicates queued roots. LayoutSystem consumes the queued roots during the render-side layout synchronization phase.
 
 A layout mutation that queues more work does not recursively restart the current traversal.
 
@@ -47,6 +45,12 @@ A layout mutation that queues more work does not recursively restart the current
 Input dispatch establishes a `NodeTree::ScopedMutationGuard` around event propagation. Handlers may request structural changes, but those changes are deferred until the guarded dispatch completes.
 
 `Node::on<Event>()` registration and handler removal use a snapshot of matching callbacks for the current delivery. Changes to the live handler table therefore do not invalidate the current callback iteration.
+
+## Time advancement
+
+`UIManager::advanceTime(dt)` delegates time progression to `NodeTree`. `NodeTree::advanceTime()` advances framework-owned time-dependent systems; it is not a per-node `update(dt)` traversal.
+
+A Node does not receive a universal per-frame callback. Time-dependent behavior belongs in an appropriate framework subsystem rather than being implicitly executed for every component.
 
 ## Modal and scroll operations
 
