@@ -172,6 +172,52 @@ ToggleButton : Button
 
 Do not introduce generic bases such as `ButtonBase`, `SelectableNode` or `ContentNode` without a concrete stable shared contract.
 
+## Animation and presentation properties
+
+Animation is a capability of presentation state, not a parallel source of component state.
+
+A component should expose an animation property only when all three conditions hold:
+
+```text
+1. the value is presentation state;
+2. changing it has a meaningful visual effect;
+3. allowing client control does not require the client to mirror semantic state.
+```
+
+The public path is:
+
+```text
+component.somePresentationProperty()
+        ↓
+UIManager::animations()
+        ↓
+FloatAnimationProperty
+        ↓
+shared AnimationSystem
+```
+
+The component may use the same property for its default behavior. This keeps the default behavior encapsulated while ensuring that component animations and client animations share one runtime.
+
+### Current decisions
+
+| Component | Animation capability | Reason |
+|---|---|---|
+| `Button` | `pressScaleProperty()` | Press scale is pure presentation state and is intentionally client-overridable. |
+| `ToggleButton` | inherits Button capability | `ToggleButton` is a stable `Button` specialization; no second animation property is required. |
+| `Modal` / backdrop | internal only | Backdrop opacity is framework session presentation, not a general modal semantic property. |
+| `Slider` | none | `value` is semantic state and drives interaction/events directly; animating it would also animate the semantic value unless a separate presentation layer is introduced. |
+| `Checkbox` | none | `checked` is semantic state; no independent presentation animation exists yet that merits public exposure. |
+| `RadioButton` | none | selection is semantic state; no distinct stable presentation capability is currently defined. |
+| `TabItem` / `TabControl` | none | active/selected state is semantic and there is no separate indicator presentation contract. |
+| `Dropdown` | none | open/selection state coordinates specialized children and lifecycle; a visual transition can be added later without exposing child internals. |
+| `Menu` / `MenuItem` | none | highlight/selection remains semantic interaction state; no stable presentation transition currently exists. |
+| `TextInput` | none | caret/selection/text are interaction or semantic state and should not acquire implicit animation semantics. |
+| `Image` | none | fit mode, tint and texture presentation are immediate configuration; no stable transition contract exists yet. |
+
+This is intentionally conservative. Adding animation properties to every visual value would make the public API noisy and would blur the boundary between semantic state and presentation state.
+
+When a component later gains a meaningful independent presentation transition, expose that presentation property explicitly rather than exposing the underlying semantic field.
+
 ## Standard component layer
 
 The active standard components are:
@@ -290,3 +336,5 @@ Before adding a component:
 13. Which semantic events or concrete callbacks should be exposed?
 14. Does a new public callback API duplicate an existing generic event relationship? If so, what concrete component requirement justifies it?
 15. Is default interaction behavior implemented by the component rather than reconstructed by client code?
+16. Is a proposed animation property independent presentation state rather than semantic state?
+17. Does the property already have a stable visual contract, or is it exposing an implementation detail?
