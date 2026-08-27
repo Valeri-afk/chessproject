@@ -46,7 +46,7 @@ namespace ui
         if(!renderer||!nodeTree_)return;
         if(layoutSystem_&&layoutSystem_->syncViewportFromRenderer(renderer))layoutSystem_->requestFullLayout(*nodeTree_);
         if(layoutSystem_&&modalSystem_)modalSystem_->setViewportSize(layoutSystem_->getViewportSize());
-        syncState();
+        if(nodeTree_&&inputSystem_)inputSystem_->syncState(*nodeTree_);
         prepareForTreeOperation();
         if(layoutSystem_)layoutSystem_->processLayoutQueue(*nodeTree_);
         if(scrollSystem_)scrollSystem_->sync(*nodeTree_);
@@ -65,7 +65,7 @@ namespace ui
         nodeTree_->draw(renderer,modalSystem_&&modalSystem_->topModalNode(*nodeTree_)?std::optional<Node::Id>(modalSystem_->topModalNode(*nodeTree_)->getId()):std::nullopt);
     }
     void UIManager::prepareForTreeOperation(){if(nodeTree_)nodeTree_->flushMutationQueue();}
-    void UIManager::syncState(){if(nodeTree_&&inputSystem_)inputSystem_->syncState(*nodeTree_);if(nodeTree_&&modalSystem_&&inputSystem_)modalSystem_->sync(*nodeTree_,*inputSystem_);}
+    void UIManager::syncState(){if(nodeTree_&&inputSystem_)inputSystem_->syncState(*nodeTree_);}
     Node *UIManager::addRoot(std::unique_ptr<Node> node){if(!nodeTree_||!node)return nullptr;return nodeTree_->attachRoot(nodeTree_->rootsCount(),std::move(node));}
     Node *UIManager::addOverlay(std::unique_ptr<Node> node){if(!nodeTree_||!node)return nullptr;return nodeTree_->attachOverlay(nodeTree_->overlaysCount(),std::move(node));}
     void UIManager::removeRoot(Node *node){if(nodeTree_&&node)nodeTree_->removeRoot(node);}
